@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "name": "Arjun Mehta",
+    "enrollmentNo": "SBJ2021001",
+    "department": "Computer Science & Engineering",
+    "semester": 6,
+    "email": "arjun.mehta@student.sbjain.edu.in",
+    "phone": "+91 98765 11111",
+    "photo": null,
+    "favouriteRooms": ["Computer Lab 1", "Seminar Hall", "Room 101"],
+    "recentSearches": ["Dr. Rajesh Sharma", "Computer Lab", "Library"]
+  },
+  {
+    "id": 2,
+    "name": "Priya Kulkarni",
+    "enrollmentNo": "SBJ2021002",
+    "department": "Electronics & Communication",
+    "semester": 6,
+    "email": "priya.kulkarni@student.sbjain.edu.in",
+    "phone": "+91 98765 22222",
+    "photo": null,
+    "favouriteRooms": ["Electronics Lab", "Room 101"],
+    "recentSearches": ["Prof. Sunita Verma", "Electronics Lab"]
+  },
+  {
+    "id": 3,
+    "name": "Rahul Thakur",
+    "enrollmentNo": "SBJ2022001",
+    "department": "Information Technology",
+    "semester": 4,
+    "email": "rahul.thakur@student.sbjain.edu.in",
+    "phone": "+91 98765 33333",
+    "photo": null,
+    "favouriteRooms": ["Computer Lab 1", "Seminar Hall"],
+    "recentSearches": ["Prof. Priya Deshmukh", "IT Department"]
+  },
+  {
+    "id": 4,
+    "name": "Sneha Patil",
+    "enrollmentNo": "SBJ2022002",
+    "department": "Mechanical Engineering",
+    "semester": 4,
+    "email": "sneha.patil@student.sbjain.edu.in",
+    "phone": "+91 98765 44444",
+    "photo": null,
+    "favouriteRooms": ["Physics Lab", "Seminar Hall"],
+    "recentSearches": ["Dr. Amit Patel", "Mech Lab"]
+  },
+  {
+    "id": 5,
+    "name": "Vikram Singh",
+    "enrollmentNo": "SBJ2023001",
+    "department": "Civil Engineering",
+    "semester": 2,
+    "email": "vikram.singh@student.sbjain.edu.in",
+    "phone": "+91 98765 55555",
+    "photo": null,
+    "favouriteRooms": ["Room 101", "Seminar Hall"],
+    "recentSearches": ["Dr. Manish Joshi", "Admin Block"]
+  }
+]

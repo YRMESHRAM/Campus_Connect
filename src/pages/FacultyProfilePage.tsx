@@ -1,0 +1,187 @@
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Phone, Clock, MapPin, BookOpen, Edit3, Save, Camera } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import Layout from '../components/Layout';
+
+const FacultyProfilePage: React.FC = () => {
+  const { isDark } = useTheme();
+  const facultyName = localStorage.getItem('facultyName') || 'Dr. Rajesh Kumar Sharma';
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [profile, setProfile] = useState({
+    name: facultyName,
+    designation: 'Head of Department',
+    department: 'Computer Science & Engineering',
+    cabin: 'A-101',
+    email: 'rajesh.sharma@sbjain.edu.in',
+    phone: '+91 98765 43210',
+    officeHours: 'Mon-Fri: 10:00 AM - 12:00 PM',
+    subjects: ['Data Structures', 'Algorithms', 'Machine Learning'],
+    qualification: 'Ph.D. (IIT Bombay), M.Tech (NIT Nagpur)',
+    experience: '15 Years',
+  });
+
+  const handleSave = () => {
+    setSaved(true);
+    setEditing(false);
+    setTimeout(() => setSaved(false), 2500);
+  };
+
+  return (
+    <Layout isFaculty>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>Faculty Profile</h1>
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Manage your faculty profile and information</p>
+        </motion.div>
+
+        {saved && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-green-100 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4 text-sm"
+          >
+            ✓ Profile saved successfully!
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left - Photo Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`rounded-3xl border overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-lg'}`}
+          >
+            <div className="h-20 bg-gradient-to-r from-green-600 to-emerald-700" />
+            <div className="px-5 pb-5 -mt-10">
+              <div className="relative w-20 h-20 mb-4">
+                <img
+                  src="/images/faculty1.jpg"
+                  alt={profile.name}
+                  className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-xl"
+                  onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=16a34a&color=fff&size=200`; }}
+                />
+                <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-600 rounded-xl flex items-center justify-center shadow hover:bg-green-700 transition-colors">
+                  <Camera size={12} className="text-white" />
+                </button>
+              </div>
+              <h2 className={`font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{profile.name}</h2>
+              <p className="text-green-600 text-sm font-medium">{profile.designation}</p>
+              <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{profile.department}</p>
+              <div className={`mt-3 p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-green-50'}`}>
+                <p className="text-xs text-gray-400">Cabin</p>
+                <p className="font-bold text-green-600">Cabin {profile.cabin}</p>
+              </div>
+              <div className={`mt-2 p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-blue-50'}`}>
+                <p className="text-xs text-gray-400">Qualification</p>
+                <p className={`text-xs font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{profile.qualification}</p>
+              </div>
+              <button
+                onClick={() => setEditing(!editing)}
+                className={`w-full mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+              >
+                <Edit3 size={14} /> {editing ? 'Cancel' : 'Edit Profile'}
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Right - Info */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Contact Info */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className={`p-5 rounded-2xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
+            >
+              <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Contact Information</h3>
+              {editing ? (
+                <div className="space-y-3">
+                  {[
+                    { label: 'Email', key: 'email', type: 'email' },
+                    { label: 'Phone', key: 'phone', type: 'tel' },
+                    { label: 'Office Hours', key: 'officeHours', type: 'text' },
+                  ].map(({ label, key, type }) => (
+                    <div key={key}>
+                      <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{label}</label>
+                      <input
+                        type={type}
+                        value={profile[key as keyof typeof profile] as string}
+                        onChange={(e) => setProfile({ ...profile, [key]: e.target.value })}
+                        className={`w-full px-3 py-2.5 rounded-xl border text-sm outline-none ${isDark ? 'bg-gray-700 border-gray-600 text-white focus:border-green-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'}`}
+                      />
+                    </div>
+                  ))}
+                  <button onClick={handleSave} className="btn-primary w-full py-2.5 flex items-center justify-center gap-2">
+                    <Save size={16} /> Save Profile
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {[
+                    { icon: Mail, label: 'Email', value: profile.email, color: 'text-green-500' },
+                    { icon: Phone, label: 'Phone', value: profile.phone, color: 'text-blue-500' },
+                    { icon: Clock, label: 'Office Hours', value: profile.officeHours, color: 'text-purple-500' },
+                    { icon: MapPin, label: 'Cabin', value: `Cabin ${profile.cabin}, Block A`, color: 'text-red-500' },
+                  ].map(({ icon: Icon, label, value, color }) => (
+                    <div key={label} className={`flex items-center gap-3 p-3 rounded-xl ${isDark ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                      <Icon size={16} className={`${color} flex-shrink-0`} />
+                      <div>
+                        <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{label}</p>
+                        <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Subjects */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className={`p-5 rounded-2xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
+            >
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <BookOpen size={16} className="text-green-600" /> Subjects Taught
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {profile.subjects.map((subject, i) => (
+                  <span key={i} className="flex items-center gap-1.5 text-sm bg-green-100 text-green-700 px-3 py-1.5 rounded-xl font-medium">
+                    📚 {subject}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Change Password */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className={`p-5 rounded-2xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
+            >
+              <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Change Password</h3>
+              <div className="space-y-3">
+                {['Current Password', 'New Password', 'Confirm New Password'].map((label) => (
+                  <input
+                    key={label}
+                    type="password"
+                    placeholder={label}
+                    className={`w-full px-4 py-3 rounded-xl border text-sm outline-none ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'}`}
+                  />
+                ))}
+                <button className="btn-primary w-full py-2.5">Update Password</button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default FacultyProfilePage;

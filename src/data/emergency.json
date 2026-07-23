@@ -1,0 +1,62 @@
+[
+  {
+    "id": 1,
+    "name": "Security Office",
+    "type": "security",
+    "phone": "+91 712-2345678",
+    "alternatePhone": "+91 98765 00001",
+    "location": "Main Gate, Ground Floor",
+    "building": "Main Gate",
+    "description": "24/7 campus security for emergencies, lost items, and access control",
+    "available": "24/7",
+    "icon": "shield"
+  },
+  {
+    "id": 2,
+    "name": "Reception / Helpdesk",
+    "type": "reception",
+    "phone": "+91 712-2345679",
+    "alternatePhone": "+91 98765 00002",
+    "location": "Admin Block, Ground Floor",
+    "building": "Admin Block",
+    "description": "General inquiries, visitor management, and campus information",
+    "available": "Mon-Sat: 8:00 AM - 6:00 PM",
+    "icon": "phone"
+  },
+  {
+    "id": 3,
+    "name": "Medical Room",
+    "type": "medical",
+    "phone": "+91 712-2345680",
+    "alternatePhone": "+91 98765 00003",
+    "location": "Block A, Ground Floor",
+    "building": "Block A",
+    "description": "First aid, medical assistance, and emergency healthcare for students and staff",
+    "available": "Mon-Sat: 9:00 AM - 5:00 PM",
+    "icon": "heart"
+  },
+  {
+    "id": 4,
+    "name": "Fire Safety",
+    "type": "fire",
+    "phone": "101",
+    "alternatePhone": "+91 712-2345681",
+    "location": "Security Office & All Floors",
+    "building": "All Buildings",
+    "description": "Fire emergency response, fire extinguisher locations, and evacuation routes",
+    "available": "24/7",
+    "icon": "flame"
+  },
+  {
+    "id": 5,
+    "name": "Administration Office",
+    "type": "admin",
+    "phone": "+91 712-2345682",
+    "alternatePhone": "+91 98765 00005",
+    "location": "Admin Block, First Floor",
+    "building": "Admin Block",
+    "description": "Academic administration, exam queries, and official documentation",
+    "available": "Mon-Sat: 9:00 AM - 5:00 PM",
+    "icon": "building"
+  }
+]

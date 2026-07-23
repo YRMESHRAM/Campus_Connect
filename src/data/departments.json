@@ -1,0 +1,67 @@
+[
+  {
+    "id": 1,
+    "name": "Computer Science & Engineering",
+    "shortName": "CSE",
+    "hod": "Dr. Rajesh Kumar Sharma",
+    "building": "Block A",
+    "floor": 1,
+    "rooms": 12,
+    "faculty": 15,
+    "students": 480,
+    "phone": "+91 712-2345683",
+    "email": "cse@sbjain.edu.in"
+  },
+  {
+    "id": 2,
+    "name": "Electronics & Communication",
+    "shortName": "ECE",
+    "hod": "Prof. Sunita Verma",
+    "building": "Block B",
+    "floor": 2,
+    "rooms": 10,
+    "faculty": 12,
+    "students": 360,
+    "phone": "+91 712-2345684",
+    "email": "ece@sbjain.edu.in"
+  },
+  {
+    "id": 3,
+    "name": "Mechanical Engineering",
+    "shortName": "MECH",
+    "hod": "Dr. Amit Patel",
+    "building": "Block C",
+    "floor": 1,
+    "rooms": 10,
+    "faculty": 13,
+    "students": 360,
+    "phone": "+91 712-2345685",
+    "email": "mech@sbjain.edu.in"
+  },
+  {
+    "id": 4,
+    "name": "Information Technology",
+    "shortName": "IT",
+    "hod": "Prof. Priya Deshmukh",
+    "building": "Block A",
+    "floor": 2,
+    "rooms": 8,
+    "faculty": 10,
+    "students": 240,
+    "phone": "+91 712-2345686",
+    "email": "it@sbjain.edu.in"
+  },
+  {
+    "id": 5,
+    "name": "Civil Engineering",
+    "shortName": "CIVIL",
+    "hod": "Dr. Manish Joshi",
+    "building": "Block D",
+    "floor": 1,
+    "rooms": 9,
+    "faculty": 11,
+    "students": 300,
+    "phone": "+91 712-2345687",
+    "email": "civil@sbjain.edu.in"
+  }
+]
