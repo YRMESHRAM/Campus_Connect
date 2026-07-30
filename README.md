@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎓 IntelliCampus
+# 🎓 Campus_Connect
 ### AI-Powered Smart Campus Navigation & Information System
 
 ### *Find Classrooms • Locate Faculty • Explore Campus • Navigate with Ease*
