@@ -16,7 +16,7 @@
 
 </div>
 
-# 📖 About IntelliCampus
+# 📖 About Campus_Connect
 
 **IntelliCampus** is an AI-powered Smart Campus Navigation and Information System designed to simplify the campus experience for **students, faculty, visitors, and staff**.
 
@@ -84,7 +84,6 @@ Everything is available through one simple and responsive web application.
 ## 🏠 Home Page
 <img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/logo.png" width="180">
 
-*A clean and modern landing page that provides quick access to all campus services.*
 
 ---
 
@@ -214,7 +213,7 @@ npm run dev
 
 ---
 
-# 🔥 Why IntelliCampus?
+# 🔥 Why Campus_Connect?
 
 | Existing Method | IntelliCampus |
 |-----------------|---------------|
@@ -247,7 +246,7 @@ It motivates further development and improvements.
 
 <div align="center">
 
-### 🚀 IntelliCampus
+### 🚀 Campus_Connect
 ### Making Campus Navigation Smarter, Faster & Simpler
 
 ⭐ Star this repository if you like the project.
