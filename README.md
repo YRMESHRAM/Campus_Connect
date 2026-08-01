@@ -1,11 +1,11 @@
 <div align="center">
 
-# 🎓 IntelliCampus
+# 🎓 Campus_Connect
 ### AI-Powered Smart Campus Navigation & Information System
 
 ### *Find Classrooms • Locate Faculty • Explore Campus • Navigate with Ease*
 
-<img src="./assets/hero.png" alt="IntelliCampus Banner" width="100%">
+<img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/Frontend_img.png" width="100%">
 
 > Replace `./assets/hero.png` with your actual screenshot path.
 
