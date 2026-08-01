@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Filter, MapPin, Navigation, Star } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import facultyData from '../data/faculty.json';
+import { supabase } from '../supabaseClient'; // Connected to your Supabase client
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -21,20 +21,52 @@ const FacultyDirectory: React.FC = () => {
   const [availFilter, setAvailFilter] = useState('All');
   const [alphaFilter, setAlphaFilter] = useState('All');
 
-  const departments = ['All', ...Array.from(new Set(facultyData.map((f) => f.department)))];
+  // Supabase state
+  const [facultyData, setFacultyData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch real database records from Supabase
+  useEffect(() => {
+    async function fetchFaculty() {
+      const { data, error } = await supabase
+        .from('faculty_schedules')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching faculty data:', error);
+      } else if (data) {
+        setFacultyData(data);
+      }
+      setLoading(false);
+    }
+
+    fetchFaculty();
+  }, []);
+
+  const departments = ['All', ...Array.from(new Set(facultyData.map((f) => f["Department"]).filter(Boolean)))];
   const availabilities = ['All', 'available', 'busy', 'in-lecture', 'offline'];
   const alphabets = ['All', 'A-F', 'G-L', 'M-R', 'S-Z'];
 
   const filtered = facultyData.filter((f) => {
-    const matchSearch = f.name.toLowerCase().includes(search.toLowerCase()) || f.department.toLowerCase().includes(search.toLowerCase());
-    const matchDept = deptFilter === 'All' || f.department === deptFilter;
-    const matchAvail = availFilter === 'All' || f.availability === availFilter;
+    const name = f["Faculty Name"] || '';
+    const dept = f["Department"] || '';
+    const availability = f.availability || 'available';
+
+    const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || dept.toLowerCase().includes(search.toLowerCase());
+    const matchDept = deptFilter === 'All' || dept === deptFilter;
+    const matchAvail = availFilter === 'All' || availability === availFilter;
+    
     let matchAlpha = true;
     if (alphaFilter !== 'All') {
-      const firstChar = f.name.charAt(f.name.indexOf(' ') + 1).toUpperCase();
+      // Remove prefixes like Dr., Prof., etc. to filter by real starting letter
+      const cleanName = name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s+/i, '').trim();
+      const firstChar = cleanName.charAt(0).toUpperCase();
       const ranges: Record<string, [string, string]> = { 'A-F': ['A', 'F'], 'G-L': ['G', 'L'], 'M-R': ['M', 'R'], 'S-Z': ['S', 'Z'] };
-      const [start, end] = ranges[alphaFilter];
-      matchAlpha = firstChar >= start && firstChar <= end;
+      const range = ranges[alphaFilter];
+      if (range) {
+        const [start, end] = range;
+        matchAlpha = firstChar >= start && firstChar <= end;
+      }
     }
     return matchSearch && matchDept && matchAvail && matchAlpha;
   });
@@ -70,7 +102,7 @@ const FacultyDirectory: React.FC = () => {
                 placeholder="Search faculty name or department..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'}`}
+                className={`w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none ${isDark ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-purple-500' : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-purple-500'}`}
               />
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -92,100 +124,134 @@ const FacultyDirectory: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 mt-3">
             <Filter size={14} className="text-gray-400" />
-            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{filtered.length} faculty members found</span>
+            <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {loading ? 'Loading...' : `${filtered.length} faculty members found`}
+            </span>
           </div>
         </motion.div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className="text-lg font-medium animate-pulse">Fetching faculty data from Supabase...</p>
+          </div>
+        )}
+
         {/* Faculty Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((faculty, i) => {
-            const status = availabilityConfig[faculty.availability] || availabilityConfig.offline;
-            return (
-              <motion.div
-                key={faculty.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                whileHover={{ y: -4 }}
-                className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gray-800 border-gray-700 hover:border-purple-600/30' : 'bg-white border-gray-200 shadow-sm hover:shadow-md hover:border-purple-300'}`}
-              >
-                {/* Card Header */}
-                <div className={`p-5 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                  <div className="flex items-start gap-4">
-                    <div className="relative">
-                      <img
-                        src={faculty.photo}
-                        alt={faculty.name}
-                        className="w-16 h-16 rounded-2xl object-cover shadow-md"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(faculty.name)}&background=16a34a&color=fff&size=128`;
-                        }}
-                      />
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.dot} rounded-full border-2 border-white`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className={`font-bold text-sm leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{faculty.name}</h3>
-                          <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{faculty.designation}</p>
-                        </div>
-                        {faculty.isHOD && (
-                          <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
-                            <Star size={10} /> HOD
-                          </span>
-                        )}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((faculty, i) => {
+              const teacherName = faculty["Faculty Name"] || 'Faculty Member';
+              const department = faculty["Department"] || 'N/A';
+              const cabin = faculty["Cabin No."] || 'N/A';
+              const availability = faculty.availability || 'available';
+              const status = availabilityConfig[availability] || availabilityConfig.available;
+              const isHOD = teacherName.toLowerCase().includes('hod') || faculty["10:30 - 11:30"]?.toLowerCase().includes('hod');
+
+              const photoUrl = faculty.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=8b5cf6&color=fff&size=128`;
+
+              return (
+                <motion.div
+                  key={faculty.id || i}
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  whileHover={{ y: -4 }}
+                  className={`rounded-2xl border overflow-hidden transition-all ${isDark ? 'bg-gray-800 border-gray-700 hover:border-purple-600/30' : 'bg-white border-gray-200 shadow-sm hover:shadow-md hover:border-purple-300'}`}
+                >
+                  {/* Card Header */}
+                  <div className={`p-5 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <div className="flex items-start gap-4">
+                      <div className="relative">
+                        <img
+                          src={photoUrl}
+                          alt={teacherName}
+                          className="w-16 h-16 rounded-2xl object-cover shadow-md"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=8b5cf6&color=fff&size=128`;
+                          }}
+                        />
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.dot} rounded-full border-2 border-white`} />
                       </div>
-                      <p className={`text-xs mt-1 font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>{faculty.department}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Card Body */}
-                <div className="p-4">
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      <MapPin size={12} className="text-green-500" />
-                      Cabin {faculty.cabin}
-                    </div>
-                    <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-                      🏢 {faculty.building}
-                    </div>
-                    <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} col-span-2`}>
-                      <span>🕐</span> {faculty.officeHours}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className={`font-bold text-sm leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{teacherName}</h3>
+                            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{faculty.designation || 'Faculty Member'}</p>
+                          </div>
+                          {isHOD && (
+                            <span className="flex items-center gap-1 text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                              <Star size={10} /> HOD
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-xs mt-1 font-medium ${isDark ? 'text-purple-400' : 'text-purple-600'}`}>{department}</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Availability */}
-                  <div className="flex items-center justify-between mb-3">
-                    <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${status.bg} ${status.color}`}>
-                      <div className={`w-1.5 h-1.5 ${status.dot} rounded-full`} />
-                      {status.label}
-                    </span>
-                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{faculty.experience}</span>
-                  </div>
+                  {/* Card Body */}
+                  <div className="p-4">
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        <MapPin size={12} className="text-green-500" />
+                        Cabin: {cabin}
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                        🏢 {faculty.building || 'Main Campus'}
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'} col-span-2`}>
+                        <span>🕐</span> 10:30 AM - 05:30 PM
+                      </div>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => navigate(`/faculty/${faculty.id}`)}
-                      className={`text-xs font-semibold py-2.5 rounded-xl transition-all ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                    >
-                      View Profile
-                    </button>
-                    <button
-                      onClick={() => navigate('/campus-map')}
-                      className="text-xs font-semibold py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-700 text-white flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
-                    >
-                      <Navigation size={12} /> Navigate
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                    {/* Schedule Preview */}
+                    <div className={`mb-3 p-2 rounded-xl text-xs ${isDark ? 'bg-gray-700/50 text-gray-300' : 'bg-gray-50 text-gray-700'}`}>
+                      <div className="flex justify-between border-b border-gray-200/20 pb-1 mb-1 font-semibold text-purple-500">
+                        <span>Time Slot</span>
+                        <span>Activity</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>10:30 - 11:30:</span>
+                        <span className="font-medium text-right">{faculty["10:30 - 11:30"] || 'Available'}</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span>11:30 - 12:30:</span>
+                        <span className="font-medium text-right">{faculty["11:30 - 12:30"] || 'Available'}</span>
+                      </div>
+                    </div>
 
-        {filtered.length === 0 && (
+                    {/* Availability Status */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${status.bg} ${status.color}`}>
+                        <div className={`w-1.5 h-1.5 ${status.dot} rounded-full`} />
+                        {status.label}
+                      </span>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => navigate(`/faculty/${encodeURIComponent(teacherName)}`)}
+                        className={`text-xs font-semibold py-2.5 rounded-xl transition-all ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => navigate('/campus-map')}
+                        className="text-xs font-semibold py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-700 text-white flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+                      >
+                        <Navigation size={12} /> Navigate
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+
+        {!loading && filtered.length === 0 && (
           <div className={`text-center py-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
             <p className="text-4xl mb-3">🔍</p>
             <p className="font-medium">No faculty found</p>
