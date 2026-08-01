@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Mail, Phone, Clock, Star, ArrowLeft, BookOpen, Award } from 'lucide-react';
+import { MapPin, Navigation, Mail, Phone, Clock, Star, ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
-import facultyData from '../data/faculty.json';
+import { supabase } from '../supabaseClient';
+import { getCurrentTeacherStatus } from './FacultyDirectory';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -18,8 +19,84 @@ const FacultyProfile: React.FC = () => {
   const navigate = useNavigate();
   const { isDark } = useTheme();
 
-  const faculty = facultyData.find((f) => f.id === Number(id)) || facultyData[0];
-  const status = availabilityConfig[faculty.availability] || availabilityConfig.offline;
+  const [faculty, setFaculty] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchFaculty() {
+      setLoading(true);
+      const name = decodeURIComponent(id || '');
+      
+      const { data, error } = await supabase
+        .from('faculty_schedules')
+        .select('*')
+        .eq('Faculty Name', name)
+        .maybeSingle();
+        
+      if (error) {
+        console.error('Error fetching faculty profile:', error);
+      } else if (data) {
+        setFaculty({
+          id: data.id,
+          name: data['Faculty Name'] || name,
+          designation: data.designation || 'Faculty Member',
+          department: data['Department'] || 'N/A',
+          cabin: data['Cabin No.'] || data.cabin || 'N/A',
+          email: data.email || `${name.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`,
+          phone: data.phone || '+91 98765 43210',
+          officeHours: data.officeHours || 'Mon-Fri: 10:30 AM - 05:30 PM',
+          subjects: data.subjects || ['Core Subject 1', 'Core Subject 2'],
+          qualification: data.qualification || 'Ph.D. / M.Tech',
+          experience: data.experience || '10+ Years',
+          photo: data.photo || '',
+          availability: data.availability || 'available',
+          isHOD: data.isHOD || name.toLowerCase().includes('hod') || (data["10:30 - 11:30"]?.toLowerCase().includes('hod')),
+          ...data
+        });
+      }
+      setLoading(false);
+    }
+    fetchFaculty();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto px-4 py-32 flex flex-col items-center justify-center">
+          <Loader2 size={40} className={`animate-spin mb-4 ${isDark ? 'text-purple-400' : 'text-purple-600'}`} />
+          <p className={`text-lg font-medium animate-pulse ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+            Loading faculty profile...
+          </p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!faculty) {
+    return (
+      <Layout>
+        <div className="max-w-4xl mx-auto px-4 py-32 text-center">
+          <p className="text-6xl mb-4">😕</p>
+          <h2 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Faculty Not Found</h2>
+          <p className={`mb-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>We couldn't find the profile for the requested faculty member.</p>
+          <button
+            onClick={() => navigate('/faculty-directory')}
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
+          >
+            <ArrowLeft size={16} /> Back to Directory
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
+  const rawStatus = getCurrentTeacherStatus(faculty) || faculty.availability;
+  const status = availabilityConfig[rawStatus] || { 
+    label: rawStatus, 
+    color: 'text-gray-600', 
+    bg: 'bg-gray-100', 
+    dot: 'bg-gray-400' 
+  };
 
   return (
     <Layout>
@@ -47,11 +124,11 @@ const FacultyProfile: React.FC = () => {
               <div className="flex items-end gap-4 -mt-12 mb-4">
                 <div className="relative">
                   <img
-                    src={faculty.photo}
+                    src={faculty.photo || '/images/blank.jpg'}
                     alt={faculty.name}
                     className="w-24 h-24 rounded-2xl border-4 border-white shadow-xl object-cover"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(faculty.name)}&background=16a34a&color=fff&size=200`;
+                      (e.target as HTMLImageElement).src = '/images/blank.jpg';
                     }}
                   />
                   <div className={`absolute -bottom-1 -right-1 w-5 h-5 ${status.dot} rounded-full border-2 border-white`} />
@@ -90,10 +167,9 @@ const FacultyProfile: React.FC = () => {
 
           {/* Info Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            {[
+            {[  
               { icon: MapPin, label: 'Cabin Number', value: `Cabin ${faculty.cabin}`, color: 'text-green-600' },
               { icon: Clock, label: 'Office Hours', value: faculty.officeHours, color: 'text-blue-600' },
-              { icon: Award, label: 'Experience', value: faculty.experience, color: 'text-purple-600' },
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} className={`p-4 rounded-2xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
                 <div className="flex items-center gap-2 mb-1">
@@ -133,7 +209,7 @@ const FacultyProfile: React.FC = () => {
                 <BookOpen size={16} className="text-purple-500" /> Subjects Taught
               </h2>
               <div className="space-y-2">
-                {faculty.subjects.map((subject, i) => (
+                {faculty.subjects.map((subject: string, i: number) => (
                   <motion.div
                     key={subject}
                     initial={{ opacity: 0, x: -10 }}

@@ -25,7 +25,7 @@ const FacultyProfilePage: React.FC = () => {
     officeHours: 'Mon-Fri: 10:00 AM - 12:00 PM',
     subjects: ['Data Structures', 'Algorithms', 'Machine Learning'],
     qualification: 'Ph.D. (IIT Bombay), M.Tech (NIT Nagpur)',
-    experience: '15 Years',
+
     photo: '',
     password: '',
   });
@@ -58,7 +58,7 @@ const FacultyProfilePage: React.FC = () => {
           officeHours: data.officeHours || 'Mon-Fri: 10:00 AM - 05:00 PM',
           subjects: data.subjects || ['Data Structures', 'Algorithms', 'Machine Learning'],
           qualification: data.qualification || 'Ph.D. / M.Tech',
-          experience: data.experience || '10+ Years',
+
           photo: data.photo || '',
           password: data.password || 'Pass@123',
         });
@@ -158,7 +158,7 @@ const FacultyProfilePage: React.FC = () => {
 
   const avatarUrl =
     profile.photo ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name)}&background=16a34a&color=fff&size=200`;
+    '/images/blank.jpg';
 
   return (
     <Layout isFaculty>
@@ -204,9 +204,7 @@ const FacultyProfilePage: React.FC = () => {
                     alt={profile.name}
                     className="w-20 h-20 rounded-2xl object-cover border-4 border-white shadow-xl"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        profile.name
-                      )}&background=16a34a&color=fff&size=200`;
+                      (e.target as HTMLImageElement).src = '/images/blank.jpg';
                     }}
                   />
                   <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-600 rounded-xl flex items-center justify-center shadow hover:bg-green-700 transition-colors">

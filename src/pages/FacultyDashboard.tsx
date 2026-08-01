@@ -62,8 +62,8 @@ const FacultyDashboard: React.FC = () => {
           <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30">
-                <img src="/images/faculty1.jpg" alt="Faculty" className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(facultyName)}&background=16a34a&color=fff&size=128`; }} />
+                <img src={localStorage.getItem('facultyPhoto') || "/images/blank.jpg"} alt="Faculty" className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/blank.jpg'; }} />
               </div>
               <div>
                 <p className="text-green-300 text-sm font-medium">Welcome back 👋</p>

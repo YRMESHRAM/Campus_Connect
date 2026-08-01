@@ -173,8 +173,7 @@ const FacultyDirectory: React.FC = () => {
               };
               
               const isHOD = faculty.isHOD || teacherName.toLowerCase().includes('hod') || faculty["10:30 - 11:30"]?.toLowerCase().includes('hod');
-
-              const photoUrl = faculty.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=8b5cf6&color=fff&size=128`;
+              const photoUrl = faculty.photo || '/images/blank.jpg';
 
               return (
                 <motion.div
@@ -194,7 +193,7 @@ const FacultyDirectory: React.FC = () => {
                           alt={teacherName}
                           className="w-16 h-16 rounded-2xl object-cover shadow-md"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(teacherName)}&background=8b5cf6&color=fff&size=128`;
+                            (e.target as HTMLImageElement).src = '/images/blank.jpg';
                           }}
                         />
                         <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.dot} rounded-full border-2 border-white`} />
