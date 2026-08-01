@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Navigation, BookOpen, MessageSquare, Bell, Phone, Clock, Users, Calendar, Edit3, Mail } from 'lucide-react';
+import { Navigation, BookOpen, MessageSquare, Bell, Phone, Clock, Users, Calendar, Edit3, Mail, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { supabase } from '../supabaseClient';
 
 type AvailabilityStatus = 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
@@ -15,30 +16,80 @@ const availabilityOptions: { label: string; value: AvailabilityStatus; color: st
   { label: 'Offline', value: 'offline', color: 'text-gray-600', bg: 'bg-gray-100 border-gray-300' },
 ];
 
-const schedule = [
-  { time: '09:00 AM', subject: 'Data Structures', room: 'Room 101, Block A', students: 60, status: 'completed' },
-  { time: '11:00 AM', subject: 'Machine Learning', room: 'Computer Lab 1, Block B', students: 40, status: 'active' },
-  { time: '02:00 PM', subject: 'Algorithms', room: 'Room 202, Block A', students: 55, status: 'upcoming' },
-  { time: '04:00 PM', subject: 'Office Hours', room: 'Cabin A-101', students: 0, status: 'upcoming' },
-];
-
-const announcements = [
-  { title: 'Assignment Submission Deadline', desc: 'Data Structures assignment due on Friday 5 PM.', time: '2 hours ago', type: 'assignment' },
-  { title: 'Department Meeting', desc: 'CSE faculty meeting on Monday at 10 AM in Seminar Hall.', time: '1 day ago', type: 'meeting' },
-  { title: 'Result Publication', desc: 'Mid-semester results published on college portal.', time: '2 days ago', type: 'result' },
-];
-
-const queries = [
-  { student: 'Arjun Mehta', query: 'Can I get an extension for the DS assignment?', time: '30 min ago', read: false },
-  { student: 'Priya Kulkarni', query: 'Please share notes for Unit 4 Machine Learning.', time: '2 hours ago', read: false },
-  { student: 'Rahul Thakur', query: 'Requesting re-evaluation for Quiz 2.', time: '1 day ago', read: true },
-];
-
-const FacultyDashboard: React.FC = () => {
+export default function FacultyDashboard() {
   const { isDark } = useTheme();
-  const facultyName = localStorage.getItem('facultyName') || 'Dr. Rajesh Sharma';
+  const facultyName = localStorage.getItem('facultyName') || 'Dr. Rajesh Kumar Sharma';
+
   const [availability, setAvailability] = useState<AvailabilityStatus>('available');
-  const currentStatus = availabilityOptions.find((o) => o.value === availability)!;
+  const [facultyDetails, setFacultyDetails] = useState<any>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [updating, setUpdating] = useState<boolean>(false);
+
+  // 1. Fetch real faculty data and current live status from Supabase
+  useEffect(() => {
+    async function loadFacultyData() {
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('faculty_schedules')
+          .select('*')
+          .eq('Faculty Name', facultyName)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching faculty dashboard data:', error);
+        } else if (data) {
+          setFacultyDetails(data);
+          if (data.availability) {
+            setAvailability(data.availability as AvailabilityStatus);
+          }
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadFacultyData();
+  }, [facultyName]);
+
+  // 2. Update status live in Supabase
+  const handleStatusChange = async (newStatus: AvailabilityStatus) => {
+    setAvailability(newStatus);
+    setUpdating(true);
+
+    const { error } = await supabase
+      .from('faculty_schedules')
+      .update({ availability: newStatus })
+      .eq('Faculty Name', facultyName);
+
+    if (error) {
+      console.error('Failed to sync status with Supabase:', error);
+      alert('Could not update status on server. Please try again.');
+    }
+    setUpdating(false);
+  };
+
+  const currentStatus = availabilityOptions.find((o) => o.value === availability) || availabilityOptions[0];
+
+  if (loading) {
+    return (
+      <Layout isFaculty>
+        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-8 h-8 text-green-600 animate-spin" />
+          <p className="text-gray-500 text-sm">Loading your live dashboard...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Parse schedule items from Supabase if present
+  const todayClasses = [
+    { time: '09:00 AM - 10:00 AM', subject: facultyDetails?.Subject || 'Lectures', room: facultyDetails?.['Cabin / Location'] || 'Assigned Classroom', status: 'completed' },
+    { time: '11:00 AM - 01:00 PM', subject: 'Lab Session / Consultations', room: facultyDetails?.['Cabin / Location'] || 'Department Lab', status: 'active' },
+    { time: '02:00 PM - 04:00 PM', subject: 'Office Hours & Guidance', room: facultyDetails?.['Cabin / Location'] || 'Office', status: 'upcoming' },
+  ];
 
   return (
     <Layout isFaculty>
@@ -54,14 +105,22 @@ const FacultyDashboard: React.FC = () => {
           </div>
           <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30">
-                <img src="/images/faculty1.jpg" alt="Faculty" className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(facultyName)}&background=16a34a&color=fff&size=128`; }} />
+              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30 bg-green-900">
+                <img
+                  src={facultyDetails?.Image || `/images/faculty1.jpg`}
+                  alt={facultyName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(facultyName)}&background=16a34a&color=fff&size=128`;
+                  }}
+                />
               </div>
               <div>
                 <p className="text-green-300 text-sm font-medium">Welcome back 👋</p>
                 <h1 className="text-2xl md:text-3xl font-black text-white">{facultyName}</h1>
-                <p className="text-white/70 text-sm">HOD, Computer Science & Engineering • Cabin A-101</p>
+                <p className="text-white/70 text-sm">
+                  {facultyDetails?.Designation || 'Faculty Member'} • {facultyDetails?.Department || 'Computer Science'} • {facultyDetails?.['Cabin / Location'] || 'Main Block'}
+                </p>
               </div>
             </div>
             <div className="flex gap-3 flex-wrap">
@@ -75,22 +134,26 @@ const FacultyDashboard: React.FC = () => {
           </div>
         </motion.div>
 
-        {/* Availability Toggle */}
+        {/* Real-time Status Sync Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className={`rounded-2xl border p-5 mb-6 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
         >
-          <h2 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            <div className={`w-3 h-3 rounded-full ${availability === 'available' ? 'bg-green-500 animate-pulse' : availability === 'offline' ? 'bg-gray-400' : 'bg-yellow-500'}`} />
-            Current Availability Status
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={`font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              <div className={`w-3 h-3 rounded-full ${availability === 'available' ? 'bg-green-500 animate-pulse' : availability === 'offline' ? 'bg-gray-400' : 'bg-yellow-500'}`} />
+              Live Availability Status
+            </h2>
+            {updating && <span className="text-xs text-purple-600 animate-pulse font-medium">Syncing with Supabase...</span>}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             {availabilityOptions.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setAvailability(opt.value)}
+                onClick={() => handleStatusChange(opt.value)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
                   availability === opt.value
                     ? `${opt.bg} ${opt.color} scale-105 shadow-md`
@@ -102,17 +165,17 @@ const FacultyDashboard: React.FC = () => {
             ))}
           </div>
           <p className={`text-xs mt-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Status set to: <strong className={currentStatus.color}>{currentStatus.label}</strong> — students can see this in Faculty Directory
+            Status broadcasted as: <strong className={currentStatus.color}>{currentStatus.label}</strong> — updated instantly for all students in the Faculty Directory.
           </p>
         </motion.div>
 
-        {/* Stats Cards */}
+        {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           {[
-            { icon: Users, label: "Today's Students", value: '155', color: 'from-blue-500 to-blue-700', bg: isDark ? 'from-blue-900/30 to-blue-800/20' : 'from-blue-50 to-blue-100/50' },
-            { icon: Calendar, label: 'Classes Today', value: '3', color: 'from-green-500 to-green-700', bg: isDark ? 'from-green-900/30 to-green-800/20' : 'from-green-50 to-green-100/50' },
-            { icon: MessageSquare, label: 'Student Queries', value: `${queries.filter((q) => !q.read).length}`, color: 'from-purple-500 to-purple-700', bg: isDark ? 'from-purple-900/30 to-purple-800/20' : 'from-purple-50 to-purple-100/50' },
-            { icon: Bell, label: 'Announcements', value: `${announcements.length}`, color: 'from-orange-500 to-orange-700', bg: isDark ? 'from-orange-900/30 to-orange-800/20' : 'from-orange-50 to-orange-100/50' },
+            { icon: Users, label: "Assigned Subject", value: facultyDetails?.Subject || 'CSE', color: 'from-blue-500 to-blue-700', bg: isDark ? 'from-blue-900/30 to-blue-800/20' : 'from-blue-50 to-blue-100/50' },
+            { icon: Calendar, label: 'Today Scheduled', value: '3 Sessions', color: 'from-green-500 to-green-700', bg: isDark ? 'from-green-900/30 to-green-800/20' : 'from-green-50 to-green-100/50' },
+            { icon: MessageSquare, label: 'Contact Phone', value: facultyDetails?.Phone || 'N/A', color: 'from-purple-500 to-purple-700', bg: isDark ? 'from-purple-900/30 to-purple-800/20' : 'from-purple-50 to-purple-100/50' },
+            { icon: Bell, label: 'Location', value: facultyDetails?.['Cabin / Location'] || 'Office', color: 'from-orange-500 to-orange-700', bg: isDark ? 'from-orange-900/30 to-orange-800/20' : 'from-orange-50 to-orange-100/50' },
           ].map(({ icon: Icon, label, value, color, bg }, i) => (
             <motion.div
               key={label}
@@ -124,15 +187,14 @@ const FacultyDashboard: React.FC = () => {
               <div className={`w-10 h-10 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-3 shadow-lg`}>
                 <Icon size={18} className="text-white" />
               </div>
-              <p className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
+              <p className={`text-lg font-black truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>{value}</p>
               <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{label}</p>
             </motion.div>
           ))}
         </div>
 
-        {/* Main Grid */}
+        {/* Schedule & Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Today's Schedule */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -140,104 +202,51 @@ const FacultyDashboard: React.FC = () => {
             className={`lg:col-span-2 rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
           >
             <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              <Calendar size={16} className="text-green-600" /> Today's Schedule
+              <Calendar size={16} className="text-green-600" /> Dynamic Schedule Overview
             </h3>
             <div className="space-y-3">
-              {schedule.map((item, i) => (
+              {todayClasses.map((item, i) => (
                 <div key={i} className={`flex items-center gap-4 p-3 rounded-xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'} ${item.status === 'active' ? isDark ? 'ring-1 ring-green-500' : 'ring-1 ring-green-400 bg-green-50' : ''}`}>
-                  <div className={`text-xs font-bold w-20 flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.time}</div>
+                  <div className={`text-xs font-bold w-28 flex-shrink-0 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.time}</div>
                   <div className="flex-1 min-w-0">
                     <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.subject}</p>
-                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.room}{item.students > 0 ? ` • ${item.students} students` : ''}</p>
+                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{item.room}</p>
                   </div>
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
                     item.status === 'active' ? 'bg-green-100 text-green-700' :
-                    item.status === 'completed' ? 'bg-gray-100 text-gray-500' :
-                    'bg-blue-100 text-blue-700'
+                    item.status === 'completed' ? 'bg-gray-100 text-gray-500' : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {item.status === 'active' ? '● Live' : item.status === 'completed' ? '✓ Done' : '⏰ Upcoming'}
+                    {item.status === 'active' ? '● Current' : item.status === 'completed' ? '✓ Completed' : '⏰ Scheduled'}
                   </span>
                 </div>
               ))}
             </div>
           </motion.div>
 
-          {/* Quick Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
             className={`rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
           >
-            <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Quick Actions</h3>
+            <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Quick Shortcuts</h3>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { icon: Navigation, label: 'Navigate', to: '/campus-map', color: 'from-green-500 to-green-700' },
-                { icon: BookOpen, label: 'Find Room', to: '/classroom-finder', color: 'from-blue-500 to-blue-700' },
+                { icon: Navigation, label: 'Map', to: '/campus-map', color: 'from-green-500 to-green-700' },
+                { icon: BookOpen, label: 'Rooms', to: '/classroom-finder', color: 'from-blue-500 to-blue-700' },
                 { icon: Phone, label: 'Emergency', to: '/emergency', color: 'from-red-500 to-red-700' },
-                { icon: Mail, label: 'Contact', to: '/feedback', color: 'from-purple-500 to-purple-700' },
+                { icon: Mail, label: 'Feedback', to: '/feedback', color: 'from-purple-500 to-purple-700' },
                 { icon: Bell, label: 'Notices', to: '/notifications', color: 'from-orange-500 to-orange-700' },
-                { icon: Clock, label: 'Office Hrs', to: '/faculty/profile', color: 'from-teal-500 to-teal-700' },
+                { icon: Clock, label: 'Profile', to: '/faculty/profile', color: 'from-teal-500 to-teal-700' },
               ].map(({ icon: Icon, label, to, color }) => (
                 <Link
                   key={label}
                   to={to}
                   className={`flex flex-col items-center gap-2 p-3 rounded-xl bg-gradient-to-br ${color} text-white hover:opacity-90 transition-all hover:-translate-y-0.5`}
                 >
-                  <Icon size={20} />
+                  <Icon size={18} />
                   <span className="text-xs font-semibold">{label}</span>
                 </Link>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Student Queries */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className={`rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
-          >
-            <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              <MessageSquare size={16} className="text-purple-600" /> Student Queries
-              {queries.filter((q) => !q.read).length > 0 && (
-                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">{queries.filter((q) => !q.read).length}</span>
-              )}
-            </h3>
-            <div className="space-y-3">
-              {queries.map((q, i) => (
-                <div key={i} className={`p-3 rounded-xl ${!q.read ? (isDark ? 'bg-purple-900/20 border border-purple-800/50' : 'bg-purple-50 border border-purple-100') : isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{q.student}</span>
-                    {!q.read && <div className="w-2 h-2 bg-purple-500 rounded-full" />}
-                  </div>
-                  <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{q.query}</p>
-                  <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{q.time}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Announcements */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className={`lg:col-span-2 rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
-          >
-            <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              <Bell size={16} className="text-orange-500" /> Announcements
-            </h3>
-            <div className="space-y-3">
-              {announcements.map((ann, i) => (
-                <div key={i} className={`flex gap-4 p-3 rounded-xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-                  <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${ann.type === 'assignment' ? 'bg-orange-500' : ann.type === 'meeting' ? 'bg-blue-500' : 'bg-green-500'}`} />
-                  <div>
-                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{ann.title}</p>
-                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{ann.desc}</p>
-                    <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{ann.time}</p>
-                  </div>
-                </div>
               ))}
             </div>
           </motion.div>
@@ -245,6 +254,4 @@ const FacultyDashboard: React.FC = () => {
       </div>
     </Layout>
   );
-};
-
-export default FacultyDashboard;
+}
