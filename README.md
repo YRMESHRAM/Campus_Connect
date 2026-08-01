@@ -1,9 +1,7 @@
 <div align="center">
 
-# 🎓 Campus_Connect
-
-### AI-Powered Smart Campus Navigation & Information System
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Poppins&weight=700&size=28&duration=3500&pause=1200&color=00C853&center=true&vCenter=true&width=900&lines=AI-Powered+Smart+Campus+Navigation+%26+Information+System;Find+Classrooms+%7C+Locate+Faculty+%7C+Explore+Campus;Indoor+Navigation+%7C+Campus+Management+System;Built+with+React+%2B+TypeScript+%2B+Google+Maps)](https://git.io/typing-svg)
+# 🎓 Campus_Connec
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Poppins&weight=700&size=28&duration=3500&pause=1200&color=80DEEA&center=true&vCenter=true&width=900&lines=AI-Powered+Smart+Campus+Navigation+%26+Information+System;Find+Classrooms+%7C+Locate+Faculty+%7C+Explore+Campus;Indoor+Navigation+%7C+Campus+Management+System;Built+with+React+%2B+TypeScript+%2B+Google+Maps)](https://git.io/typing-svg)
 <img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/Frontend_img.png" width="200">
 
 
