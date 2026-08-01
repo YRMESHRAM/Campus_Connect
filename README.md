@@ -1,26 +1,28 @@
 <div align="center">
 
 # 🎓 Campus_Connect
+
 ### AI-Powered Smart Campus Navigation & Information System
 
-### *Find Classrooms • Locate Faculty • Explore Campus • Navigate with Ease*
 
-<img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/Frontend_img.png" width="100%">
+<img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/Frontend_img.png" width="200">
 
-> Replace `./assets/hero.png` with your actual screenshot path.
 
 <br>
 
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react)
+
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript)
+
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite)
+
 ![Python](https://img.shields.io/badge/Future%20Backend-FastAPI-009688?style=for-the-badge&logo=fastapi)
+
 ![Google Maps](https://img.shields.io/badge/Maps-Google%20Maps-4285F4?style=for-the-badge&logo=googlemaps)
+
 ![License](https://img.shields.io/badge/License-MIT-success?style=for-the-badge)
 
 </div>
-
----
 
 # 📖 About IntelliCampus
 
@@ -88,8 +90,7 @@ Everything is available through one simple and responsive web application.
 # 🖼 Project Preview
 
 ## 🏠 Home Page
-
-<img src="./assets/hero.png" width="100%">
+<img src="https://raw.githubusercontent.com/YRMESHRAM/Campus_Connect/main/public/images/logo.png" width="180">
 
 *A clean and modern landing page that provides quick access to all campus services.*
 
