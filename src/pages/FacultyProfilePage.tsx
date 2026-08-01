@@ -27,7 +27,12 @@ const FacultyProfilePage: React.FC = () => {
     qualification: 'Ph.D. (IIT Bombay), M.Tech (NIT Nagpur)',
     experience: '15 Years',
     photo: '',
+    password: '',
   });
+
+  const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+  const [passStatus, setPassStatus] = useState({ type: '', msg: '' });
+  const [passSaving, setPassSaving] = useState(false);
 
   // Fetch logged-in faculty member's data from Supabase
   useEffect(() => {
@@ -55,6 +60,7 @@ const FacultyProfilePage: React.FC = () => {
           qualification: data.qualification || 'Ph.D. / M.Tech',
           experience: data.experience || '10+ Years',
           photo: data.photo || '',
+          password: data.password || 'Pass@123',
         });
       }
       setLoading(false);
@@ -101,6 +107,52 @@ const FacultyProfilePage: React.FC = () => {
       setSaved(true);
       setEditing(false);
       setTimeout(() => setSaved(false), 2500);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassStatus({ type: '', msg: '' });
+
+    if (passwords.current !== profile.password) {
+      setPassStatus({ type: 'error', msg: 'Current password is incorrect.' });
+      return;
+    }
+    if (passwords.new !== passwords.confirm) {
+      setPassStatus({ type: 'error', msg: 'New passwords do not match.' });
+      return;
+    }
+    if (passwords.new.length < 6) {
+      setPassStatus({ type: 'error', msg: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setPassSaving(true);
+    let error;
+
+    if (profile.id) {
+      const response = await supabase
+        .from('faculty_schedules')
+        .update({ password: passwords.new })
+        .eq('id', profile.id);
+      error = response.error;
+    } else {
+      const response = await supabase
+        .from('faculty_schedules')
+        .update({ password: passwords.new })
+        .eq('Faculty Name', profile.name);
+      error = response.error;
+    }
+
+    setPassSaving(false);
+
+    if (error) {
+      setPassStatus({ type: 'error', msg: 'Failed to update password. Please try again.' });
+    } else {
+      setProfile({ ...profile, password: passwords.new });
+      setPassStatus({ type: 'success', msg: 'Password updated successfully!' });
+      setPasswords({ current: '', new: '', confirm: '' });
+      setTimeout(() => setPassStatus({ type: '', msg: '' }), 3000);
     }
   };
 
@@ -324,29 +376,54 @@ const FacultyProfilePage: React.FC = () => {
                 }`}
               >
                 <h3 className={`font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>Change Password</h3>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    alert('Password changed successfully!');
-                  }}
-                  className="space-y-3"
-                >
-                  {['Current Password', 'New Password', 'Confirm New Password'].map((label) => (
-                    <input
-                      key={label}
-                      type="password"
-                      placeholder={label}
-                      className={`w-full px-4 py-3 rounded-xl border text-sm outline-none ${
-                        isDark
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500'
-                          : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'
-                      }`}
-                    />
-                  ))}
+                {passStatus.msg && (
+                  <div className={`mb-4 px-4 py-3 rounded-xl text-sm ${passStatus.type === 'error' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-700 border border-green-200'}`}>
+                    {passStatus.type === 'error' ? '⚠️ ' : '✓ '} {passStatus.msg}
+                  </div>
+                )}
+                <form onSubmit={handlePasswordChange} className="space-y-3">
+                  <input
+                    type="password"
+                    placeholder="Current Password"
+                    value={passwords.current}
+                    onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                    required
+                    className={`w-full px-4 py-3 rounded-xl border text-sm outline-none ${
+                      isDark
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500'
+                        : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'
+                    }`}
+                  />
+                  <input
+                    type="password"
+                    placeholder="New Password"
+                    value={passwords.new}
+                    onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                    required
+                    className={`w-full px-4 py-3 rounded-xl border text-sm outline-none ${
+                      isDark
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500'
+                        : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'
+                    }`}
+                  />
+                  <input
+                    type="password"
+                    placeholder="Confirm New Password"
+                    value={passwords.confirm}
+                    onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                    required
+                    className={`w-full px-4 py-3 rounded-xl border text-sm outline-none ${
+                      isDark
+                        ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500'
+                        : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-green-500'
+                    }`}
+                  />
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-colors"
+                    disabled={passSaving}
+                    className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
                   >
+                    {passSaving ? <Loader2 size={16} className="animate-spin" /> : null}
                     Update Password
                   </button>
                 </form>

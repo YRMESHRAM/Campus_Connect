@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { supabase } from '../supabaseClient';
 
 const FacultyLogin: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -12,23 +13,48 @@ const FacultyLogin: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const { data: results, error: supabaseError } = await supabase
+        .from('faculty_schedules')
+        .select('*')
+        .ilike('Faculty Name', `%${form.username.trim()}%`);
+
       setLoading(false);
-      // Accept any faculty name with Pass@123
-      if (form.password === 'Pass@123' && form.username.trim().length > 0) {
-        localStorage.setItem('facultyLoggedIn', 'true');
-        localStorage.setItem('facultyName', form.username);
-        if (form.remember) localStorage.setItem('rememberedFaculty', form.username);
-        navigate('/faculty/dashboard');
-      } else {
-        setError('Invalid credentials. Use your name as username and Pass@123 as password.');
+
+      if (supabaseError || !results || results.length === 0) {
+        setError('Invalid faculty name. Please check your username.');
+        return;
       }
-    }, 1200);
+
+      // If multiple matches (e.g. typing a common first name), just take the first one
+      const data = results[0];
+
+      // Check password (you can use data.password if it exists in DB, otherwise fallback to Pass@123)
+      const validPassword = data.password ? data.password === form.password : form.password === 'Pass@123';
+
+      if (!validPassword) {
+        setError('Invalid password.');
+        return;
+      }
+
+      localStorage.setItem('facultyLoggedIn', 'true');
+      localStorage.setItem('facultyName', data['Faculty Name'] || form.username);
+      localStorage.setItem('facultyDepartment', data['Department'] || '');
+      localStorage.setItem('facultyCabin', data['Cabin No.'] || '');
+      localStorage.setItem('facultyDesignation', data['designation'] || '');
+      localStorage.setItem('facultyIsHOD', data.isHOD ? 'true' : 'false');
+
+      if (form.remember) localStorage.setItem('rememberedFaculty', form.username);
+      navigate('/faculty/dashboard');
+    } catch (err) {
+      setLoading(false);
+      setError('An error occurred during login.');
+    }
   };
 
   return (
@@ -185,23 +211,3 @@ const FacultyLogin: React.FC = () => {
 };
 
 export default FacultyLogin;
-
-import { supabase } from '../supabaseClient';
-
-const handleLogin = async (facultyName: string, passwordInput: string) => {
-  const { data, error } = await supabase
-    .from('faculty_schedules')
-    .select('*')
-    .eq('Faculty Name', facultyName)
-    .eq('password', passwordInput)
-    .maybeSingle();
-
-  if (error || !data) {
-    alert('Invalid name or password!');
-    return;
-  }
-
-  // Save faculty session locally
-  localStorage.setItem('facultyName', data['Faculty Name']);
-  alert('Login successful!');
-};

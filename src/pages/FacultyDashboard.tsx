@@ -37,6 +37,13 @@ const queries = [
 const FacultyDashboard: React.FC = () => {
   const { isDark } = useTheme();
   const facultyName = localStorage.getItem('facultyName') || 'Dr. Rajesh Sharma';
+  const facultyDepartment = localStorage.getItem('facultyDepartment') || 'Computer Science & Engineering';
+  const facultyCabin = localStorage.getItem('facultyCabin') || 'Cabin A-101';
+  const facultyDesignation = localStorage.getItem('facultyDesignation') || 'Faculty Member';
+  const facultyIsHOD = localStorage.getItem('facultyIsHOD') === 'true';
+
+  const roleDisplay = facultyIsHOD ? `HOD, ${facultyDepartment}` : `${facultyDesignation}, ${facultyDepartment}`;
+
   const [availability, setAvailability] = useState<AvailabilityStatus>('available');
   const currentStatus = availabilityOptions.find((o) => o.value === availability)!;
 
@@ -61,7 +68,7 @@ const FacultyDashboard: React.FC = () => {
               <div>
                 <p className="text-green-300 text-sm font-medium">Welcome back 👋</p>
                 <h1 className="text-2xl md:text-3xl font-black text-white">{facultyName}</h1>
-                <p className="text-white/70 text-sm">HOD, Computer Science & Engineering • Cabin A-101</p>
+                <p className="text-white/70 text-sm">{roleDisplay} • Cabin {facultyCabin}</p>
               </div>
             </div>
             <div className="flex gap-3 flex-wrap">
