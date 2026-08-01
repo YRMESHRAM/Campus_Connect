@@ -185,3 +185,23 @@ const FacultyLogin: React.FC = () => {
 };
 
 export default FacultyLogin;
+
+import { supabase } from '../supabaseClient';
+
+const handleLogin = async (facultyName: string, passwordInput: string) => {
+  const { data, error } = await supabase
+    .from('faculty_schedules')
+    .select('*')
+    .eq('Faculty Name', facultyName)
+    .eq('password', passwordInput)
+    .maybeSingle();
+
+  if (error || !data) {
+    alert('Invalid name or password!');
+    return;
+  }
+
+  // Save faculty session locally
+  localStorage.setItem('facultyName', data['Faculty Name']);
+  alert('Login successful!');
+};
