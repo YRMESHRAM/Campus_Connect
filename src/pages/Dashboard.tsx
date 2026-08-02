@@ -68,9 +68,8 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <p className="text-green-300 text-sm font-medium mb-1">Welcome back, Student 👋</p>
-              <h1 className="text-2xl md:text-3xl font-black text-white">Good Morning, Arjun!</h1>
-              <p className="text-white/70 text-sm mt-1">CSE Department • Semester 6 • S.B. Jain Institute</p>
+              <h1 className="text-2xl md:text-3xl font-black text-white">Campus Connect</h1>
+              <p className="text-white/70 text-sm mt-1">S.B. Jain Institute of Technology, Management &amp; Research</p>
             </div>
             <div className="flex gap-3">
               <Link to="/campus-map" className="btn-primary flex items-center gap-2 whitespace-nowrap">

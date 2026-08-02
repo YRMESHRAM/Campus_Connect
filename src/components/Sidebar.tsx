@@ -66,22 +66,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, isFaculty = false })
         </button>
       </div>
 
-      {/* User Info */}
-      <div className={`p-4 border-b ${isDark ? 'border-gray-800' : 'border-gray-100'}`}>
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
-            <User size={18} className="text-white" />
-          </div>
-          <div>
-            <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              {isFaculty ? 'Dr. Rajesh Sharma' : 'Arjun Mehta'}
-            </p>
-            <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {isFaculty ? 'HOD, CSE' : 'CSE - Semester 6'}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Navigation Links */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto scrollbar-thin">

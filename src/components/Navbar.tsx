@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Search, Menu, Sun, Moon, User, LogOut, Settings } from 'lucide-react';
+import { Bell, Search, Menu, Sun, Moon, User, LogOut, Settings, LogIn, Home } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import notifications from '../data/notifications.json';
 
@@ -17,6 +17,12 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+
+  const isLoggedIn = isFaculty || !!localStorage.getItem('facultyLoggedIn');
+  const facultyName = localStorage.getItem('facultyName') || '';
+  const facultyDesignation = localStorage.getItem('facultyDesignation') || 'Faculty Member';
+  const facultyDepartment = localStorage.getItem('facultyDepartment') || '';
+  const facultyDisplayRole = facultyDepartment ? `${facultyDesignation}, ${facultyDepartment}` : facultyDesignation;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -162,46 +168,84 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
             </AnimatePresence>
           </div>
 
-          {/* Profile */}
-          <div className="relative">
-            <button
-              onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-              className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
-            >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
-                <User size={16} className="text-white" />
-              </div>
-            </button>
-            <AnimatePresence>
-              {showProfile && (
-                <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                  className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
-                >
-                  <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{isFaculty ? 'Faculty Portal' : 'Student'}</p>
-                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>S.B. Jain Institute</p>
-                  </div>
-                  <div className="p-2">
-                    <Link to={isFaculty ? '/faculty/profile' : '/profile'} onClick={() => setShowProfile(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                      <User size={16} /> Profile
-                    </Link>
-                    <Link to="/settings" onClick={() => setShowProfile(false)}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                      <Settings size={16} /> Settings
-                    </Link>
-                    <button onClick={handleLogout}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}>
-                      <LogOut size={16} /> Logout
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Profile / Login */}
+          {isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
+                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+              </button>
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                  >
+                    <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {facultyName || 'Faculty Portal'}
+                      </p>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} truncate`}>
+                        {facultyName ? facultyDisplayRole : 'S.B. Jain Institute'}
+                      </p>
+                    </div>
+                    <div className="p-2">
+                      <Link to="/settings" onClick={() => setShowProfile(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                        <Settings size={16} /> Settings
+                      </Link>
+                      <button onClick={handleLogout}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}>
+                        <LogOut size={16} /> Logout
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
+                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+              </button>
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                  >
+                    <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>Campus Connect</p>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>S.B. Jain Institute</p>
+                    </div>
+                    <div className="p-2">
+                      <Link to="/settings" onClick={() => setShowProfile(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                        <Settings size={16} /> Settings
+                      </Link>
+                      <Link to="/home" onClick={() => setShowProfile(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                        <Home size={16} /> Home
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </div>
 
