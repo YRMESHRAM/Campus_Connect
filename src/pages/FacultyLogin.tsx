@@ -4,7 +4,7 @@ import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../supabaseClient';
-import { getAllFacultyList } from '../utils/facultyStore';
+import { fetchFacultyFromSupabase, getCachedFacultyData } from '../utils/facultyStore';
 
 const FacultyLogin: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -37,22 +37,16 @@ const FacultyLogin: React.FC = () => {
         // Ignore Supabase fetch errors
       }
 
-      // If Supabase gave no result, check local faculty store fallback
+      // If Supabase query failed or returned no exact match, check cached Supabase list
       if (!data) {
-        const localList = getAllFacultyList();
-        const found = localList.find((f) => {
+        const list = getCachedFacultyData().length > 0 ? getCachedFacultyData() : await fetchFacultyFromSupabase();
+        const found = list.find((f) => {
           const n = f["Faculty Name"] || f.name || '';
           return n.toLowerCase().includes(inputName.toLowerCase());
         });
 
         if (found) {
-          data = {
-            'Faculty Name': found["Faculty Name"] || found.name,
-            'Department': found["Department"] || found.department,
-            'Cabin No.': found["Cabin No."] || found.cabin,
-            designation: found.designation,
-            isHOD: found.isHOD,
-          };
+          data = found;
         } else if (inputName.length > 2) {
           // Allow login for custom faculty names if entered
           data = {

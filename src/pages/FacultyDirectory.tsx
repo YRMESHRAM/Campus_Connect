@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient'; // Connected to your Supabase client
-import { getAllFacultyList, getFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
+import { fetchFacultyFromSupabase, getCachedFacultyData, getFacultyAvailability, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -41,72 +41,48 @@ const FacultyDirectory: React.FC = () => {
   const [availFilter, setAvailFilter] = useState('All');
   const [alphaFilter, setAlphaFilter] = useState('All');
 
-  // Faculty state with immediate local data fallback
-  const [facultyData, setFacultyData] = useState<any[]>(() => getAllFacultyList());
-  const [loading, setLoading] = useState(false);
+  // Faculty state — starts empty, loads from Supabase only
+  const [facultyData, setFacultyData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch real database records from Supabase if available & listen to real-time changes
   useEffect(() => {
+    // Initial fetch from Supabase
     async function fetchFaculty() {
-      try {
-        const { data, error } = await supabase
-          .from('faculty_schedules')
-          .select('*');
-
-        if (!error && data && data.length > 0) {
-          setFacultyData(getAllFacultyList(data));
-        } else {
-          setFacultyData(getAllFacultyList());
-        }
-      } catch (err) {
-        setFacultyData(getAllFacultyList());
-      }
+      const data = await fetchFacultyFromSupabase();
+      setFacultyData(data);
+      setLoading(false);
     }
 
     fetchFaculty();
 
-    // Subscribe to local real-time status updates (same tab and cross-tab)
+    // Poll Supabase every 10 seconds for cross-device sync
+    const stopPolling = startPolling((newData) => {
+      setFacultyData(newData);
+    }, 10000);
+
+    // Same-device instant updates
     const unsubscribeLocal = subscribeFacultyStatusChanges(() => {
-      setFacultyData((prevData) => getAllFacultyList(prevData));
+      setFacultyData([...getCachedFacultyData()]);
     });
 
-    // Set up realtime subscription to faculty_schedules table in Supabase
+    // Supabase Realtime (works if enabled on table)
     let channel: any;
     try {
       channel = supabase
         .channel('faculty-status-changes')
         .on(
           'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'faculty_schedules'
-          },
-          (payload) => {
-            if (payload.eventType === 'UPDATE') {
-              setFacultyData((prevData) =>
-                getAllFacultyList(
-                  prevData.map((faculty) => {
-                    const isMatch = 
-                      (payload.new.id && faculty.id === payload.new.id) ||
-                      (payload.new['Faculty Name'] && faculty['Faculty Name'] === payload.new['Faculty Name']) ||
-                      (payload.new.name && faculty.name === payload.new.name);
-                      
-                    return isMatch ? payload.new : faculty;
-                  })
-                )
-              );
-            } else {
-              fetchFaculty();
-            }
+          { event: '*', schema: 'public', table: 'faculty_schedules' },
+          () => {
+            // Re-fetch full data on any change from Supabase Realtime
+            fetchFacultyFromSupabase().then((data) => setFacultyData(data));
           }
         )
         .subscribe();
-    } catch (err) {
-      // Ignore Supabase realtime connection errors
-    }
+    } catch (_) { /* ignore */ }
 
     return () => {
+      stopPolling();
       unsubscribeLocal();
       if (channel) supabase.removeChannel(channel);
     };

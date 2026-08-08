@@ -103,33 +103,26 @@ const FacultyDashboard: React.FC = () => {
   return (
     <Layout isFaculty>
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Welcome Banner */}
+        {/* Welcome Dashboard Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`rounded-3xl overflow-hidden mb-6 relative ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-gradient-to-r from-green-700 to-blue-800'}`}
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6"
         >
-          <div className="absolute inset-0">
-            <img src="/images/campus.jpg" alt="" className="w-full h-full object-cover opacity-10" />
+          <div>
+            <h1 className={`text-2xl md:text-3xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Faculty Dashboard
+            </h1>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              Welcome back, <span className="font-semibold text-green-600">{facultyName}</span> 👋 | Manage availability, schedules & queries
+            </p>
           </div>
-          <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30">
-                <img src={localStorage.getItem('facultyPhoto') || "/images/blank.jpg"} alt="Faculty" className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/blank.jpg'; }} />
-              </div>
-              <div>
-                <p className="text-green-300 text-sm font-medium">Welcome back 👋</p>
-                <h1 className="text-2xl md:text-3xl font-black text-white">{facultyName}</h1>
-                <p className="text-white/70 text-sm">{roleDisplay} • Cabin {facultyCabin}</p>
-              </div>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-              <Link to="/faculty/profile" className="flex items-center gap-2 bg-white/20 text-white px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-white/30 transition-all backdrop-blur-sm border border-white/20">
-                <Edit3 size={14} /> Edit Profile
-              </Link>
-            </div>
-          </div>
+          <Link
+            to="/faculty/profile"
+            className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md self-start md:self-auto"
+          >
+            <Users size={16} /> View My Profile
+          </Link>
         </motion.div>
 
         {/* Availability Toggle */}

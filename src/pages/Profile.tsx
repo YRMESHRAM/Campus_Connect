@@ -5,8 +5,14 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 
+import FacultyProfilePage from './FacultyProfilePage';
+
 const Profile: React.FC = () => {
   const { isDark } = useTheme();
+
+  if (localStorage.getItem('facultyLoggedIn') === 'true') {
+    return <FacultyProfilePage />;
+  }
 
   return (
     <Layout>

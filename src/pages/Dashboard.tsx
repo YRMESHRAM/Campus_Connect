@@ -1,12 +1,53 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { MapPin, BookOpen, Users, Phone, Navigation, MessageSquare, Bell, TrendingUp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
+import { fetchFacultyFromSupabase, getCachedFacultyData, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
 
 const Dashboard: React.FC = () => {
   const { isDark } = useTheme();
+
+  const [availableFacultyCount, setAvailableFacultyCount] = useState<number>(0);
+
+  const [recentActivities, setRecentActivities] = useState<Array<{ text: string; time: string; dot: string }>>([
+    { text: 'Computer Lab 1 is now available', time: '5 min ago', dot: 'bg-green-500' },
+    { text: 'Faculty Portal synchronized with real-time status', time: '12 min ago', dot: 'bg-blue-500' },
+    { text: 'Fire drill scheduled for tomorrow 11 AM', time: '1 hr ago', dot: 'bg-red-500' },
+    { text: 'TechVista 2025 registrations now open', time: '3 hrs ago', dot: 'bg-purple-500' },
+  ]);
+
+  useEffect(() => {
+    const updateCountFromList = (list: any[]) => {
+      const count = list.filter((f) => f.availability === 'available').length;
+      setAvailableFacultyCount(count);
+    };
+
+    fetchFacultyFromSupabase().then((data) => {
+      updateCountFromList(data);
+    });
+
+    const stopPolling = startPolling((newData) => {
+      updateCountFromList(newData);
+    }, 10000);
+
+    const unsubscribe = subscribeFacultyStatusChanges((detail) => {
+      updateCountFromList(getCachedFacultyData());
+      if (detail.name && detail.status) {
+        const formattedStatus = detail.status === 'in-lecture' ? 'In Lecture' : detail.status.charAt(0).toUpperCase() + detail.status.slice(1);
+        setRecentActivities((prev) => [
+          { text: `${detail.name} changed status to ${formattedStatus}`, time: 'Just now', dot: 'bg-green-500' },
+          ...prev.slice(0, 4),
+        ]);
+      }
+    });
+
+    return () => {
+      stopPolling();
+      unsubscribe();
+    };
+  }, []);
 
   const quickCards = [
     {
@@ -25,7 +66,7 @@ const Dashboard: React.FC = () => {
       to: '/faculty-directory',
       gradient: 'from-purple-500 to-purple-700',
       bg: isDark ? 'from-purple-900/30 to-purple-800/20' : 'from-purple-50 to-purple-100/50',
-      stats: '3 Faculty Available',
+      stats: `${availableFacultyCount} Faculty Available`,
     },
     {
       icon: Phone,
@@ -192,7 +233,7 @@ const Dashboard: React.FC = () => {
               <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Recent Activity</h3>
             </div>
             <div className="space-y-3">
-              {recentActivity.map((item, i) => (
+              {recentActivities.map((item, i) => (
                 <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
                   <div className={`w-2 h-2 ${item.dot} rounded-full mt-1.5 flex-shrink-0`} />
                   <div className="flex-1">

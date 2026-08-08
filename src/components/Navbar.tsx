@@ -196,6 +196,10 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
                       </p>
                     </div>
                     <div className="p-2">
+                      <Link to="/faculty/profile" onClick={() => setShowProfile(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                        <User size={16} /> My Profile
+                      </Link>
                       <Link to="/settings" onClick={() => setShowProfile(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
                         <Settings size={16} /> Settings

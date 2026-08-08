@@ -1,4 +1,3 @@
-import facultyJson from '../data/faculty.json';
 import { supabase } from '../supabaseClient';
 
 export type AvailabilityStatus = 'auto' | 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
@@ -23,168 +22,186 @@ export interface FacultyMember {
   [key: string]: any;
 }
 
-const STORAGE_KEY = 'faculty_availabilities';
 const CHANNEL_NAME = 'campus_connect_faculty_status';
 
+// ─── In-memory cache of Supabase faculty data ───
+let _cachedFacultyData: any[] = [];
+let _lastFetchTime = 0;
+
 /**
- * Normalizes a faculty name for flexible matching across components
- * e.g., "Dr. Rajesh Sharma" -> "rajesh sharma", "Dr. Rajesh Kumar Sharma" -> "rajesh sharma"
+ * Returns the cached Supabase faculty list (empty until first fetch completes)
  */
-export function normalizeFacultyName(name: string): string {
-  if (!name) return '';
-  return name
-    .toLowerCase()
-    .replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s+/i, '')
-    .replace(/\b(kumar|singh)\b/gi, '') // handle common middle name variations gracefully
-    .replace(/[^a-z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+export function getCachedFacultyData(): any[] {
+  return _cachedFacultyData;
 }
 
 /**
- * Helper to retrieve stored availability mapping from localStorage
+ * Fetches ALL faculty records from Supabase and caches them.
+ * Returns the fresh data. Other devices see updates because
+ * every device polls Supabase directly.
  */
-function getStoredAvailabilities(): Record<string, AvailabilityStatus> {
+export async function fetchFacultyFromSupabase(): Promise<any[]> {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
-  } catch (e) {
-    console.error('Error reading faculty availabilities from localStorage:', e);
-    return {};
-  }
-}
+    const { data, error } = await supabase
+      .from('faculty_schedules')
+      .select('*');
 
-/**
- * Gets current availability status for a faculty member
- */
-export function getFacultyAvailability(name: string, fallback: string = 'available'): AvailabilityStatus {
-  if (!name) return fallback as AvailabilityStatus;
-  const map = getStoredAvailabilities();
-  
-  // Try exact match first
-  if (map[name]) return map[name];
-  
-  // Try normalized match
-  const norm = normalizeFacultyName(name);
-  for (const key of Object.keys(map)) {
-    if (key === norm || normalizeFacultyName(key) === norm) {
-      return map[key];
+    if (!error && data && data.length > 0) {
+      _cachedFacultyData = data;
+      _lastFetchTime = Date.now();
+      return data;
     }
+  } catch (err) {
+    // Supabase unreachable — keep existing cache
   }
-
-  return (fallback || 'available') as AvailabilityStatus;
+  return _cachedFacultyData;
 }
 
 /**
- * Updates availability status for a faculty member across local state & Supabase (background)
+ * Updates a faculty member's availability in Supabase (source of truth for cross-device).
+ * Also fires local events for instant same-device/same-tab updates.
  */
-export function updateFacultyAvailability(name: string, newStatus: AvailabilityStatus): void {
+export async function updateFacultyAvailability(
+  name: string,
+  newStatus: AvailabilityStatus
+): Promise<void> {
   if (!name) return;
 
-  const map = getStoredAvailabilities();
-  const norm = normalizeFacultyName(name);
+  // 1. Optimistically update local cache
+  _cachedFacultyData = _cachedFacultyData.map((f) => {
+    const fName = f['Faculty Name'] || f.name || '';
+    if (fName === name) {
+      return { ...f, availability: newStatus };
+    }
+    return f;
+  });
 
-  map[name] = newStatus;
-  if (norm) map[norm] = newStatus;
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
-  } catch (e) {
-    console.error('Error saving faculty availability to localStorage:', e);
-  }
-
-  // Broadcast event locally in same tab
+  // 2. Broadcast to same tab + other tabs on same device
   const eventDetail = { name, status: newStatus };
   window.dispatchEvent(new CustomEvent('faculty-status-changed', { detail: eventDetail }));
 
-  // Broadcast channel for multi-tab support
   if (typeof BroadcastChannel !== 'undefined') {
     try {
       const bc = new BroadcastChannel(CHANNEL_NAME);
       bc.postMessage({ type: 'FACULTY_STATUS_CHANGED', ...eventDetail });
       bc.close();
-    } catch (e) {
-      // Ignore broadcast errors
-    }
+    } catch (_) { /* ignore */ }
   }
 
-  // Attempt Supabase update in background (non-blocking)
-  (async () => {
-    try {
-      let { data, error } = await supabase
+  // 3. Persist to Supabase (cross-device source of truth)
+  try {
+    let { data, error } = await supabase
+      .from('faculty_schedules')
+      .update({ availability: newStatus })
+      .eq('Faculty Name', name)
+      .select();
+
+    if (error || !data || data.length === 0) {
+      await supabase
         .from('faculty_schedules')
         .update({ availability: newStatus })
-        .eq('Faculty Name', name)
-        .select();
-
-      if (error || !data || data.length === 0) {
-        await supabase
-          .from('faculty_schedules')
-          .update({ availability: newStatus })
-          .eq('name', name);
-      }
-    } catch (err) {
-      // Ignore Supabase connection failures
+        .eq('name', name);
     }
-  })();
+  } catch (_) { /* ignore */ }
 }
 
 /**
- * Subscribes to real-time status change events (same-tab and cross-tab)
+ * Returns the availability for a given faculty name from the cached data.
+ */
+export function getFacultyAvailability(
+  name: string,
+  fallback: string = 'available'
+): AvailabilityStatus {
+  if (!name) return fallback as AvailabilityStatus;
+
+  for (const f of _cachedFacultyData) {
+    const fName = f['Faculty Name'] || f.name || '';
+    if (fName === name && f.availability) {
+      return f.availability as AvailabilityStatus;
+    }
+  }
+
+  return fallback as AvailabilityStatus;
+}
+
+/**
+ * Subscribes to real-time status change events.
+ * - Same tab: CustomEvent
+ * - Other tabs on same device: BroadcastChannel + storage
+ *
+ * For OTHER devices the consumer should use startPolling().
  */
 export function subscribeFacultyStatusChanges(
   callback: (detail: { name: string; status: AvailabilityStatus }) => void
 ): () => void {
   const handleCustomEvent = (e: Event) => {
-    const customEvent = e as CustomEvent<{ name: string; status: AvailabilityStatus }>;
-    if (customEvent.detail) {
-      callback(customEvent.detail);
-    }
-  };
-
-  const handleStorageEvent = (e: StorageEvent) => {
-    if (e.key === STORAGE_KEY) {
-      callback({ name: '', status: 'available' }); // Trigger re-render/refetch
-    }
+    const ce = e as CustomEvent<{ name: string; status: AvailabilityStatus }>;
+    if (ce.detail) callback(ce.detail);
   };
 
   window.addEventListener('faculty-status-changed', handleCustomEvent);
-  window.addEventListener('storage', handleStorageEvent);
 
   let bc: BroadcastChannel | null = null;
   if (typeof BroadcastChannel !== 'undefined') {
     try {
       bc = new BroadcastChannel(CHANNEL_NAME);
       bc.onmessage = (event) => {
-        if (event.data && event.data.type === 'FACULTY_STATUS_CHANGED') {
+        if (event.data?.type === 'FACULTY_STATUS_CHANGED') {
           callback({ name: event.data.name, status: event.data.status });
         }
       };
-    } catch (e) {
-      // Ignore
-    }
+    } catch (_) { /* ignore */ }
   }
 
   return () => {
     window.removeEventListener('faculty-status-changed', handleCustomEvent);
-    window.removeEventListener('storage', handleStorageEvent);
-    if (bc) {
-      bc.close();
-    }
+    if (bc) bc.close();
   };
 }
 
 /**
- * Gets all faculty members combined from default json & local override statuses
+ * Starts a polling interval that re-fetches from Supabase every `intervalMs`.
+ * When new data arrives and any availability has changed, fires `onChange`.
+ * Returns a cleanup function to stop polling.
+ *
+ * This is the mechanism that keeps OTHER DEVICES in sync.
  */
-export function getAllFacultyList(baseData?: any[]): FacultyMember[] {
-  const list: any[] = (baseData && baseData.length > 0) ? baseData : (facultyJson as any[]);
-  return list.map((f) => {
-    const name = f["Faculty Name"] || f.name || '';
-    const storedStatus = getFacultyAvailability(name, f.availability || 'available');
-    return {
-      ...f,
-      availability: storedStatus,
-    };
-  });
+export function startPolling(
+  onChange: (data: any[]) => void,
+  intervalMs: number = 10000
+): () => void {
+  let active = true;
+
+  const poll = async () => {
+    if (!active) return;
+    const oldData = [..._cachedFacultyData];
+    const newData = await fetchFacultyFromSupabase();
+
+    // Detect if any availability changed
+    let changed = oldData.length !== newData.length;
+    if (!changed) {
+      for (let i = 0; i < newData.length; i++) {
+        const oldItem = oldData.find(
+          (o) =>
+            (o.id && o.id === newData[i].id) ||
+            (o['Faculty Name'] && o['Faculty Name'] === newData[i]['Faculty Name'])
+        );
+        if (!oldItem || oldItem.availability !== newData[i].availability) {
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    if (changed) {
+      onChange(newData);
+    }
+  };
+
+  const id = setInterval(poll, intervalMs);
+
+  return () => {
+    active = false;
+    clearInterval(id);
+  };
 }

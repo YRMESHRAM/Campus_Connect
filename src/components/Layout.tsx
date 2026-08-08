@@ -16,7 +16,9 @@ const Layout: React.FC<LayoutProps> = ({ children, isFaculty = false }) => {
   const { isDark } = useTheme();
   const location = useLocation();
 
-  const mobileLinks = [
+  const isUserFaculty = isFaculty || localStorage.getItem('facultyLoggedIn') === 'true';
+
+  const studentMobileLinks = [
     { to: '/dashboard', icon: LayoutDashboard, label: 'Home' },
     { to: '/campus-map', icon: Map, label: 'Map' },
     { to: '/classroom-finder', icon: BookOpen, label: 'Rooms' },
@@ -24,10 +26,20 @@ const Layout: React.FC<LayoutProps> = ({ children, isFaculty = false }) => {
     { to: '/emergency', icon: Phone, label: 'SOS' },
   ];
 
+  const facultyMobileLinks = [
+    { to: '/faculty/dashboard', icon: LayoutDashboard, label: 'Home' },
+    { to: '/campus-map', icon: Map, label: 'Map' },
+    { to: '/classroom-finder', icon: BookOpen, label: 'Rooms' },
+    { to: '/faculty-directory', icon: Users, label: 'Faculty' },
+    { to: '/faculty/profile', icon: Phone, label: 'Profile' },
+  ];
+
+  const mobileLinks = isUserFaculty ? facultyMobileLinks : studentMobileLinks;
+
   return (
     <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
-      <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} isFaculty={isFaculty} />
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} isFaculty={isFaculty} />
+      <Navbar onMenuClick={() => setSidebarOpen(!sidebarOpen)} isFaculty={isUserFaculty} />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} isFaculty={isUserFaculty} />
 
       <main
         className={`pt-16 pb-20 md:pb-0 min-h-screen transition-all duration-300 ${sidebarOpen ? 'md:ml-64' : ''}`}
