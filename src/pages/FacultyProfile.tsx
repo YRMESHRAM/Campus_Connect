@@ -57,6 +57,38 @@ const FacultyProfile: React.FC = () => {
       setLoading(false);
     }
     fetchFaculty();
+
+    const channel = supabase
+      .channel('faculty-profile-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'faculty_schedules'
+        },
+        (payload) => {
+          setFaculty((prev: any) => {
+            if (!prev) return prev;
+            // Match by id or Faculty Name or name
+            if ((payload.new.id && prev.id === payload.new.id) ||
+                (payload.new['Faculty Name'] && prev.name === payload.new['Faculty Name']) ||
+                (payload.new.name && prev.name === payload.new.name)) {
+              return {
+                ...prev,
+                ...payload.new,
+                availability: payload.new.availability || prev.availability
+              };
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   if (loading) {

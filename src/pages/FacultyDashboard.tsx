@@ -4,6 +4,7 @@ import { Navigation, BookOpen, MessageSquare, Bell, Phone, Clock, Users, Calenda
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
+import { supabase } from '../supabaseClient';
 
 type AvailabilityStatus = 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
@@ -45,6 +46,50 @@ const FacultyDashboard: React.FC = () => {
   const roleDisplay = facultyIsHOD ? `HOD, ${facultyDepartment}` : `${facultyDesignation}, ${facultyDepartment}`;
 
   const [availability, setAvailability] = useState<AvailabilityStatus>('available');
+  
+  React.useEffect(() => {
+    async function fetchInitialStatus() {
+      let { data, error } = await supabase
+        .from('faculty_schedules')
+        .select('*')
+        .eq('Faculty Name', facultyName)
+        .maybeSingle();
+        
+      if (error || !data) {
+        const res = await supabase
+          .from('faculty_schedules')
+          .select('*')
+          .eq('name', facultyName)
+          .maybeSingle();
+        data = res.data;
+      }
+      
+      if (data && data.availability) {
+        setAvailability(data.availability as AvailabilityStatus);
+      }
+    }
+    fetchInitialStatus();
+  }, [facultyName]);
+
+  const handleAvailabilityChange = async (newStatus: AvailabilityStatus) => {
+    setAvailability(newStatus);
+    
+    // Attempt update on 'Faculty Name' column first
+    let { data, error } = await supabase
+      .from('faculty_schedules')
+      .update({ availability: newStatus })
+      .eq('Faculty Name', facultyName)
+      .select();
+      
+    // If that fails (perhaps column doesn't exist or row not found), try 'name' column
+    if (error || !data || data.length === 0) {
+      await supabase
+        .from('faculty_schedules')
+        .update({ availability: newStatus })
+        .eq('name', facultyName);
+    }
+  };
+
   const currentStatus = availabilityOptions.find((o) => o.value === availability)!;
 
   return (
@@ -94,7 +139,7 @@ const FacultyDashboard: React.FC = () => {
             {availabilityOptions.map((opt) => (
               <button
                 key={opt.value}
-                onClick={() => setAvailability(opt.value)}
+                onClick={() => handleAvailabilityChange(opt.value)}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all ${
                   availability === opt.value
                     ? `${opt.bg} ${opt.color} scale-105 shadow-md`
