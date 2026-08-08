@@ -98,7 +98,7 @@ const FacultyDashboard: React.FC = () => {
     updateFacultyAvailability(facultyName, newStatus);
   };
 
-  const currentStatus = availabilityOptions.find((o) => o.value === availability)!;
+  const currentStatus = availabilityOptions.find((o) => o.value === availability) || availabilityOptions[1];
 
   return (
     <Layout isFaculty>

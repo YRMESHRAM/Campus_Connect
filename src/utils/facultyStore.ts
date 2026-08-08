@@ -22,6 +22,7 @@ export interface FacultyMember {
   [key: string]: any;
 }
 
+const STORAGE_KEY = 'faculty_availabilities';
 const CHANNEL_NAME = 'campus_connect_faculty_status';
 
 // ─── In-memory cache of Supabase faculty data ───
@@ -29,7 +30,34 @@ let _cachedFacultyData: any[] = [];
 let _lastFetchTime = 0;
 
 /**
- * Returns the cached Supabase faculty list (empty until first fetch completes)
+ * Normalizes a faculty name for flexible matching across components
+ * e.g., "Dr. Rajesh Sharma" -> "rajesh sharma", "Dr. Rajesh Kumar Sharma" -> "rajesh sharma"
+ */
+export function normalizeFacultyName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/^(dr\.|prof\.|mr\.|mrs\.|ms\.)\s+/i, '')
+    .replace(/\b(kumar|singh)\b/gi, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Helper to retrieve stored availability mapping from localStorage
+ */
+function getStoredAvailabilities(): Record<string, AvailabilityStatus> {
+  try {
+    const data = localStorage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * Returns the cached Supabase faculty list
  */
 export function getCachedFacultyData(): any[] {
   return _cachedFacultyData;
@@ -37,8 +65,6 @@ export function getCachedFacultyData(): any[] {
 
 /**
  * Fetches ALL faculty records from Supabase and caches them.
- * Returns the fresh data. Other devices see updates because
- * every device polls Supabase directly.
  */
 export async function fetchFacultyFromSupabase(): Promise<any[]> {
   try {
@@ -49,7 +75,21 @@ export async function fetchFacultyFromSupabase(): Promise<any[]> {
     if (!error && data && data.length > 0) {
       _cachedFacultyData = data;
       _lastFetchTime = Date.now();
-      return data;
+
+      // Merge local availability overrides into cached Supabase data
+      const localMap = getStoredAvailabilities();
+      _cachedFacultyData = data.map((f) => {
+        const fName = f['Faculty Name'] || f.name || '';
+        const norm = normalizeFacultyName(fName);
+        if (localMap[fName]) {
+          return { ...f, availability: localMap[fName] };
+        } else if (norm && localMap[norm]) {
+          return { ...f, availability: localMap[norm] };
+        }
+        return f;
+      });
+
+      return _cachedFacultyData;
     }
   } catch (err) {
     // Supabase unreachable — keep existing cache
@@ -58,8 +98,7 @@ export async function fetchFacultyFromSupabase(): Promise<any[]> {
 }
 
 /**
- * Updates a faculty member's availability in Supabase (source of truth for cross-device).
- * Also fires local events for instant same-device/same-tab updates.
+ * Updates a faculty member's availability across localStorage, in-memory cache, and Supabase.
  */
 export async function updateFacultyAvailability(
   name: string,
@@ -67,16 +106,29 @@ export async function updateFacultyAvailability(
 ): Promise<void> {
   if (!name) return;
 
-  // 1. Optimistically update local cache
+  // 1. Save to localStorage immediately for local persistence & fallback
+  const map = getStoredAvailabilities();
+  const norm = normalizeFacultyName(name);
+  map[name] = newStatus;
+  if (norm) map[norm] = newStatus;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.error('Error saving faculty availability to localStorage:', e);
+  }
+
+  // 2. Optimistically update local in-memory cache
   _cachedFacultyData = _cachedFacultyData.map((f) => {
     const fName = f['Faculty Name'] || f.name || '';
-    if (fName === name) {
+    const fNorm = normalizeFacultyName(fName);
+    if (fName === name || (norm && fNorm === norm)) {
       return { ...f, availability: newStatus };
     }
     return f;
   });
 
-  // 2. Broadcast to same tab + other tabs on same device
+  // 3. Broadcast to same tab + other tabs on same device
   const eventDetail = { name, status: newStatus };
   window.dispatchEvent(new CustomEvent('faculty-status-changed', { detail: eventDetail }));
 
@@ -88,7 +140,7 @@ export async function updateFacultyAvailability(
     } catch (_) { /* ignore */ }
   }
 
-  // 3. Persist to Supabase (cross-device source of truth)
+  // 4. Persist to Supabase (cross-device source of truth)
   try {
     let { data, error } = await supabase
       .from('faculty_schedules')
@@ -97,16 +149,28 @@ export async function updateFacultyAvailability(
       .select();
 
     if (error || !data || data.length === 0) {
-      await supabase
-        .from('faculty_schedules')
-        .update({ availability: newStatus })
-        .eq('name', name);
+      // Try matching by normalized name or fallback 'name' column
+      const { data: allData } = await supabase.from('faculty_schedules').select('*');
+      if (allData && allData.length > 0) {
+        const match = allData.find((f: any) => {
+          const fName = f['Faculty Name'] || f.name || '';
+          return fName === name || (norm && normalizeFacultyName(fName) === norm);
+        });
+
+        if (match) {
+          await supabase
+            .from('faculty_schedules')
+            .update({ availability: newStatus })
+            .eq('id', match.id);
+        }
+      }
     }
   } catch (_) { /* ignore */ }
 }
 
 /**
- * Returns the availability for a given faculty name from the cached data.
+ * Returns the current availability for a given faculty name.
+ * Checks localStorage first, then in-memory cache, then fallback.
  */
 export function getFacultyAvailability(
   name: string,
@@ -114,22 +178,26 @@ export function getFacultyAvailability(
 ): AvailabilityStatus {
   if (!name) return fallback as AvailabilityStatus;
 
+  // 1. Check localStorage first
+  const map = getStoredAvailabilities();
+  if (map[name]) return map[name];
+  const norm = normalizeFacultyName(name);
+  if (norm && map[norm]) return map[norm];
+
+  // 2. Check in-memory cached Supabase data
   for (const f of _cachedFacultyData) {
     const fName = f['Faculty Name'] || f.name || '';
-    if (fName === name && f.availability) {
+    const fNorm = normalizeFacultyName(fName);
+    if ((fName === name || (norm && fNorm === norm)) && f.availability) {
       return f.availability as AvailabilityStatus;
     }
   }
 
-  return fallback as AvailabilityStatus;
+  return (fallback || 'available') as AvailabilityStatus;
 }
 
 /**
  * Subscribes to real-time status change events.
- * - Same tab: CustomEvent
- * - Other tabs on same device: BroadcastChannel + storage
- *
- * For OTHER devices the consumer should use startPolling().
  */
 export function subscribeFacultyStatusChanges(
   callback: (detail: { name: string; status: AvailabilityStatus }) => void
@@ -139,7 +207,14 @@ export function subscribeFacultyStatusChanges(
     if (ce.detail) callback(ce.detail);
   };
 
+  const handleStorageEvent = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) {
+      callback({ name: '', status: 'available' });
+    }
+  };
+
   window.addEventListener('faculty-status-changed', handleCustomEvent);
+  window.addEventListener('storage', handleStorageEvent);
 
   let bc: BroadcastChannel | null = null;
   if (typeof BroadcastChannel !== 'undefined') {
@@ -155,16 +230,13 @@ export function subscribeFacultyStatusChanges(
 
   return () => {
     window.removeEventListener('faculty-status-changed', handleCustomEvent);
+    window.removeEventListener('storage', handleStorageEvent);
     if (bc) bc.close();
   };
 }
 
 /**
  * Starts a polling interval that re-fetches from Supabase every `intervalMs`.
- * When new data arrives and any availability has changed, fires `onChange`.
- * Returns a cleanup function to stop polling.
- *
- * This is the mechanism that keeps OTHER DEVICES in sync.
  */
 export function startPolling(
   onChange: (data: any[]) => void,
@@ -177,7 +249,6 @@ export function startPolling(
     const oldData = [..._cachedFacultyData];
     const newData = await fetchFacultyFromSupabase();
 
-    // Detect if any availability changed
     let changed = oldData.length !== newData.length;
     if (!changed) {
       for (let i = 0; i < newData.length; i++) {
