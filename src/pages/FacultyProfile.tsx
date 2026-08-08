@@ -6,6 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
 import { getCurrentTeacherStatus } from './FacultyDirectory';
+import { getAllFacultyList, getFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -23,71 +24,115 @@ const FacultyProfile: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const name = decodeURIComponent(id || '');
+    
+    // First, try loading local faculty list Immediately
+    const allLocal = getAllFacultyList();
+    const localMatch = allLocal.find(f => 
+      (f["Faculty Name"] && f["Faculty Name"].toLowerCase() === name.toLowerCase()) ||
+      (f.name && f.name.toLowerCase() === name.toLowerCase())
+    );
+
+    if (localMatch) {
+      setFaculty({
+        id: localMatch.id,
+        name: localMatch["Faculty Name"] || localMatch.name || name,
+        designation: localMatch.designation || 'Faculty Member',
+        department: localMatch["Department"] || localMatch.department || 'N/A',
+        cabin: localMatch["Cabin No."] || localMatch.cabin || 'N/A',
+        email: localMatch.email || `${name.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`,
+        phone: localMatch.phone || '+91 98765 43210',
+        officeHours: localMatch.officeHours || 'Mon-Fri: 10:30 AM - 05:30 PM',
+        subjects: localMatch.subjects || ['Core Subject 1', 'Core Subject 2'],
+        qualification: localMatch.qualification || 'Ph.D. / M.Tech',
+        experience: localMatch.experience || '10+ Years',
+        photo: localMatch.photo || '',
+        availability: getFacultyAvailability(name, localMatch.availability || 'available'),
+        isHOD: localMatch.isHOD || name.toLowerCase().includes('hod'),
+        ...localMatch
+      });
+      setLoading(false);
+    }
+
+    // Next, fetch from Supabase if connected
     async function fetchFaculty() {
-      setLoading(true);
-      const name = decodeURIComponent(id || '');
-      
-      const { data, error } = await supabase
-        .from('faculty_schedules')
-        .select('*')
-        .eq('Faculty Name', name)
-        .maybeSingle();
-        
-      if (error) {
-        console.error('Error fetching faculty profile:', error);
-      } else if (data) {
-        setFaculty({
-          id: data.id,
-          name: data['Faculty Name'] || name,
-          designation: data.designation || 'Faculty Member',
-          department: data['Department'] || 'N/A',
-          cabin: data['Cabin No.'] || data.cabin || 'N/A',
-          email: data.email || `${name.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`,
-          phone: data.phone || '+91 98765 43210',
-          officeHours: data.officeHours || 'Mon-Fri: 10:30 AM - 05:30 PM',
-          subjects: data.subjects || ['Core Subject 1', 'Core Subject 2'],
-          qualification: data.qualification || 'Ph.D. / M.Tech',
-          experience: data.experience || '10+ Years',
-          photo: data.photo || '',
-          availability: data.availability || 'available',
-          isHOD: data.isHOD || name.toLowerCase().includes('hod') || (data["10:30 - 11:30"]?.toLowerCase().includes('hod')),
-          ...data
-        });
+      try {
+        const { data, error } = await supabase
+          .from('faculty_schedules')
+          .select('*')
+          .eq('Faculty Name', name)
+          .maybeSingle();
+          
+        if (!error && data) {
+          setFaculty({
+            id: data.id,
+            name: data['Faculty Name'] || name,
+            designation: data.designation || 'Faculty Member',
+            department: data['Department'] || 'N/A',
+            cabin: data['Cabin No.'] || data.cabin || 'N/A',
+            email: data.email || `${name.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`,
+            phone: data.phone || '+91 98765 43210',
+            officeHours: data.officeHours || 'Mon-Fri: 10:30 AM - 05:30 PM',
+            subjects: data.subjects || ['Core Subject 1', 'Core Subject 2'],
+            qualification: data.qualification || 'Ph.D. / M.Tech',
+            experience: data.experience || '10+ Years',
+            photo: data.photo || '',
+            availability: getFacultyAvailability(name, data.availability || 'available'),
+            isHOD: data.isHOD || name.toLowerCase().includes('hod'),
+            ...data
+          });
+        }
+      } catch (err) {
+        // Ignore Supabase connection failures
       }
       setLoading(false);
     }
     fetchFaculty();
 
-    const channel = supabase
-      .channel('faculty-profile-status')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'faculty_schedules'
-        },
-        (payload) => {
-          setFaculty((prev: any) => {
-            if (!prev) return prev;
-            // Match by id or Faculty Name or name
-            if ((payload.new.id && prev.id === payload.new.id) ||
-                (payload.new['Faculty Name'] && prev.name === payload.new['Faculty Name']) ||
-                (payload.new.name && prev.name === payload.new.name)) {
-              return {
-                ...prev,
-                ...payload.new,
-                availability: payload.new.availability || prev.availability
-              };
-            }
-            return prev;
-          });
-        }
-      )
-      .subscribe();
+    // Subscribe to local real-time availability updates
+    const unsubscribeLocal = subscribeFacultyStatusChanges(() => {
+      setFaculty((prev: any) => {
+        if (!prev) return prev;
+        const updatedAvail = getFacultyAvailability(prev.name || name, prev.availability);
+        return { ...prev, availability: updatedAvail };
+      });
+    });
+
+    let channel: any;
+    try {
+      channel = supabase
+        .channel('faculty-profile-status')
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'faculty_schedules'
+          },
+          (payload) => {
+            setFaculty((prev: any) => {
+              if (!prev) return prev;
+              if ((payload.new.id && prev.id === payload.new.id) ||
+                  (payload.new['Faculty Name'] && prev.name === payload.new['Faculty Name']) ||
+                  (payload.new.name && prev.name === payload.new.name)) {
+                return {
+                  ...prev,
+                  ...payload.new,
+                  availability: getFacultyAvailability(prev.name, payload.new.availability || prev.availability)
+                };
+              }
+              return prev;
+            });
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      // Ignore Supabase realtime connection errors
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeLocal();
+      if (channel) supabase.removeChannel(channel);
     };
   }, [id]);
 
@@ -122,8 +167,9 @@ const FacultyProfile: React.FC = () => {
     );
   }
 
-  const rawStatus = (faculty.availability && faculty.availability !== 'auto') 
-    ? faculty.availability 
+  const currentAvail = getFacultyAvailability(faculty.name || '', faculty.availability || 'available');
+  const rawStatus = (currentAvail && currentAvail !== 'auto') 
+    ? currentAvail 
     : (getCurrentTeacherStatus(faculty) || 'available');
     
   const status = availabilityConfig[rawStatus] || { 

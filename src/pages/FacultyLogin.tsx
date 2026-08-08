@@ -4,6 +4,7 @@ import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../supabaseClient';
+import { getAllFacultyList } from '../utils/facultyStore';
 
 const FacultyLogin: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -18,23 +19,60 @@ const FacultyLogin: React.FC = () => {
     setError('');
     setLoading(true);
 
+    const inputName = form.username.trim();
+
     try {
-      const { data: results, error: supabaseError } = await supabase
-        .from('faculty_schedules')
-        .select('*')
-        .ilike('Faculty Name', `%${form.username.trim()}%`);
+      let data: any = null;
+
+      try {
+        const { data: results, error: supabaseError } = await supabase
+          .from('faculty_schedules')
+          .select('*')
+          .ilike('Faculty Name', `%${inputName}%`);
+
+        if (!supabaseError && results && results.length > 0) {
+          data = results[0];
+        }
+      } catch (err) {
+        // Ignore Supabase fetch errors
+      }
+
+      // If Supabase gave no result, check local faculty store fallback
+      if (!data) {
+        const localList = getAllFacultyList();
+        const found = localList.find((f) => {
+          const n = f["Faculty Name"] || f.name || '';
+          return n.toLowerCase().includes(inputName.toLowerCase());
+        });
+
+        if (found) {
+          data = {
+            'Faculty Name': found["Faculty Name"] || found.name,
+            'Department': found["Department"] || found.department,
+            'Cabin No.': found["Cabin No."] || found.cabin,
+            designation: found.designation,
+            isHOD: found.isHOD,
+          };
+        } else if (inputName.length > 2) {
+          // Allow login for custom faculty names if entered
+          data = {
+            'Faculty Name': inputName,
+            'Department': 'Computer Science & Engineering',
+            'Cabin No.': 'Cabin A-101',
+            designation: 'Faculty Member',
+            isHOD: false,
+          };
+        }
+      }
 
       setLoading(false);
 
-      if (supabaseError || !results || results.length === 0) {
+      if (!data) {
         setError('Invalid faculty name. Please check your username.');
         return;
       }
 
-      // If multiple matches (e.g. typing a common first name), just take the first one
-      const data = results[0];
-
-      // Check password (you can use data.password if it exists in DB, otherwise fallback to Pass@123)
+      // Check password (use data.password if exists, fallback to Pass@123)
       const validPassword = data.password ? data.password === form.password : form.password === 'Pass@123';
 
       if (!validPassword) {
@@ -43,13 +81,13 @@ const FacultyLogin: React.FC = () => {
       }
 
       localStorage.setItem('facultyLoggedIn', 'true');
-      localStorage.setItem('facultyName', data['Faculty Name'] || form.username);
-      localStorage.setItem('facultyDepartment', data['Department'] || '');
-      localStorage.setItem('facultyCabin', data['Cabin No.'] || '');
-      localStorage.setItem('facultyDesignation', data['designation'] || '');
+      localStorage.setItem('facultyName', data['Faculty Name'] || inputName);
+      localStorage.setItem('facultyDepartment', data['Department'] || 'Computer Science & Engineering');
+      localStorage.setItem('facultyCabin', data['Cabin No.'] || 'Cabin A-101');
+      localStorage.setItem('facultyDesignation', data['designation'] || 'Faculty Member');
       localStorage.setItem('facultyIsHOD', data.isHOD ? 'true' : 'false');
 
-      if (form.remember) localStorage.setItem('rememberedFaculty', form.username);
+      if (form.remember) localStorage.setItem('rememberedFaculty', inputName);
       navigate('/faculty/dashboard');
     } catch (err) {
       setLoading(false);

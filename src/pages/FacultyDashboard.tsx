@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
+import { getFacultyAvailability, updateFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
 
 type AvailabilityStatus = 'auto' | 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
@@ -46,49 +47,55 @@ const FacultyDashboard: React.FC = () => {
 
   const roleDisplay = facultyIsHOD ? `HOD, ${facultyDepartment}` : `${facultyDesignation}, ${facultyDepartment}`;
 
-  const [availability, setAvailability] = useState<AvailabilityStatus>('auto');
+  const [availability, setAvailability] = useState<AvailabilityStatus>(() => {
+    return getFacultyAvailability(facultyName, 'available');
+  });
   
   React.useEffect(() => {
+    // Synchronize initial status from facultyStore
+    setAvailability(getFacultyAvailability(facultyName, 'available'));
+
     async function fetchInitialStatus() {
-      let { data, error } = await supabase
-        .from('faculty_schedules')
-        .select('*')
-        .eq('Faculty Name', facultyName)
-        .maybeSingle();
-        
-      if (error || !data) {
-        const res = await supabase
+      try {
+        let { data, error } = await supabase
           .from('faculty_schedules')
           .select('*')
-          .eq('name', facultyName)
+          .eq('Faculty Name', facultyName)
           .maybeSingle();
-        data = res.data;
-      }
-      
-      if (data && data.availability) {
-        setAvailability(data.availability as AvailabilityStatus);
+          
+        if (error || !data) {
+          const res = await supabase
+            .from('faculty_schedules')
+            .select('*')
+            .eq('name', facultyName)
+            .maybeSingle();
+          data = res.data;
+        }
+        
+        if (data && data.availability) {
+          updateFacultyAvailability(facultyName, data.availability as AvailabilityStatus);
+          setAvailability(data.availability as AvailabilityStatus);
+        }
+      } catch (err) {
+        // Ignore Supabase connection failures
       }
     }
     fetchInitialStatus();
+
+    // Subscribe to real-time status changes
+    const unsubscribe = subscribeFacultyStatusChanges((detail) => {
+      const currentAvail = getFacultyAvailability(facultyName, 'available');
+      setAvailability(currentAvail);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, [facultyName]);
 
-  const handleAvailabilityChange = async (newStatus: AvailabilityStatus) => {
+  const handleAvailabilityChange = (newStatus: AvailabilityStatus) => {
     setAvailability(newStatus);
-    
-    // Attempt update on 'Faculty Name' column first
-    let { data, error } = await supabase
-      .from('faculty_schedules')
-      .update({ availability: newStatus })
-      .eq('Faculty Name', facultyName)
-      .select();
-      
-    // If that fails (perhaps column doesn't exist or row not found), try 'name' column
-    if (error || !data || data.length === 0) {
-      await supabase
-        .from('faculty_schedules')
-        .update({ availability: newStatus })
-        .eq('name', facultyName);
-    }
+    updateFacultyAvailability(facultyName, newStatus);
   };
 
   const currentStatus = availabilityOptions.find((o) => o.value === availability)!;

@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient'; // Connected to your Supabase client
+import { getAllFacultyList, getFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -40,78 +41,92 @@ const FacultyDirectory: React.FC = () => {
   const [availFilter, setAvailFilter] = useState('All');
   const [alphaFilter, setAlphaFilter] = useState('All');
 
-  // Supabase state
-  const [facultyData, setFacultyData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Faculty state with immediate local data fallback
+  const [facultyData, setFacultyData] = useState<any[]>(() => getAllFacultyList());
+  const [loading, setLoading] = useState(false);
 
-  // Fetch real database records from Supabase
+  // Fetch real database records from Supabase if available & listen to real-time changes
   useEffect(() => {
     async function fetchFaculty() {
-      const { data, error } = await supabase
-        .from('faculty_schedules')
-        .select('*');
+      try {
+        const { data, error } = await supabase
+          .from('faculty_schedules')
+          .select('*');
 
-      if (error) {
-        console.error('Error fetching faculty data:', error);
-      } else if (data) {
-        setFacultyData(data);
+        if (!error && data && data.length > 0) {
+          setFacultyData(getAllFacultyList(data));
+        } else {
+          setFacultyData(getAllFacultyList());
+        }
+      } catch (err) {
+        setFacultyData(getAllFacultyList());
       }
-      setLoading(false);
     }
 
     fetchFaculty();
 
-    // Set up realtime subscription to faculty_schedules table
-    const channel = supabase
-      .channel('faculty-status-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'faculty_schedules'
-        },
-        (payload) => {
-          if (payload.eventType === 'UPDATE') {
-            setFacultyData((prevData) =>
-              prevData.map((faculty) => {
-                // Match by id, Faculty Name, or name depending on the schema
-                const isMatch = 
-                  (payload.new.id && faculty.id === payload.new.id) ||
-                  (payload.new['Faculty Name'] && faculty['Faculty Name'] === payload.new['Faculty Name']) ||
-                  (payload.new.name && faculty.name === payload.new.name);
-                  
-                return isMatch ? payload.new : faculty;
-              })
-            );
-          } else {
-            // Re-fetch list for INSERTS or DELETES
-            fetchFaculty();
+    // Subscribe to local real-time status updates (same tab and cross-tab)
+    const unsubscribeLocal = subscribeFacultyStatusChanges(() => {
+      setFacultyData((prevData) => getAllFacultyList(prevData));
+    });
+
+    // Set up realtime subscription to faculty_schedules table in Supabase
+    let channel: any;
+    try {
+      channel = supabase
+        .channel('faculty-status-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'faculty_schedules'
+          },
+          (payload) => {
+            if (payload.eventType === 'UPDATE') {
+              setFacultyData((prevData) =>
+                getAllFacultyList(
+                  prevData.map((faculty) => {
+                    const isMatch = 
+                      (payload.new.id && faculty.id === payload.new.id) ||
+                      (payload.new['Faculty Name'] && faculty['Faculty Name'] === payload.new['Faculty Name']) ||
+                      (payload.new.name && faculty.name === payload.new.name);
+                      
+                    return isMatch ? payload.new : faculty;
+                  })
+                )
+              );
+            } else {
+              fetchFaculty();
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    } catch (err) {
+      // Ignore Supabase realtime connection errors
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeLocal();
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
-  const departments = ['All', ...Array.from(new Set(facultyData.map((f) => f["Department"]).filter(Boolean)))];
+  const departments = ['All', ...Array.from(new Set(facultyData.map((f) => f["Department"] || f.department).filter(Boolean)))];
   const availabilities = ['All', 'available', 'busy', 'in-lecture', 'offline'];
   const alphabets = ['All', 'A-F', 'G-L', 'M-R', 'S-Z'];
 
   const filtered = facultyData.filter((f) => {
     const name = f["Faculty Name"] || f.name || '';
     const dept = f["Department"] || f.department || '';
-    const availability = f.availability || 'auto';
-    const dynamicStatus = (availability !== 'auto') 
-      ? availability 
+    const currentAvailability = getFacultyAvailability(name, f.availability || 'available');
+    const dynamicStatus = (currentAvailability !== 'auto') 
+      ? currentAvailability 
       : (getCurrentTeacherStatus(f) || 'available');
 
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || dept.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || dept === deptFilter;
-    const matchAvail = availFilter === 'All' || dynamicStatus === availFilter || availability === availFilter;
+    const matchAvail = availFilter === 'All' || dynamicStatus === availFilter || currentAvailability === availFilter;
     let matchAlpha = true;
     if (alphaFilter !== 'All') {
       // Remove prefixes like Dr., Prof., etc. to filter by real starting letter
@@ -201,8 +216,9 @@ const FacultyDirectory: React.FC = () => {
               const department = faculty["Department"] || faculty.department || 'N/A';
               const cabin = faculty["Cabin No."] || faculty.cabin || 'N/A';
               
-              const rawStatus = (faculty.availability && faculty.availability !== 'auto')
-                ? faculty.availability
+              const currentAvail = getFacultyAvailability(teacherName, faculty.availability || 'available');
+              const rawStatus = (currentAvail && currentAvail !== 'auto')
+                ? currentAvail
                 : (getCurrentTeacherStatus(faculty) || 'available');
                 
               const status = availabilityConfig[rawStatus] || { 
