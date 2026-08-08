@@ -36,69 +36,71 @@ const buildings: Building[] = [
     id: 'F',
     name: 'Block F',
     desc: 'First Year Department',
-    x: '18%',
-    y: '35%',
+    x: '14%',
+    y: '38%',
     color: '#16a34a',
-    satelliteOverlay: { top: '5%', left: '12%', width: '23%', height: '22%' },
-    routeTarget: { x: 180, y: 150 },
+    satelliteOverlay: { top: '16%', left: '7.3%', width: '12.8%', height: '44%' },
+    routeTarget: { x: 130, y: 300 },
   },
   {
-    id: 'M',
-    name: 'Block M',
-    desc: 'CSE, AIML, DS, IT Department',
-    x: '42%',
-    y: '28%',
-    color: '#2563eb',
-    satelliteOverlay: { top: '68%', left: '40%', width: '15%', height: '22%' },
-    routeTarget: { x: 420, y: 380 },
+    id: 'ADM',
+    name: 'Admin / Principal',
+    desc: 'Administration & Principal Office',
+    x: '31%',
+    y: '20%',
+    color: '#eab308',
+    satelliteOverlay: { top: '14.5%', left: '25.2%', width: '12%', height: '12.5%' },
+    routeTarget: { x: 310, y: 180 },
   },
   {
     id: 'E',
     name: 'Block E',
     desc: 'ETC, MBA, BCA, MCA Department',
-    x: '65%',
-    y: '45%',
-    color: '#7c3aed',
-    satelliteOverlay: { top: '55%', left: '11%', width: '26%', height: '20%' },
-    routeTarget: { x: 210, y: 340 },
+    x: '16%',
+    y: '75%',
+    color: '#3b82f6',
+    satelliteOverlay: { top: '61.5%', left: '6.5%', width: '20.5%', height: '27.2%' },
+    routeTarget: { x: 160, y: 380 },
   },
   {
     id: 'B',
     name: 'Block B',
     desc: 'Mechanical, Electrical Department',
-    x: '78%',
-    y: '32%',
-    color: '#dc2626',
-    satelliteOverlay: { top: '30%', left: '28%', width: '18%', height: '22%' },
-    routeTarget: { x: 290, y: 220 },
+    x: '41%',
+    y: '59%',
+    color: '#f97316',
+    satelliteOverlay: { top: '52.8%', left: '30.5%', width: '22.5%', height: '12.8%' },
+    routeTarget: { x: 330, y: 320 },
   },
   {
-    id: 'ADM',
-    name: 'Admin Block',
-    desc: 'Administration',
-    x: '50%',
-    y: '65%',
-    color: '#d97706',
-    satelliteOverlay: { top: '5%', left: '44%', width: '35%', height: '18%' },
-    routeTarget: { x: 450, y: 110 },
+    id: 'M',
+    name: 'Block M',
+    desc: 'CSE, AIML, DS, IT Department',
+    x: '65%',
+    y: '76%',
+    color: '#84cc16',
+    satelliteOverlay: { top: '64%', left: '53.8%', width: '22.8%', height: '25%' },
+    routeTarget: { x: 500, y: 380 },
   },
 ];
 
 const facultyList: FacultyMember[] = [
   { id: '1', name: 'Ms. Swati Thakur', department: 'CSE (AI&ML)', cabin: 'M202' },
-  { id: '2', name: 'Ms. Harshika Dehariya', department: 'CSE (AI&ML)', cabin: 'M202' },
+  { id: '2', name: 'Ms. Harshika Dehariya', department: 'CSE (AI&ML)', cabin: 'M204' },
   { id: '3', name: 'Dr. Animesh Tayal', department: 'CSE (AI&ML)', cabin: 'M107' },
   { id: '4', name: 'Prof. Rashmi Deshmukh', department: 'First Year', cabin: 'F102' },
-  { id: '5', name: 'Dr. Narendra Bawane', department: 'Administration', cabin: 'ADM' },
+  { id: '5', name: 'Dr. Narendra Bawane', department: 'Administration', cabin: 'ADM101' },
+  { id: '6', name: 'Prof. Amit Sharma', department: 'ETC / MCA', cabin: 'E201' },
+  { id: '7', name: 'Dr. Suresh Kumar', department: 'Mechanical', cabin: 'B101' },
 ];
 
 const floors = ['Ground Floor', 'First Floor', 'Second Floor', 'Third Floor'];
 
 function parseRoomDetails(cabin: string) {
-  if (!cabin) return { blockId: 'M', floorName: 'Second Floor', roomNum: 'M202' };
+  if (!cabin) return { blockId: 'M', floorName: 'Second Floor', roomNum: '' };
   const clean = cabin.trim().toUpperCase();
-  const blockId = clean.charAt(0);
-  const floorDigit = parseInt(clean.charAt(1), 10);
+  const blockId = clean.startsWith('ADM') ? 'ADM' : clean.charAt(0);
+  const floorDigit = parseInt(clean.replace(/\D/g, '').charAt(0), 10) || 0;
 
   let floorName = 'Ground Floor';
   if (floorDigit === 1) floorName = 'First Floor';
@@ -112,11 +114,11 @@ function parseRoomDetails(cabin: string) {
 const CampusMap: React.FC = () => {
   const { isDark } = useTheme();
   const [zoom, setZoom] = useState(1);
-  const [selectedBuilding, setSelectedBuilding] = useState<string | null>('M');
-  const [selectedFloor, setSelectedFloor] = useState('Second Floor');
+  const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState('Ground Floor');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRoute, setShowRoute] = useState(false);
-  const [selectedFaculty, setSelectedFaculty] = useState<FacultyMember | null>(facultyList[0]);
+  const [selectedFaculty, setSelectedFaculty] = useState<FacultyMember | null>(null);
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 0.2, 2));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 0.2, 0.6));
@@ -137,6 +139,7 @@ const CampusMap: React.FC = () => {
     );
   }, [searchQuery]);
 
+  // Select faculty dynamically and highlight their specific block & cabin
   const handleSelectFaculty = (faculty: FacultyMember) => {
     setSelectedFaculty(faculty);
     const parsed = parseRoomDetails(faculty.cabin);
@@ -146,8 +149,25 @@ const CampusMap: React.FC = () => {
     setSearchQuery('');
   };
 
-  const selected = buildings.find((b) => b.id === selectedBuilding);
-  const activeRouteBuilding = buildings.find((b) => b.id === (selectedBuilding || 'M')) || buildings[1];
+  // Select building block and auto-bind teacher for that block
+  const handleSelectBuilding = (blockId: string) => {
+    setSelectedBuilding(blockId);
+    const facultyInBlock = facultyList.filter(
+      (f) => parseRoomDetails(f.cabin).blockId === blockId
+    );
+
+    if (facultyInBlock.length > 0) {
+      const currentInBlock = facultyInBlock.find((f) => f.id === selectedFaculty?.id);
+      const chosenFaculty = currentInBlock || facultyInBlock[0];
+      setSelectedFaculty(chosenFaculty);
+      setSelectedFloor(parseRoomDetails(chosenFaculty.cabin).floorName);
+    } else {
+      setSelectedFaculty(null);
+    }
+  };
+
+  const activeRouteBuilding =
+    buildings.find((b) => b.id === (selectedBuilding || 'M')) || buildings[0];
 
   return (
     <Layout>
@@ -162,14 +182,14 @@ const CampusMap: React.FC = () => {
           </p>
         </motion.div>
 
-        {/* Controls */}
+        {/* Controls Bar */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
           {/* Search Box */}
           <div className="flex-1 relative">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search room, lab, faculty (e.g. Swati Thakur)..."
+              placeholder="Search faculty or cabin (e.g. Swati Thakur, Rashmi Deshmukh, F102, E201)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full pl-9 pr-4 py-3 rounded-xl border text-sm outline-none transition-all ${
@@ -179,7 +199,7 @@ const CampusMap: React.FC = () => {
               }`}
             />
 
-            {/* Search Dropdown */}
+            {/* Search Results Dropdown */}
             <AnimatePresence>
               {filteredFaculty.length > 0 && (
                 <motion.div
@@ -205,13 +225,35 @@ const CampusMap: React.FC = () => {
                         </p>
                       </div>
                       <span className="px-2 py-0.5 bg-green-600 text-white rounded-md text-[10px] font-bold flex items-center gap-1">
-                        <Navigation size={10} /> Route
+                        <Navigation size={10} /> Navigate
                       </span>
                     </button>
                   ))}
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+
+          {/* Teacher Quick Select Dropdown */}
+          <div className="flex items-center gap-2">
+            <User size={16} className="text-green-600" />
+            <select
+              value={selectedFaculty?.id || ''}
+              onChange={(e) => {
+                const fac = facultyList.find((f) => f.id === e.target.value);
+                if (fac) handleSelectFaculty(fac);
+              }}
+              className={`py-3 px-4 rounded-xl border text-sm outline-none ${
+                isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+              }`}
+            >
+              <option value="" disabled>Select Faculty</option>
+              {facultyList.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name} ({f.cabin})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Floor Selector */}
@@ -230,14 +272,13 @@ const CampusMap: React.FC = () => {
             </select>
           </div>
 
-          {/* Route Toggle */}
+          {/* Route Toggle Button */}
           <button
             onClick={() => {
               const nextState = !showRoute;
               setShowRoute(nextState);
               if (nextState && !selectedBuilding) {
-                setSelectedBuilding('M');
-                setSelectedFloor('Second Floor');
+                handleSelectBuilding('M');
               }
             }}
             className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
@@ -261,67 +302,60 @@ const CampusMap: React.FC = () => {
               className={`relative rounded-3xl overflow-hidden border shadow-lg ${
                 isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-100'
               }`}
-              style={{ height: '500px' }}
+              style={{ height: '520px' }}
             >
               <div
                 className="w-full h-full relative transition-transform duration-300 origin-center"
                 style={{ transform: `scale(${zoom})` }}
               >
-                {/* Dynamic Map Image Background */}
+                {/* Map Satellite Image */}
                 <img
                   src={showRoute ? '/images/satellite_map.png' : '/images/campus.jpg'}
                   alt="Campus Map"
                   className="w-full h-full object-cover transition-opacity duration-300"
                 />
 
-                {/* Satellite Bounding Overlays with Teacher & Room Callout */}
+                {/* Satellite Polygon Highlights */}
                 {showRoute &&
                   buildings.map((b) => {
                     const isSelected = selectedBuilding === b.id;
-                    const facultyForBlock =
-                      selectedFaculty && parseRoomDetails(selectedFaculty.cabin).blockId === b.id
-                        ? selectedFaculty
-                        : facultyList.find((f) => parseRoomDetails(f.cabin).blockId === b.id);
 
                     return (
                       <div
                         key={`sat-${b.id}`}
-                        onClick={() => {
-                          setSelectedBuilding(b.id);
-                          if (facultyForBlock) setSelectedFaculty(facultyForBlock);
-                        }}
+                        onClick={() => handleSelectBuilding(b.id)}
                         style={b.satelliteOverlay}
-                        className={`absolute rounded-2xl border-2 cursor-pointer transition-all duration-300 flex flex-col items-center justify-center ${
+                        className={`absolute rounded-xl border-2 cursor-pointer transition-all duration-300 flex flex-col items-center justify-center ${
                           isSelected
                             ? 'border-indigo-500 bg-indigo-500/30 ring-4 ring-indigo-400/50 z-20 animate-pulse'
-                            : 'border-gray-400/40 bg-gray-600/30 hover:border-white'
+                            : 'border-white/50 bg-gray-900/30 hover:border-white hover:bg-gray-800/40'
                         }`}
                       >
-                        {/* Block Name Badge */}
-                        <span className="text-[11px] font-black text-white bg-gray-900/80 px-2.5 py-1 rounded-md shadow border border-white/20">
+                        {/* Block Title */}
+                        <span className="text-[11px] font-black text-white bg-black/75 px-2 py-0.5 rounded shadow border border-white/20">
                           {b.name}
                         </span>
 
-                        {/* Selected Teacher Name & Room No Tag directly on the Block */}
-                        {isSelected && facultyForBlock && (
+                        {/* Dynamic Destination Cabin Badge */}
+                        {isSelected && selectedFaculty && (
                           <motion.div
                             initial={{ opacity: 0, y: 5 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="absolute -bottom-4 bg-red-600 text-white text-[10px] md:text-[11px] font-extrabold px-3 py-1 rounded-full shadow-xl border border-white flex items-center gap-1 whitespace-nowrap z-30"
+                            className="absolute -bottom-5 bg-red-600 text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-xl border border-white flex items-center gap-1 whitespace-nowrap z-30"
                           >
                             <MapPin size={12} />
-                            {facultyForBlock.name} ({facultyForBlock.cabin} • {selectedFloor})
+                            {`Cabin ${selectedFaculty.cabin} • ${selectedFloor}`}
                           </motion.div>
                         )}
                       </div>
                     );
                   })}
 
-                {/* Animated Navigation Route Line */}
-                {showRoute && (
+                {/* Navigation Route Path SVG */}
+                {showRoute && selectedBuilding && (
                   <svg className="absolute inset-0 w-full h-full pointer-events-none z-20">
                     <motion.path
-                      d={`M 50,480 L 50,220 Q 50,180 120,180 L ${activeRouteBuilding.routeTarget.x},180 L ${activeRouteBuilding.routeTarget.x},${activeRouteBuilding.routeTarget.y}`}
+                      d={`M 40,490 L 40,240 Q 40,200 100,200 L ${activeRouteBuilding.routeTarget.x},200 L ${activeRouteBuilding.routeTarget.x},${activeRouteBuilding.routeTarget.y}`}
                       stroke="#16a34a"
                       strokeWidth="5"
                       fill="none"
@@ -333,7 +367,7 @@ const CampusMap: React.FC = () => {
                   </svg>
                 )}
 
-                {/* Pins on Standard Map View */}
+                {/* Normal Building Pins */}
                 {!showRoute &&
                   buildings.map(({ id, name, x, y, color }) => {
                     const isSelected = selectedBuilding === id;
@@ -342,7 +376,7 @@ const CampusMap: React.FC = () => {
                         key={id}
                         style={{ left: x, top: y }}
                         className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30"
-                        onClick={() => setSelectedBuilding(selectedBuilding === id ? null : id)}
+                        onClick={() => handleSelectBuilding(id)}
                         whileHover={{ scale: 1.15 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -374,7 +408,7 @@ const CampusMap: React.FC = () => {
                   })}
               </div>
 
-              {/* Map Zoom Controls */}
+              {/* Zoom Controls */}
               <div className="absolute right-4 top-4 flex flex-col gap-2 z-40">
                 <button
                   onClick={handleZoomIn}
@@ -402,13 +436,13 @@ const CampusMap: React.FC = () => {
                 </button>
               </div>
 
-              {/* Floor Badge */}
+              {/* Floor Badge Overlay */}
               <div className="absolute left-4 top-4 bg-white/90 text-gray-900 text-xs font-bold px-3 py-1.5 rounded-xl shadow border border-gray-100 z-40 flex items-center gap-1.5">
                 <MapPin size={14} className="text-green-600" />
                 <span>{selectedFloor}</span>
               </div>
 
-              {/* Zoom Indicator */}
+              {/* Zoom Level Indicator */}
               <div
                 className={`absolute left-4 bottom-4 text-xs font-medium px-3 py-1.5 rounded-xl z-40 ${
                   isDark ? 'bg-gray-800 text-gray-400' : 'bg-white/90 text-gray-600 border border-gray-100 shadow'
@@ -419,7 +453,7 @@ const CampusMap: React.FC = () => {
             </motion.div>
           </div>
 
-          {/* Right Info Panel */}
+          {/* Right Info Sidebar */}
           <div className="space-y-4">
             {selectedFaculty && (
               <motion.div
@@ -430,22 +464,15 @@ const CampusMap: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center justify-between mb-2 pb-2 border-b border-green-500/20">
-                  <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Faculty Route</span>
+                  <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Navigation Target</span>
                   <span className="text-[10px] font-bold bg-green-600 text-white px-2 py-0.5 rounded-full">
                     {selectedFloor}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-full bg-green-600 text-white flex items-center justify-center font-bold">
-                    <User size={18} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm">{selectedFaculty.name}</h4>
-                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{selectedFaculty.department}</p>
-                  </div>
-                </div>
-                <div className="text-xs mb-3 space-y-1">
-                  <p><strong>Location:</strong> {activeRouteBuilding.name}</p>
+                <div className="text-xs mb-3 space-y-1 pt-1">
+                  <p><strong>Faculty:</strong> {selectedFaculty.name}</p>
+                  <p><strong>Department:</strong> {selectedFaculty.department}</p>
+                  <p><strong>Building:</strong> {activeRouteBuilding.name}</p>
                   <p><strong>Cabin / Room:</strong> {selectedFaculty.cabin}</p>
                 </div>
                 <button
@@ -457,18 +484,41 @@ const CampusMap: React.FC = () => {
               </motion.div>
             )}
 
-            <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Buildings</h3>
+            <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Faculty Members</h3>
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {facultyList.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => handleSelectFaculty(f)}
+                  className={`w-full text-left p-3 rounded-xl border text-xs transition flex items-center justify-between ${
+                    selectedFaculty?.id === f.id
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20 font-bold'
+                      : isDark
+                      ? 'border-gray-700 bg-gray-800 hover:bg-gray-750'
+                      : 'border-gray-200 bg-white hover:bg-gray-50'
+                  }`}
+                >
+                  <div>
+                    <p className={isDark ? 'text-white' : 'text-gray-900'}>{f.name}</p>
+                    <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{f.department}</p>
+                  </div>
+                  <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded font-mono font-bold text-[10px]">
+                    {f.cabin}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <h3 className={`font-bold pt-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Buildings</h3>
             {buildings.map(({ id, name, desc, color }) => (
               <motion.button
                 key={id}
                 onClick={() => {
-                  setSelectedBuilding(selectedBuilding === id ? null : id);
-                  const facultyForBlock = facultyList.find((f) => parseRoomDetails(f.cabin).blockId === id);
-                  if (facultyForBlock) setSelectedFaculty(facultyForBlock);
+                  handleSelectBuilding(id);
                   if (!showRoute) setShowRoute(true);
                 }}
                 whileHover={{ x: 4 }}
-                className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                className={`w-full text-left p-3.5 rounded-2xl border transition-all ${
                   selectedBuilding === id
                     ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                     : isDark
@@ -478,14 +528,14 @@ const CampusMap: React.FC = () => {
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0"
                     style={{ backgroundColor: color }}
                   >
                     {id}
                   </div>
                   <div>
-                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>{name}</p>
-                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{desc}</p>
+                    <p className={`font-semibold text-xs ${isDark ? 'text-white' : 'text-gray-900'}`}>{name}</p>
+                    <p className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{desc}</p>
                   </div>
                 </div>
               </motion.button>
