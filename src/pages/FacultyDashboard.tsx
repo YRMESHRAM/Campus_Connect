@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Navigation, BookOpen, MessageSquare, Bell, Phone, Clock, Users, Calendar, Edit3, Mail } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -48,12 +48,12 @@ const FacultyDashboard: React.FC = () => {
   const roleDisplay = facultyIsHOD ? `HOD, ${facultyDepartment}` : `${facultyDesignation}, ${facultyDepartment}`;
 
   const [availability, setAvailability] = useState<AvailabilityStatus>(() => {
-    return getFacultyAvailability(facultyName, 'available');
+    return getFacultyAvailability(facultyName, 'auto');
   });
-  
-  React.useEffect(() => {
+
+  useEffect(() => {
     // Synchronize initial status from facultyStore
-    setAvailability(getFacultyAvailability(facultyName, 'available'));
+    setAvailability(getFacultyAvailability(facultyName, 'auto'));
 
     async function fetchInitialStatus() {
       try {
@@ -62,7 +62,7 @@ const FacultyDashboard: React.FC = () => {
           .select('*')
           .eq('Faculty Name', facultyName)
           .maybeSingle();
-          
+
         if (error || !data) {
           const res = await supabase
             .from('faculty_schedules')
@@ -71,7 +71,7 @@ const FacultyDashboard: React.FC = () => {
             .maybeSingle();
           data = res.data;
         }
-        
+
         if (data && data.availability) {
           updateFacultyAvailability(facultyName, data.availability as AvailabilityStatus);
           setAvailability(data.availability as AvailabilityStatus);
@@ -82,9 +82,9 @@ const FacultyDashboard: React.FC = () => {
     }
     fetchInitialStatus();
 
-    // Subscribe to real-time status changes
-    const unsubscribe = subscribeFacultyStatusChanges((detail) => {
-      const currentAvail = getFacultyAvailability(facultyName, 'available');
+    // Subscribe to real-time status changes locally
+    const unsubscribe = subscribeFacultyStatusChanges(() => {
+      const currentAvail = getFacultyAvailability(facultyName, 'auto');
       setAvailability(currentAvail);
     });
 
@@ -93,12 +93,30 @@ const FacultyDashboard: React.FC = () => {
     };
   }, [facultyName]);
 
-  const handleAvailabilityChange = (newStatus: AvailabilityStatus) => {
+  const handleAvailabilityChange = async (newStatus: AvailabilityStatus) => {
+    // 1. Update local state & store
     setAvailability(newStatus);
     updateFacultyAvailability(facultyName, newStatus);
+
+    // 2. Persist to Supabase database
+    try {
+      const { error } = await supabase
+        .from('faculty_schedules')
+        .update({ availability: newStatus })
+        .eq('Faculty Name', facultyName);
+
+      if (error) {
+        await supabase
+          .from('faculty_schedules')
+          .update({ availability: newStatus })
+          .eq('name', facultyName);
+      }
+    } catch (err) {
+      // Graceful fallback if database update fails
+    }
   };
 
-  const currentStatus = availabilityOptions.find((o) => o.value === availability) || availabilityOptions[1];
+  const currentStatus = availabilityOptions.find((o) => o.value === availability) || availabilityOptions[0];
 
   return (
     <Layout isFaculty>
@@ -115,8 +133,12 @@ const FacultyDashboard: React.FC = () => {
           <div className="relative p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white/30">
-                <img src={localStorage.getItem('facultyPhoto') || "/images/blank.jpg"} alt="Faculty" className="w-full h-full object-cover"
-                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/blank.jpg'; }} />
+                <img
+                  src={localStorage.getItem('facultyPhoto') || "/images/blank.jpg"}
+                  alt="Faculty"
+                  className="w-full h-full object-cover"
+                  onError={(e) => { (e.target as HTMLImageElement).src = '/images/blank.jpg'; }}
+                />
               </div>
               <div>
                 <p className="text-green-300 text-sm font-medium">Welcome back 👋</p>
