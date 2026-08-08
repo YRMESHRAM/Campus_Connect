@@ -15,7 +15,7 @@ const ClassroomFinder: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('All');
   const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
 
-  const buildings = ['All', 'Block A', 'Block B', 'Block C', 'Block D'];
+  const buildings = ['All', 'Block F', 'Block M', 'Block E', 'Block B', 'Admin Block'];
   const floors = ['All', '1', '2', '3'];
   const types = ['All', 'Classroom', 'Laboratory', 'Seminar Hall'];
 

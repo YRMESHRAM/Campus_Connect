@@ -5,10 +5,10 @@ import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 
 const buildings = [
-  { id: 'A', name: 'Block A', desc: 'CSE & IT Departments', x: '18%', y: '35%', color: '#16a34a' },
-  { id: 'B', name: 'Block B', desc: 'ECE Department', x: '42%', y: '28%', color: '#2563eb' },
-  { id: 'C', name: 'Block C', desc: 'Mechanical Dept', x: '65%', y: '45%', color: '#7c3aed' },
-  { id: 'D', name: 'Block D', desc: 'Civil Dept & Labs', x: '78%', y: '32%', color: '#dc2626' },
+  { id: 'F', name: 'Block F', desc: 'First Year Department', x: '18%', y: '35%', color: '#16a34a' },
+  { id: 'M', name: 'Block M', desc: 'CSE, AIML, DS, IT Department', x: '42%', y: '28%', color: '#2563eb' },
+  { id: 'E', name: 'Block E', desc: 'ETC, MBA, BCA, MCA Department', x: '65%', y: '45%', color: '#7c3aed' },
+  { id: 'B', name: 'Block B', desc: 'Mechanical, Electrical Department', x: '78%', y: '32%', color: '#dc2626' },
   { id: 'ADM', name: 'Admin Block', desc: 'Administration', x: '50%', y: '65%', color: '#d97706' },
 ];
 
