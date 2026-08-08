@@ -104,8 +104,10 @@ const FacultyDirectory: React.FC = () => {
   const filtered = facultyData.filter((f) => {
     const name = f["Faculty Name"] || f.name || '';
     const dept = f["Department"] || f.department || '';
-    const availability = f.availability || 'available';
-    const dynamicStatus = getCurrentTeacherStatus(f) || availability;
+    const availability = f.availability || 'auto';
+    const dynamicStatus = (availability !== 'auto') 
+      ? availability 
+      : (getCurrentTeacherStatus(f) || 'available');
 
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || dept.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || dept === deptFilter;
@@ -199,7 +201,10 @@ const FacultyDirectory: React.FC = () => {
               const department = faculty["Department"] || faculty.department || 'N/A';
               const cabin = faculty["Cabin No."] || faculty.cabin || 'N/A';
               
-              const rawStatus = getCurrentTeacherStatus(faculty) || faculty.availability || 'available';
+              const rawStatus = (faculty.availability && faculty.availability !== 'auto')
+                ? faculty.availability
+                : (getCurrentTeacherStatus(faculty) || 'available');
+                
               const status = availabilityConfig[rawStatus] || { 
                 label: rawStatus, 
                 color: 'text-gray-600', 

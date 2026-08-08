@@ -6,9 +6,10 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
 
-type AvailabilityStatus = 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
+type AvailabilityStatus = 'auto' | 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
 const availabilityOptions: { label: string; value: AvailabilityStatus; color: string; bg: string }[] = [
+  { label: 'Auto (Schedule)', value: 'auto', color: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-200' },
   { label: 'Available', value: 'available', color: 'text-green-700', bg: 'bg-green-100 border-green-300' },
   { label: 'Busy', value: 'busy', color: 'text-yellow-700', bg: 'bg-yellow-100 border-yellow-300' },
   { label: 'In Lecture', value: 'in-lecture', color: 'text-blue-700', bg: 'bg-blue-100 border-blue-300' },
@@ -45,7 +46,7 @@ const FacultyDashboard: React.FC = () => {
 
   const roleDisplay = facultyIsHOD ? `HOD, ${facultyDepartment}` : `${facultyDesignation}, ${facultyDepartment}`;
 
-  const [availability, setAvailability] = useState<AvailabilityStatus>('available');
+  const [availability, setAvailability] = useState<AvailabilityStatus>('auto');
   
   React.useEffect(() => {
     async function fetchInitialStatus() {

@@ -122,7 +122,10 @@ const FacultyProfile: React.FC = () => {
     );
   }
 
-  const rawStatus = getCurrentTeacherStatus(faculty) || faculty.availability;
+  const rawStatus = (faculty.availability && faculty.availability !== 'auto') 
+    ? faculty.availability 
+    : (getCurrentTeacherStatus(faculty) || 'available');
+    
   const status = availabilityConfig[rawStatus] || { 
     label: rawStatus, 
     color: 'text-gray-600', 
