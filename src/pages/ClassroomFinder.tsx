@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { useTheme } from '../context/ThemeContext';
+import notifications from '../data/notifications.json';
 import { 
+  Menu,
   Search, 
   Clock, 
   MapPin, 
@@ -18,7 +23,13 @@ import {
   RotateCcw,
   X,
   Compass,
-  Moon
+  Moon,
+  Sun,
+  Bell,
+  User,
+  LogOut,
+  Settings,
+  Home
 } from 'lucide-react';
 
 interface RoomRecord {
@@ -38,7 +49,6 @@ const TIME_SLOTS = [
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-// Helper to convert slot string like "1:30-2:30" into start/end minutes from midnight
 const getSlotRangeMinutes = (slotStr: string) => {
   const [startStr, endStr] = slotStr.split('-');
   
@@ -55,7 +65,6 @@ const getSlotRangeMinutes = (slotStr: string) => {
   return { start: parseMin(startStr), end: parseMin(endStr) };
 };
 
-// Map Block coordinates and navigation paths
 const BLOCK_MAP_DATA: Record<string, { label: string; left: string; top: string; width: string; height: string; pathD: string; pinPos: { left: string; top: string } }> = {
   'Block M': {
     label: 'Block M',
@@ -105,26 +114,42 @@ const BLOCK_MAP_DATA: Record<string, { label: string; left: string; top: string;
 };
 
 export default function ClassroomFinder() {
+  const { isDark, toggleTheme } = useTheme();
+  const navigate = useNavigate();
+
+  // Header State
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
+
+  const isLoggedIn = !!localStorage.getItem('facultyLoggedIn') || !!localStorage.getItem('studentLoggedIn');
+  const facultyName = localStorage.getItem('facultyName') || '';
+  const facultyDesignation = localStorage.getItem('facultyDesignation') || 'Faculty Member';
+  const facultyDepartment = localStorage.getItem('facultyDepartment') || '';
+  const facultyDisplayRole = facultyDepartment ? `${facultyDesignation}, ${facultyDepartment}` : facultyDesignation;
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  // Classroom & Search State
   const [rooms, setRooms] = useState<RoomRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters & Live Time State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFloor, setSelectedFloor] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'available' | 'occupied' | 'off_hours'>('all');
   
-  // Real-time Clock
   const [now, setNow] = useState<Date>(new Date());
-  
-  // Expandable timetable accordion per room card
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
 
-  // Navigation Map Modal State
   const [navTargetRoom, setNavTargetRoom] = useState<{ name: string; floor: string; block: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
 
-  // Get current day name
+  const searchSuggestions = [
+    'Room 101', 'Computer Lab 1', 'Electronics Lab', 'Seminar Hall',
+    'Dr. Rajesh Sharma', 'Prof. Sunita Verma', 'CSE Department',
+  ].filter((s) => searchQuery && s.toLowerCase().includes(searchQuery.toLowerCase()));
+
   const currentDayName = useMemo(() => {
     const dayIndex = new Date().getDay();
     if (dayIndex === 0 || dayIndex > 6) return "Saturday";
@@ -133,13 +158,11 @@ export default function ClassroomFinder() {
 
   const [selectedDay] = useState<string>(currentDayName);
 
-  // Live timer tick
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch Supabase data
   const fetchRoomData = async () => {
     setLoading(true);
     setError(null);
@@ -162,11 +185,16 @@ export default function ClassroomFinder() {
     fetchRoomData();
   }, [selectedDay]);
 
-  // Current active time slot calculation with operating hours validation
+  const handleLogout = () => {
+    localStorage.removeItem('facultyLoggedIn');
+    localStorage.removeItem('studentLoggedIn');
+    navigate('/');
+  };
+
   const currentSlotInfo = useMemo(() => {
     const currentMin = now.getHours() * 60 + now.getMinutes();
-    const firstStart = getSlotRangeMinutes(TIME_SLOTS[0]).start; // 10:30 AM = 630 mins
-    const lastEnd = getSlotRangeMinutes(TIME_SLOTS[TIME_SLOTS.length - 1]).end; // 5:30 PM = 1050 mins
+    const firstStart = getSlotRangeMinutes(TIME_SLOTS[0]).start;
+    const lastEnd = getSlotRangeMinutes(TIME_SLOTS[TIME_SLOTS.length - 1]).end;
 
     for (let i = 0; i < TIME_SLOTS.length; i++) {
       const slot = TIME_SLOTS[i];
@@ -201,7 +229,6 @@ export default function ClassroomFinder() {
     };
   }, [now]);
 
-  // Helper to extract room slot value dynamically
   const getSlotStatus = (room: RoomRecord, slotKey: string): 'Available' | 'Occupied' => {
     const val = room[slotKey] || room[slotKey.replace(/\s+/g, '')] || room[slotKey.replace('-', ' - ')];
     if (!val) return 'Available';
@@ -212,7 +239,6 @@ export default function ClassroomFinder() {
     return 'Available';
   };
 
-  // Determine block name from room code
   const getBlockName = (roomName: string): string => {
     const upper = roomName.toUpperCase().trim();
     if (upper.startsWith('F-') || upper.startsWith('F') || upper.includes('BLOCK F')) return 'Block F';
@@ -222,13 +248,11 @@ export default function ClassroomFinder() {
     return 'Block M';
   };
 
-  // Compute live room status info
   const getRoomRealtimeDetails = (room: RoomRecord) => {
     const isToday = selectedDay === currentDayName;
     const isLiveOperating = isToday && currentSlotInfo.isOperating;
     const activeSlotKey = currentSlotInfo.slot;
 
-    // Evaluate live status based on operating hours
     const currentStatus: 'Available' | 'Occupied' | 'Off Hours' = isLiveOperating 
       ? getSlotStatus(room, activeSlotKey)
       : 'Off Hours';
@@ -276,7 +300,6 @@ export default function ClassroomFinder() {
     };
   };
 
-  // Extract floor list for filter dropdown
   const floorsList = useMemo(() => {
     const floors = new Set<string>();
     rooms.forEach(r => {
@@ -286,7 +309,6 @@ export default function ClassroomFinder() {
     return Array.from(floors);
   }, [rooms]);
 
-  // Filtered rooms
   const filteredRooms = useMemo(() => {
     return rooms.filter(room => {
       const details = getRoomRealtimeDetails(room);
@@ -314,7 +336,6 @@ export default function ClassroomFinder() {
     setExpandedRooms(prev => ({ ...prev, [roomKey]: !prev[roomKey] }));
   };
 
-  // Open Navigation Map Modal
   const handleOpenNavigation = (roomName: string, floor: string) => {
     const block = getBlockName(roomName);
     setNavTargetRoom({ name: roomName, floor, block });
@@ -322,45 +343,251 @@ export default function ClassroomFinder() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 md:p-8 transition-colors">
-      <div className="max-w-7xl mx-auto space-y-6">
-        
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${currentSlotInfo.isOperating ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                {currentSlotInfo.isOperating ? 'Real-Time Classroom Monitor' : 'Campus Off-Hours'}
-              </span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Classroom Finder
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Live occupancy & active time slot status
-            </p>
+    <div className={`min-h-screen ${isDark ? 'bg-gray-950 text-white' : 'bg-slate-50 text-slate-900'} transition-colors`}>
+      
+      {/* Top Navbar Header (Integrated Navbar) */}
+      <nav className={`sticky top-0 z-40 w-full border-b ${isDark ? 'border-gray-800 bg-gray-900/95' : 'border-gray-100 bg-white/95'} backdrop-blur-md shadow-sm`}>
+        <div className="flex items-center justify-between px-4 py-3">
+          
+          {/* Left Brand */}
+          <div className="flex items-center gap-3">
+            <button className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}>
+              <Menu size={20} />
+            </button>
+            <Link to="/" className="flex items-center gap-2">
+              <img src="/images/logo.png" alt="SB Jain Logo" className="h-9 w-9 object-contain" onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/graduation-cap.svg'; }} />
+              <div className="hidden sm:block">
+                <span className={`font-bold text-base ${isDark ? 'text-white' : 'text-gray-900'}`}>Campus Connect</span>
+                <p className={`text-[11px] leading-tight ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>S.B. Jain Institute</p>
+              </div>
+            </Link>
           </div>
 
-          {/* Live Digital Clock Badge */}
-          <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700/60">
-            <Clock className="w-5 h-5 text-indigo-500" />
-            <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
-                Current Time
-              </div>
-              <div className="text-base font-bold text-slate-800 dark:text-slate-100 font-mono">
-                {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </div>
+          {/* Center Search Input */}
+          <div className="hidden md:flex flex-1 max-w-md mx-4 relative">
+            <div className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}>
+              <Search size={16} className={isDark ? 'text-gray-400' : 'text-gray-400'} />
+              <input
+                type="text"
+                placeholder="Search rooms, faculty, labs..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className={`flex-1 bg-transparent text-sm outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'}`}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600">
+                  <XCircle className="w-4 h-4" />
+                </button>
+              )}
             </div>
+
+            <AnimatePresence>
+              {searchSuggestions.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  className={`absolute top-full mt-2 w-full rounded-xl shadow-xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                >
+                  {searchSuggestions.map((s, i) => (
+                    <button
+                      key={i}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}
+                      onClick={() => {
+                        setSearchQuery(s);
+                      }}
+                    >
+                      <Search size={12} className="inline mr-2 opacity-50" />
+                      {s}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Right Action Icons */}
+          <div className="flex items-center gap-2">
+            
+            {/* Mobile Search Toggle */}
+            <button
+              className={`md:hidden p-2 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              onClick={() => setShowMobileSearch(!showMobileSearch)}
+            >
+              <Search size={18} />
+            </button>
+
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800 text-yellow-400' : 'hover:bg-gray-100 text-gray-600'}`}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            {/* Notifications Menu */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }}
+                className={`p-2 rounded-xl transition-all relative ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              >
+                <Bell size={18} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    className={`absolute right-0 mt-2 w-80 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                  >
+                    <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <span className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>Notifications</span>
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{unreadCount} new</span>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto scrollbar-thin">
+                      {notifications.map((n) => (
+                        <div key={n.id} className={`px-4 py-3 border-b transition-colors cursor-pointer ${!n.read ? (isDark ? 'bg-green-900/20' : 'bg-green-50/50') : ''} ${isDark ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-50 hover:bg-gray-50'}`}>
+                          <div className="flex items-start gap-3">
+                            <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.read ? 'bg-green-500' : (isDark ? 'bg-gray-600' : 'bg-gray-200')}`} />
+                            <div>
+                              <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{n.title}</p>
+                              <p className={`text-xs mt-0.5 line-clamp-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{n.message}</p>
+                              <p className="text-xs text-green-600 mt-1">{n.time}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="px-4 py-3">
+                      <Link
+                        to="/notifications"
+                        onClick={() => setShowNotifications(false)}
+                        className="text-sm text-green-600 font-medium hover:text-green-700"
+                      >
+                        View all notifications →
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* User Profile / Menu */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
+                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {showProfile && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                  >
+                    <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                      <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                        {isLoggedIn ? (facultyName || 'Faculty Portal') : 'Campus Connect'}
+                      </p>
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} truncate`}>
+                        {isLoggedIn ? (facultyName ? facultyDisplayRole : 'S.B. Jain Institute') : 'S.B. Jain Institute'}
+                      </p>
+                    </div>
+
+                    <div className="p-2">
+                      {isLoggedIn ? (
+                        <>
+                          <Link to="/faculty/profile" onClick={() => setShowProfile(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                            <User size={16} /> My Profile
+                          </Link>
+                          <Link to="/settings" onClick={() => setShowProfile(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                            <Settings size={16} /> Settings
+                          </Link>
+                          <button onClick={handleLogout}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}>
+                            <LogOut size={16} /> Logout
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Link to="/settings" onClick={() => setShowProfile(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                            <Settings size={16} /> Settings
+                          </Link>
+                          <Link to="/" onClick={() => setShowProfile(false)}
+                            className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                            <Home size={16} /> Home
+                          </Link>
+                        </>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
           </div>
         </div>
 
+        {/* Mobile Search Input Drawer */}
+        <AnimatePresence>
+          {showMobileSearch && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="px-4 pb-3 md:hidden"
+            >
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}>
+                <Search size={16} className="text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search rooms, faculty, labs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`flex-1 bg-transparent text-sm outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-700'}`}
+                  autoFocus
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+
+      {/* Main Content Area */}
+      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
+        
+        {/* Page Header (Faculty Directory Style) */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center shadow-md">
+              <span className="text-white text-xl">🏫</span>
+            </div>
+            <div>
+              <h1 className={`text-2xl font-black ${isDark ? 'text-white' : 'text-slate-900'}`}>Classroom Finder</h1>
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Live occupancy & active time slot status</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Filter Bar */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+        <div className={`p-5 rounded-2xl border shadow-sm space-y-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             
-            {/* Search Input */}
             <div className="relative md:col-span-2">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
@@ -368,7 +595,7 @@ export default function ClassroomFinder() {
                 placeholder="Search room number (e.g. M-005, Ground Floor)..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
               />
               {searchQuery && (
                 <button 
@@ -380,12 +607,11 @@ export default function ClassroomFinder() {
               )}
             </div>
 
-            {/* Floor Filter */}
             <div>
               <select
                 value={selectedFloor}
                 onChange={e => setSelectedFloor(e.target.value)}
-                className="w-full py-2.5 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
+                className={`w-full py-2.5 px-3.5 text-sm rounded-xl border focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
               >
                 <option value="all">All Floors</option>
                 {floorsList.map(floor => (
@@ -394,12 +620,11 @@ export default function ClassroomFinder() {
               </select>
             </div>
 
-            {/* Current Real-Time Status Filter */}
             <div>
               <select
                 value={selectedStatusFilter}
                 onChange={e => setSelectedStatusFilter(e.target.value as any)}
-                className="w-full py-2.5 px-3.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-medium"
+                className={`w-full py-2.5 px-3.5 text-sm rounded-xl border font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
               >
                 <option value="all">⚡ All Live Statuses</option>
                 <option value="available">🟢 Available Right Now</option>
@@ -409,13 +634,12 @@ export default function ClassroomFinder() {
             </div>
           </div>
 
-          {/* Active Slot Indicator & Info */}
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <div className={`pt-2 border-t flex flex-wrap items-center justify-between gap-2 text-xs ${isDark ? 'border-gray-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
               <span>Showing <strong>{filteredRooms.length}</strong> of {rooms.length} rooms for <strong>{selectedDay}</strong></span>
             </div>
-            <div className="flex items-center gap-2 bg-indigo-50/70 dark:bg-indigo-950/50 px-3 py-1 rounded-lg text-indigo-700 dark:text-indigo-300 font-medium">
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-lg font-medium ${isDark ? 'bg-indigo-950/60 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
               <Clock className="w-3.5 h-3.5" />
               <span>
                 Active Slot: <strong>{currentSlotInfo.slot}</strong> 
@@ -429,10 +653,10 @@ export default function ClassroomFinder() {
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map(n => (
-              <div key={n} className="h-64 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 animate-pulse p-6">
-                <div className="h-6 w-1/2 bg-slate-200 dark:bg-slate-800 rounded mb-4" />
-                <div className="h-16 bg-slate-100 dark:bg-slate-800/60 rounded-xl mb-4" />
-                <div className="h-10 bg-slate-200 dark:bg-slate-800 rounded" />
+              <div key={n} className={`h-64 rounded-2xl border animate-pulse p-6 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
+                <div className={`h-6 w-1/2 rounded mb-4 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                <div className={`h-16 rounded-xl mb-4 ${isDark ? 'bg-gray-800/60' : 'bg-slate-100'}`} />
+                <div className={`h-10 rounded ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
               </div>
             ))}
           </div>
@@ -456,9 +680,9 @@ export default function ClassroomFinder() {
 
         {/* Empty State */}
         {!loading && !error && filteredRooms.length === 0 && (
-          <div className="text-center py-16 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
+          <div className={`text-center py-16 rounded-2xl border p-8 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
             <Sparkles className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">No matching rooms found</h3>
+            <h3 className="text-lg font-bold">No matching rooms found</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
               Try adjusting your search query or filter selection.
             </p>
@@ -471,7 +695,7 @@ export default function ClassroomFinder() {
           </div>
         )}
 
-        {/* Room Cards Grid */}
+        {/* Room Grid */}
         {!loading && !error && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredRooms.map((room, idx) => {
@@ -482,12 +706,11 @@ export default function ClassroomFinder() {
               return (
                 <div
                   key={roomKey}
-                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden"
+                  className={`rounded-2xl border shadow-sm hover:shadow-md transition-all flex flex-col overflow-hidden ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}
                 >
-                  {/* Card Header */}
-                  <div className="p-5 pb-4 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
+                  <div className={`p-5 pb-4 border-b flex items-start justify-between gap-3 ${isDark ? 'border-gray-800' : 'border-slate-100'}`}>
                     <div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <h3 className="text-xl font-bold flex items-center gap-2">
                         <span>Room {details.roomName}</span>
                       </h3>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -496,16 +719,12 @@ export default function ClassroomFinder() {
                       </div>
                     </div>
 
-                    {/* Summary Badge */}
-                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                    <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${isDark ? 'bg-gray-800 border-gray-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600'}`}>
                       {details.totalFree}/{details.totalSlots} Free Today
                     </span>
                   </div>
 
-                  {/* Main Real-Time Status Block */}
                   <div className="p-5 space-y-4 flex-1">
-                    
-                    {/* Real-Time Status Display Banner */}
                     <div
                       className={`p-4 rounded-xl border flex items-center justify-between transition-colors ${
                         details.currentStatus === 'Available'
@@ -547,19 +766,17 @@ export default function ClassroomFinder() {
                       </div>
                     </div>
 
-                    {/* Active Time Slot Info Bar */}
-                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-xl border border-slate-200/70 dark:border-slate-700/60 space-y-2">
+                    <div className={`p-3.5 rounded-xl border space-y-2 ${isDark ? 'bg-gray-800/40 border-gray-700/60' : 'bg-slate-50 border-slate-200/70'}`}>
                       <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300">
                         <span className="font-semibold flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-indigo-500" />
                           Active Time Slot:
                         </span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-white bg-white dark:bg-slate-700 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600">
+                        <span className={`font-mono font-bold px-2 py-0.5 rounded border ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
                           {currentSlotInfo.slot}
                         </span>
                       </div>
 
-                      {/* Next status prediction */}
                       {details.nextChangeSlot && (
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-200/50 dark:border-slate-700/50 pt-2 flex items-center justify-between">
                           <span>Next Status Change:</span>
@@ -571,7 +788,6 @@ export default function ClassroomFinder() {
                       )}
                     </div>
 
-                    {/* Collapsible Full Day Schedule Drawer */}
                     <div>
                       <button
                         onClick={() => toggleExpandRoom(roomKey)}
@@ -582,7 +798,7 @@ export default function ClassroomFinder() {
                       </button>
 
                       {isExpanded && (
-                        <div className="mt-3 space-y-1.5 border-t border-slate-100 dark:border-slate-800 pt-3 text-xs animate-fadeIn">
+                        <div className={`mt-3 space-y-1.5 border-t pt-3 text-xs animate-fadeIn ${isDark ? 'border-gray-800' : 'border-slate-100'}`}>
                           {TIME_SLOTS.map(slot => {
                             const status = getSlotStatus(room, slot);
                             const isCurrentSlot = slot === currentSlotInfo.slot;
@@ -594,7 +810,7 @@ export default function ClassroomFinder() {
                                 className={`flex items-center justify-between py-1.5 px-3 rounded-lg border ${
                                   isCurrentSlot
                                     ? 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800'
-                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800'
+                                    : isDark ? 'bg-gray-800/30 border-gray-800' : 'bg-slate-50 border-slate-100'
                                 }`}
                               >
                                 <span className={`font-mono ${isCurrentSlot ? 'font-bold text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400'}`}>
@@ -618,8 +834,7 @@ export default function ClassroomFinder() {
 
                   </div>
 
-                  {/* Card Navigation Trigger Button */}
-                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
+                  <div className={`p-4 border-t ${isDark ? 'bg-gray-900/50 border-gray-800' : 'bg-slate-50 border-slate-100'}`}>
                     <button
                       onClick={() => handleOpenNavigation(details.roomName, details.floor)}
                       className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98]"
@@ -637,12 +852,11 @@ export default function ClassroomFinder() {
 
       </div>
 
-      {/* Campus Aerial Navigation Modal */}
+      {/* Campus Navigation Aerial View Modal */}
       {navTargetRoom && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 overflow-hidden animate-fadeIn">
           <div className="bg-slate-900 text-white w-full max-w-5xl rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             
-            {/* Modal Header */}
             <div className="p-4 md:p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between z-10">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-indigo-600 text-white">
@@ -669,10 +883,8 @@ export default function ClassroomFinder() {
               </button>
             </div>
 
-            {/* Interactive Aerial Map Viewport */}
             <div className="relative flex-1 bg-slate-950 overflow-hidden min-h-[420px] flex items-center justify-center">
               
-              {/* Floor Badge (Top Left) */}
               <div className="absolute top-4 left-4 z-20">
                 <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-emerald-500" />
@@ -680,7 +892,6 @@ export default function ClassroomFinder() {
                 </div>
               </div>
 
-              {/* Zoom Controls (Top Right) */}
               <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
                 <button
                   onClick={() => setZoomLevel(prev => Math.min(prev + 25, 200))}
@@ -705,29 +916,23 @@ export default function ClassroomFinder() {
                 </button>
               </div>
 
-              {/* Zoom Readout Badge (Bottom Left) */}
               <div className="absolute bottom-4 left-4 z-20">
                 <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-xl text-xs font-medium shadow-md">
                   Zoom: {zoomLevel}%
                 </div>
               </div>
 
-              {/* Scalable Map Canvas */}
               <div
                 className="relative w-full h-full max-w-4xl max-h-[550px] transition-transform duration-300 ease-out flex items-center justify-center p-4"
                 style={{ transform: `scale(${zoomLevel / 100})` }}
               >
-                {/* Campus Aerial Background Image Container */}
                 <div className="relative w-full h-[400px] md:h-[480px] rounded-2xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-950">
-                  
-                  {/* Satellite Map Image */}
                   <img 
                     src="/images/satellite_map.png" 
                     alt="Campus Aerial Satellite Map"
                     className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
                   />
 
-                  {/* SVG Navigation Route Line */}
                   <svg className="absolute inset-0 w-full h-full z-10 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <path
                       d={BLOCK_MAP_DATA[navTargetRoom.block]?.pathD || 'M 35 98 L 35 70 L 66 70'}
@@ -739,7 +944,6 @@ export default function ClassroomFinder() {
                     />
                   </svg>
 
-                  {/* Target Block Pin Marker */}
                   {BLOCK_MAP_DATA[navTargetRoom.block] && (
                     <div 
                       className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
@@ -760,7 +964,6 @@ export default function ClassroomFinder() {
                     </div>
                   )}
 
-                  {/* Main Gate Entrance Marker */}
                   <div className="absolute left-[35%] top-[95%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
                     <div className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow">
                       <Navigation className="w-2.5 h-2.5 text-white" />
