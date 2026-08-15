@@ -1,47 +1,12 @@
 [
   {
-    "id": 1,
-    "title": "Campus Connect Launched!",
-    "message": "Smart Indoor Navigation System is now live for all students and faculty. Explore the campus digitally!",
-    "type": "announcement",
-    "time": "2 mins ago",
-    "read": false,
-    "icon": "megaphone"
-  },
-  {
-    "id": 2,
-    "title": "Dr. Rajesh Sharma - Status Changed",
-    "message": "Dr. Rajesh Sharma (HOD, CSE) is now Available in Cabin A-101.",
-    "type": "faculty",
-    "time": "15 mins ago",
-    "read": false,
-    "icon": "user"
-  },
-  {
-    "id": 3,
-    "title": "Emergency Drill Scheduled",
-    "message": "Fire safety drill scheduled for tomorrow at 11:00 AM. All students and staff to assemble at ground.",
-    "type": "emergency",
-    "time": "1 hour ago",
-    "read": true,
-    "icon": "alert"
-  },
-  {
-    "id": 4,
-    "title": "Annual Tech Fest 2025",
-    "message": "TechVista 2025 registrations are open! Register your teams for coding, robotics, and project events.",
-    "type": "event",
-    "time": "3 hours ago",
-    "read": true,
-    "icon": "star"
-  },
-  {
-    "id": 5,
-    "title": "Computer Lab 1 - Maintenance",
-    "message": "Computer Lab 1 (Block B, Floor 2) will be under maintenance from 2:00 PM to 5:00 PM today.",
-    "type": "announcement",
-    "time": "5 hours ago",
-    "read": true,
-    "icon": "tool"
+    "id": "1",
+    "title": "Welcome to Campus Connect",
+    "message": "Explore live classroom availability, faculty directory, emergency contacts, and campus navigation.",
+    "time": "Just now",
+    "timestamp": "Just now",
+    "isRead": false,
+    "unread": true,
+    "type": "info"
   }
 ]
