@@ -12,8 +12,13 @@ import {
   Navigation, 
   RefreshCw,
   Calendar,
-  Filter,
-  Sparkles
+  Sparkles,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  X,
+  Compass,
+  ArrowRight
 } from 'lucide-react';
 
 interface RoomRecord {
@@ -41,7 +46,6 @@ const getSlotRangeMinutes = (slotStr: string) => {
     const parts = tStr.trim().split(':');
     let h = parseInt(parts[0], 10);
     const m = parseInt(parts[1], 10);
-    // 1:00 to 5:00 belong to PM hours (13:00 to 17:00)
     if (h >= 1 && h <= 5) {
       h += 12;
     }
@@ -49,6 +53,55 @@ const getSlotRangeMinutes = (slotStr: string) => {
   };
 
   return { start: parseMin(startStr), end: parseMin(endStr) };
+};
+
+// Map Block coordinates and navigation paths (percentage based on satellite_map.png canvas)
+const BLOCK_MAP_DATA: Record<string, { label: string; left: string; top: string; width: string; height: string; pathD: string; pinPos: { left: string; top: string } }> = {
+  'Block M': {
+    label: 'Block M',
+    left: '54%',
+    top: '65%',
+    width: '24%',
+    height: '30%',
+    pathD: 'M 35 98 L 35 70 L 66 70 L 66 75',
+    pinPos: { left: '66%', top: '75%' }
+  },
+  'Block F': {
+    label: 'Block F',
+    left: '6%',
+    top: '16%',
+    width: '14%',
+    height: '44%',
+    pathD: 'M 35 98 L 35 38 L 13 38',
+    pinPos: { left: '13%', top: '38%' }
+  },
+  'Block B': {
+    label: 'Block B',
+    left: '30%',
+    top: '53%',
+    width: '22%',
+    height: '13%',
+    pathD: 'M 35 98 L 35 60',
+    pinPos: { left: '35%', top: '60%' }
+  },
+  'Block E': {
+    label: 'Block E',
+    left: '5%',
+    top: '65%',
+    width: '22%',
+    height: '30%',
+    pathD: 'M 35 98 L 35 80 L 16 80',
+    pinPos: { left: '16%', top: '80%' }
+  },
+  'Admin / Principal': {
+    label: 'Admin / Principal',
+    left: '23%',
+    top: '14%',
+    width: '14%',
+    height: '12%',
+    pathD: 'M 35 98 L 35 22 L 30 22',
+    pinPos: { left: '30%', top: '22%' }
+  }
 };
 
 export default function ClassroomFinder() {
@@ -61,20 +114,25 @@ export default function ClassroomFinder() {
   const [selectedFloor, setSelectedFloor] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'available' | 'occupied'>('all');
   
-  // Real-time Clock (updates every second)
+  // Real-time Clock
   const [now, setNow] = useState<Date>(new Date());
   
   // Expandable timetable accordion per room card
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
 
-  // Get current day name (default to current day or Saturday if Sunday)
+  // Navigation Map Modal State
+  const [navTargetRoom, setNavTargetRoom] = useState<{ name: string; floor: string; block: string } | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(100);
+  const [showDirectionsStep, setShowDirectionsStep] = useState<boolean>(true);
+
+  // Get current day name
   const currentDayName = useMemo(() => {
-    const dayIndex = new Date().getDay(); // 0 is Sunday
+    const dayIndex = new Date().getDay();
     if (dayIndex === 0 || dayIndex > 6) return "Saturday";
     return DAYS_OF_WEEK[dayIndex - 1];
   }, []);
 
-  const [selectedDay, setSelectedDay] = useState<string>(currentDayName);
+  const [selectedDay] = useState<string>(currentDayName);
 
   // Live timer tick
   useEffect(() => {
@@ -92,7 +150,6 @@ export default function ClassroomFinder() {
         .select('*');
 
       if (fetchErr) throw fetchErr;
-
       setRooms(data || []);
     } catch (err: any) {
       console.error('Error fetching room occupancy data:', err);
@@ -155,19 +212,27 @@ export default function ClassroomFinder() {
     return 'Available';
   };
 
+  // Determine block name from room code
+  const getBlockName = (roomName: string): string => {
+    const upper = roomName.toUpperCase().trim();
+    if (upper.startsWith('F-') || upper.startsWith('F') || upper.includes('BLOCK F')) return 'Block F';
+    if (upper.startsWith('B-') || upper.startsWith('B') || upper.includes('BLOCK B')) return 'Block B';
+    if (upper.startsWith('E-') || upper.startsWith('E') || upper.includes('BLOCK E')) return 'Block E';
+    if (upper.includes('ADMIN') || upper.includes('PRINCIPAL')) return 'Admin / Principal';
+    return 'Block M';
+  };
+
   // Compute live room status info
   const getRoomRealtimeDetails = (room: RoomRecord) => {
     const activeSlotKey = currentSlotInfo.slot;
     const currentStatus = getSlotStatus(room, activeSlotKey);
     const isToday = selectedDay === currentDayName;
 
-    // Count total free slots today
     let totalFree = 0;
     TIME_SLOTS.forEach(slot => {
       if (getSlotStatus(room, slot) === 'Available') totalFree++;
     });
 
-    // Find next status change time
     let nextChangeSlot: string | null = null;
     let nextChangeStatus: 'Available' | 'Occupied' | null = null;
 
@@ -187,9 +252,14 @@ export default function ClassroomFinder() {
     const getRoomFloor = (r: RoomRecord) => 
       r['Location / Floor'] || r['Floor'] || r['floor'] || 'Ground Floor';
 
+    const roomName = getRoomName(room);
+    const floor = getRoomFloor(room);
+    const block = getBlockName(roomName);
+
     return {
-      roomName: getRoomName(room),
-      floor: getRoomFloor(room),
+      roomName,
+      floor,
+      block,
       currentStatus,
       totalFree,
       totalSlots: TIME_SLOTS.length,
@@ -214,17 +284,15 @@ export default function ClassroomFinder() {
     return rooms.filter(room => {
       const details = getRoomRealtimeDetails(room);
 
-      // Search filter
       const matchesSearch = 
         details.roomName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        details.floor.toLowerCase().includes(searchQuery.toLowerCase());
+        details.floor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        details.block.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Floor filter
       const matchesFloor = 
         selectedFloor === 'all' || 
         details.floor.toLowerCase() === selectedFloor.toLowerCase();
 
-      // Status filter (Available right now vs Occupied right now)
       const matchesStatus = 
         selectedStatusFilter === 'all' ||
         (selectedStatusFilter === 'available' && details.currentStatus === 'Available') ||
@@ -236,6 +304,14 @@ export default function ClassroomFinder() {
 
   const toggleExpandRoom = (roomKey: string) => {
     setExpandedRooms(prev => ({ ...prev, [roomKey]: !prev[roomKey] }));
+  };
+
+  // Open Navigation Map Modal
+  const handleOpenNavigation = (roomName: string, floor: string) => {
+    const block = getBlockName(roomName);
+    setNavTargetRoom({ name: roomName, floor, block });
+    setZoomLevel(100);
+    setShowDirectionsStep(true);
   };
 
   return (
@@ -406,7 +482,7 @@ export default function ClassroomFinder() {
                       </h3>
                       <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                        <span>{details.floor}</span>
+                        <span>{details.floor} • {details.block}</span>
                       </div>
                     </div>
 
@@ -528,10 +604,10 @@ export default function ClassroomFinder() {
 
                   </div>
 
-                  {/* Card Footer Button */}
+                  {/* Card Navigation Trigger Button */}
                   <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800">
                     <button
-                      onClick={() => alert(`Navigating to Room ${details.roomName}...`)}
+                      onClick={() => handleOpenNavigation(details.roomName, details.floor)}
                       className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 shadow-sm transition active:scale-[0.98]"
                     >
                       <Navigation className="w-3.5 h-3.5" />
@@ -546,6 +622,201 @@ export default function ClassroomFinder() {
         )}
 
       </div>
+
+      {/* Campus Aerial Navigation Modal */}
+      {navTargetRoom && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 md:p-6 overflow-hidden animate-fadeIn">
+          <div className="bg-slate-900 text-white w-full max-w-5xl rounded-3xl border border-slate-800 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            
+            {/* Modal Header */}
+            <div className="p-4 md:p-5 bg-slate-900 border-b border-slate-800 flex items-center justify-between z-10">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-600 text-white">
+                  <Compass className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-lg md:text-xl font-bold flex items-center gap-2">
+                    <span>Navigating to Room {navTargetRoom.name}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-950 text-indigo-300 border border-indigo-800">
+                      {navTargetRoom.block}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Campus aerial view & block location path
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setNavTargetRoom(null)}
+                className="p-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Interactive Aerial Map Viewport */}
+            <div className="relative flex-1 bg-slate-950 overflow-hidden min-h-[420px] flex items-center justify-center">
+              
+              {/* Floor Badge (Top Left) */}
+              <div className="absolute top-4 left-4 z-20">
+                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white px-3.5 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-emerald-500" />
+                  <span>{navTargetRoom.floor}</span>
+                </div>
+              </div>
+
+              {/* Zoom Controls (Top Right) */}
+              <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
+                <button
+                  onClick={() => setZoomLevel(prev => Math.min(prev + 25, 200))}
+                  className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-white rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 transition"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.max(prev - 25, 75))}
+                  className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-white rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 transition"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setZoomLevel(100)}
+                  className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-white rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 transition"
+                  title="Reset Zoom"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Zoom Readout Badge (Bottom Left) */}
+              <div className="absolute bottom-4 left-4 z-20">
+                <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1 rounded-xl text-xs font-medium shadow-md">
+                  Zoom: {zoomLevel}%
+                </div>
+              </div>
+
+              {/* Scalable Map Canvas */}
+              <div
+                className="relative w-full h-full max-w-4xl max-h-[550px] transition-transform duration-300 ease-out flex items-center justify-center p-4"
+                style={{ transform: `scale(${zoomLevel / 100})` }}
+              >
+                {/* Campus Aerial Background Image Container */}
+                <div className="relative w-full h-[400px] md:h-[480px] rounded-2xl border border-slate-800 shadow-2xl overflow-hidden bg-slate-950">
+                  
+                  {/* Satellite Map Image */}
+                  <img 
+                    src="/images/satellite_map.png" 
+                    alt="Campus Aerial Satellite Map"
+                    className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none"
+                  />
+
+                  {/* SVG Navigation Route Line */}
+                  <svg className="absolute inset-0 w-full h-full z-10 pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <path
+                      d={BLOCK_MAP_DATA[navTargetRoom.block]?.pathD || 'M 35 98 L 35 70 L 66 70'}
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="2.5"
+                      strokeDasharray="4 2"
+                      strokeLinecap="round"
+                      className="animate-pulse"
+                    />
+                    {/* Entrance Point Marker */}
+                    <circle cx="35" cy="98" r="3" fill="#10b981" />
+                  </svg>
+
+                  {/* Render Block Interactive Highlights */}
+                  {Object.entries(BLOCK_MAP_DATA).map(([blockKey, blockObj]) => {
+                    const isTarget = navTargetRoom.block === blockKey;
+
+                    return (
+                      <div
+                        key={blockKey}
+                        className={`absolute rounded-xl transition-all p-3 flex flex-col justify-between ${
+                          isTarget
+                            ? 'bg-indigo-900/40 border-2 border-indigo-400 shadow-[0_0_30px_rgba(99,102,241,0.7)] z-20 ring-4 ring-indigo-500/30'
+                            : 'bg-black/30 border border-white/20 opacity-60 hover:opacity-90'
+                        }`}
+                        style={{
+                          left: blockObj.left,
+                          top: blockObj.top,
+                          width: blockObj.width,
+                          height: blockObj.height
+                        }}
+                      >
+                        <span className={`text-xs font-bold px-2 py-1 rounded-md w-max backdrop-blur-sm ${
+                          isTarget ? 'bg-indigo-600 text-white shadow' : 'bg-slate-950/80 text-slate-200'
+                        }`}>
+                          {blockObj.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+
+                  {/* Red Location Marker Badge */}
+                  {BLOCK_MAP_DATA[navTargetRoom.block] && (
+                    <div
+                      className="absolute z-30 transition-all transform -translate-x-1/2 -translate-y-1/2 animate-bounce"
+                      style={{
+                        left: BLOCK_MAP_DATA[navTargetRoom.block].pinPos.left,
+                        top: BLOCK_MAP_DATA[navTargetRoom.block].pinPos.top
+                      }}
+                    >
+                      <div className="bg-rose-600 border border-rose-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 whitespace-nowrap">
+                        <MapPin className="w-3.5 h-3.5 text-white" />
+                        <span>Room {navTargetRoom.name} • {navTargetRoom.floor}</span>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Bottom Directions Drawer */}
+            <div className="bg-slate-900 border-t border-slate-800 p-4 md:p-5 space-y-3 z-10">
+              <div className="flex items-center justify-between text-xs text-slate-400">
+                <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                  <Navigation className="w-4 h-4 text-indigo-400" />
+                  Step-by-Step Directions to {navTargetRoom.name}
+                </span>
+                <button
+                  onClick={() => setShowDirectionsStep(!showDirectionsStep)}
+                  className="text-indigo-400 hover:text-indigo-300 font-medium"
+                >
+                  {showDirectionsStep ? 'Hide Directions' : 'Show Directions'}
+                </button>
+              </div>
+
+              {showDirectionsStep && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">1</span>
+                    <span className="text-slate-300">Enter Main Campus Entrance</span>
+                  </div>
+                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">2</span>
+                    <span className="text-slate-300">Follow main walkway past central lawn</span>
+                  </div>
+                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">3</span>
+                    <span className="text-slate-300">Enter <strong>{navTargetRoom.block}</strong> main corridor</span>
+                  </div>
+                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">4</span>
+                    <span className="text-slate-300">Head to <strong>{navTargetRoom.floor}</strong> → Room {navTargetRoom.name}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
