@@ -18,7 +18,7 @@ import {
   RotateCcw,
   X,
   Compass,
-  ArrowRight
+  Moon
 } from 'lucide-react';
 
 interface RoomRecord {
@@ -55,7 +55,7 @@ const getSlotRangeMinutes = (slotStr: string) => {
   return { start: parseMin(startStr), end: parseMin(endStr) };
 };
 
-// Map Block coordinates and navigation paths (percentage based on satellite_map.png canvas)
+// Map Block coordinates and navigation paths
 const BLOCK_MAP_DATA: Record<string, { label: string; left: string; top: string; width: string; height: string; pathD: string; pinPos: { left: string; top: string } }> = {
   'Block M': {
     label: 'Block M',
@@ -112,7 +112,7 @@ export default function ClassroomFinder() {
   // Filters & Live Time State
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFloor, setSelectedFloor] = useState('all');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'available' | 'occupied'>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<'all' | 'available' | 'occupied' | 'off_hours'>('all');
   
   // Real-time Clock
   const [now, setNow] = useState<Date>(new Date());
@@ -123,7 +123,6 @@ export default function ClassroomFinder() {
   // Navigation Map Modal State
   const [navTargetRoom, setNavTargetRoom] = useState<{ name: string; floor: string; block: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [showDirectionsStep, setShowDirectionsStep] = useState<boolean>(true);
 
   // Get current day name
   const currentDayName = useMemo(() => {
@@ -163,9 +162,11 @@ export default function ClassroomFinder() {
     fetchRoomData();
   }, [selectedDay]);
 
-  // Current active time slot calculation
+  // Current active time slot calculation with operating hours validation
   const currentSlotInfo = useMemo(() => {
     const currentMin = now.getHours() * 60 + now.getMinutes();
+    const firstStart = getSlotRangeMinutes(TIME_SLOTS[0]).start; // 10:30 AM = 630 mins
+    const lastEnd = getSlotRangeMinutes(TIME_SLOTS[TIME_SLOTS.length - 1]).end; // 5:30 PM = 1050 mins
 
     for (let i = 0; i < TIME_SLOTS.length; i++) {
       const slot = TIME_SLOTS[i];
@@ -181,11 +182,10 @@ export default function ClassroomFinder() {
       }
     }
 
-    const firstStart = getSlotRangeMinutes(TIME_SLOTS[0]).start;
     if (currentMin < firstStart) {
       return {
-        slot: TIME_SLOTS[0],
-        index: 0,
+        slot: 'Off Hours',
+        index: -1,
         isOperating: false,
         statusText: 'Before Class Hours',
         timeLabel: 'Classes start at 10:30 AM'
@@ -193,8 +193,8 @@ export default function ClassroomFinder() {
     }
 
     return {
-      slot: TIME_SLOTS[TIME_SLOTS.length - 1],
-      index: TIME_SLOTS.length - 1,
+      slot: 'Off Hours',
+      index: TIME_SLOTS.length,
       isOperating: false,
       statusText: 'Classes Ended',
       timeLabel: 'College operating hours ended at 5:30 PM'
@@ -224,9 +224,14 @@ export default function ClassroomFinder() {
 
   // Compute live room status info
   const getRoomRealtimeDetails = (room: RoomRecord) => {
-    const activeSlotKey = currentSlotInfo.slot;
-    const currentStatus = getSlotStatus(room, activeSlotKey);
     const isToday = selectedDay === currentDayName;
+    const isLiveOperating = isToday && currentSlotInfo.isOperating;
+    const activeSlotKey = currentSlotInfo.slot;
+
+    // Evaluate live status based on operating hours
+    const currentStatus: 'Available' | 'Occupied' | 'Off Hours' = isLiveOperating 
+      ? getSlotStatus(room, activeSlotKey)
+      : 'Off Hours';
 
     let totalFree = 0;
     TIME_SLOTS.forEach(slot => {
@@ -236,13 +241,15 @@ export default function ClassroomFinder() {
     let nextChangeSlot: string | null = null;
     let nextChangeStatus: 'Available' | 'Occupied' | null = null;
 
-    for (let i = currentSlotInfo.index + 1; i < TIME_SLOTS.length; i++) {
-      const s = TIME_SLOTS[i];
-      const st = getSlotStatus(room, s);
-      if (st !== currentStatus) {
-        nextChangeSlot = s;
-        nextChangeStatus = st;
-        break;
+    if (isLiveOperating && currentSlotInfo.index >= 0) {
+      for (let i = currentSlotInfo.index + 1; i < TIME_SLOTS.length; i++) {
+        const s = TIME_SLOTS[i];
+        const st = getSlotStatus(room, s);
+        if (st !== currentStatus) {
+          nextChangeSlot = s;
+          nextChangeStatus = st;
+          break;
+        }
       }
     }
 
@@ -265,7 +272,7 @@ export default function ClassroomFinder() {
       totalSlots: TIME_SLOTS.length,
       nextChangeSlot,
       nextChangeStatus,
-      isLiveOperating: isToday && currentSlotInfo.isOperating
+      isLiveOperating
     };
   };
 
@@ -296,7 +303,8 @@ export default function ClassroomFinder() {
       const matchesStatus = 
         selectedStatusFilter === 'all' ||
         (selectedStatusFilter === 'available' && details.currentStatus === 'Available') ||
-        (selectedStatusFilter === 'occupied' && details.currentStatus === 'Occupied');
+        (selectedStatusFilter === 'occupied' && details.currentStatus === 'Occupied') ||
+        (selectedStatusFilter === 'off_hours' && details.currentStatus === 'Off Hours');
 
       return matchesSearch && matchesFloor && matchesStatus;
     });
@@ -311,7 +319,6 @@ export default function ClassroomFinder() {
     const block = getBlockName(roomName);
     setNavTargetRoom({ name: roomName, floor, block });
     setZoomLevel(100);
-    setShowDirectionsStep(true);
   };
 
   return (
@@ -323,21 +330,21 @@ export default function ClassroomFinder() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                Real-Time Classroom Monitor
+                <span className={`w-2 h-2 rounded-full ${currentSlotInfo.isOperating ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                {currentSlotInfo.isOperating ? 'Real-Time Classroom Monitor' : 'Campus Off-Hours'}
               </span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               Classroom Finder
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Live current occupancy & active slot schedule
+              Live occupancy & active time slot status
             </p>
           </div>
 
           {/* Live Digital Clock Badge */}
           <div className="flex items-center gap-3 bg-slate-100 dark:bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700/60">
-            <Clock className="w-5 h-5 text-indigo-500 animate-spin-slow" />
+            <Clock className="w-5 h-5 text-indigo-500" />
             <div>
               <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
                 Current Time
@@ -397,6 +404,7 @@ export default function ClassroomFinder() {
                 <option value="all">⚡ All Live Statuses</option>
                 <option value="available">🟢 Available Right Now</option>
                 <option value="occupied">🔴 Occupied Right Now</option>
+                <option value="off_hours">🌙 Off Hours</option>
               </select>
             </div>
           </div>
@@ -409,7 +417,10 @@ export default function ClassroomFinder() {
             </div>
             <div className="flex items-center gap-2 bg-indigo-50/70 dark:bg-indigo-950/50 px-3 py-1 rounded-lg text-indigo-700 dark:text-indigo-300 font-medium">
               <Clock className="w-3.5 h-3.5" />
-              <span>Current Active Time Slot: <strong>{currentSlotInfo.slot}</strong></span>
+              <span>
+                Active Slot: <strong>{currentSlotInfo.slot}</strong> 
+                {!currentSlotInfo.isOperating && ` (${currentSlotInfo.timeLabel})`}
+              </span>
             </div>
           </div>
         </div>
@@ -467,7 +478,6 @@ export default function ClassroomFinder() {
               const details = getRoomRealtimeDetails(room);
               const roomKey = String(room.id || details.roomName || idx);
               const isExpanded = !!expandedRooms[roomKey];
-              const isAvailable = details.currentStatus === 'Available';
 
               return (
                 <div
@@ -495,39 +505,43 @@ export default function ClassroomFinder() {
                   {/* Main Real-Time Status Block */}
                   <div className="p-5 space-y-4 flex-1">
                     
-                    {/* Big Real-Time Status Display */}
+                    {/* Real-Time Status Display Banner */}
                     <div
                       className={`p-4 rounded-xl border flex items-center justify-between transition-colors ${
-                        isAvailable
+                        details.currentStatus === 'Available'
                           ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200'
-                          : 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200'
+                          : details.currentStatus === 'Occupied'
+                          ? 'bg-rose-50/80 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/60 text-rose-900 dark:text-rose-200'
+                          : 'bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300'
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         <div
                           className={`p-2.5 rounded-xl ${
-                            isAvailable
+                            details.currentStatus === 'Available'
                               ? 'bg-emerald-500 text-white'
-                              : 'bg-rose-500 text-white'
+                              : details.currentStatus === 'Occupied'
+                              ? 'bg-rose-500 text-white'
+                              : 'bg-slate-500 text-white'
                           }`}
                         >
-                          {isAvailable ? (
-                            <CheckCircle2 className="w-6 h-6" />
-                          ) : (
-                            <XCircle className="w-6 h-6" />
-                          )}
+                          {details.currentStatus === 'Available' && <CheckCircle2 className="w-6 h-6" />}
+                          {details.currentStatus === 'Occupied' && <XCircle className="w-6 h-6" />}
+                          {details.currentStatus === 'Off Hours' && <Moon className="w-6 h-6" />}
                         </div>
                         <div>
                           <div className="text-xs font-semibold uppercase tracking-wide opacity-80">
                             Current Status
                           </div>
                           <div className="text-lg font-extrabold flex items-center gap-2">
-                            <span>{isAvailable ? 'AVAILABLE NOW' : 'OCCUPIED NOW'}</span>
-                            <span
-                              className={`w-2.5 h-2.5 rounded-full ${
-                                isAvailable ? 'bg-emerald-500 animate-ping' : 'bg-rose-500'
-                              }`}
-                            />
+                            <span>
+                              {details.currentStatus === 'Available' && 'AVAILABLE NOW'}
+                              {details.currentStatus === 'Occupied' && 'OCCUPIED NOW'}
+                              {details.currentStatus === 'Off Hours' && 'OFF HOURS'}
+                            </span>
+                            {details.currentStatus === 'Available' && (
+                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -718,105 +732,51 @@ export default function ClassroomFinder() {
                     <path
                       d={BLOCK_MAP_DATA[navTargetRoom.block]?.pathD || 'M 35 98 L 35 70 L 66 70'}
                       fill="none"
-                      stroke="#10b981"
-                      strokeWidth="2.5"
-                      strokeDasharray="4 2"
-                      strokeLinecap="round"
+                      stroke="#6366f1"
+                      strokeWidth="1.5"
+                      strokeDasharray="3 3"
                       className="animate-pulse"
                     />
-                    {/* Entrance Point Marker */}
-                    <circle cx="35" cy="98" r="3" fill="#10b981" />
                   </svg>
 
-                  {/* Render Block Interactive Highlights */}
-                  {Object.entries(BLOCK_MAP_DATA).map(([blockKey, blockObj]) => {
-                    const isTarget = navTargetRoom.block === blockKey;
-
-                    return (
-                      <div
-                        key={blockKey}
-                        className={`absolute rounded-xl transition-all p-3 flex flex-col justify-between ${
-                          isTarget
-                            ? 'bg-indigo-900/40 border-2 border-indigo-400 shadow-[0_0_30px_rgba(99,102,241,0.7)] z-20 ring-4 ring-indigo-500/30'
-                            : 'bg-black/30 border border-white/20 opacity-60 hover:opacity-90'
-                        }`}
-                        style={{
-                          left: blockObj.left,
-                          top: blockObj.top,
-                          width: blockObj.width,
-                          height: blockObj.height
-                        }}
-                      >
-                        <span className={`text-xs font-bold px-2 py-1 rounded-md w-max backdrop-blur-sm ${
-                          isTarget ? 'bg-indigo-600 text-white shadow' : 'bg-slate-950/80 text-slate-200'
-                        }`}>
-                          {blockObj.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-
-                  {/* Red Location Marker Badge */}
+                  {/* Target Block Pin Marker */}
                   {BLOCK_MAP_DATA[navTargetRoom.block] && (
-                    <div
-                      className="absolute z-30 transition-all transform -translate-x-1/2 -translate-y-1/2 animate-bounce"
+                    <div 
+                      className="absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
                       style={{
                         left: BLOCK_MAP_DATA[navTargetRoom.block].pinPos.left,
                         top: BLOCK_MAP_DATA[navTargetRoom.block].pinPos.top
                       }}
                     >
-                      <div className="bg-rose-600 border border-rose-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-2xl flex items-center gap-1.5 whitespace-nowrap">
-                        <MapPin className="w-3.5 h-3.5 text-white" />
-                        <span>Room {navTargetRoom.name} • {navTargetRoom.floor}</span>
+                      <div className="relative flex items-center justify-center">
+                        <span className="absolute w-8 h-8 rounded-full bg-indigo-500/40 animate-ping" />
+                        <div className="w-6 h-6 rounded-full bg-indigo-600 border-2 border-white flex items-center justify-center shadow-lg text-white">
+                          <MapPin className="w-3.5 h-3.5" />
+                        </div>
                       </div>
+                      <span className="mt-1 px-2 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded shadow-md whitespace-nowrap">
+                        {navTargetRoom.name} ({navTargetRoom.block})
+                      </span>
                     </div>
                   )}
 
+                  {/* Main Gate Entrance Marker */}
+                  <div className="absolute left-[35%] top-[95%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow">
+                      <Navigation className="w-2.5 h-2.5 text-white" />
+                    </div>
+                    <span className="text-[9px] font-bold bg-slate-900/90 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 mt-0.5">
+                      Main Gate
+                    </span>
+                  </div>
+
                 </div>
               </div>
+
             </div>
-
-            {/* Modal Bottom Directions Drawer */}
-            <div className="bg-slate-900 border-t border-slate-800 p-4 md:p-5 space-y-3 z-10">
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                  <Navigation className="w-4 h-4 text-indigo-400" />
-                  Step-by-Step Directions to {navTargetRoom.name}
-                </span>
-                <button
-                  onClick={() => setShowDirectionsStep(!showDirectionsStep)}
-                  className="text-indigo-400 hover:text-indigo-300 font-medium"
-                >
-                  {showDirectionsStep ? 'Hide Directions' : 'Show Directions'}
-                </button>
-              </div>
-
-              {showDirectionsStep && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
-                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">1</span>
-                    <span className="text-slate-300">Enter Main Campus Entrance</span>
-                  </div>
-                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">2</span>
-                    <span className="text-slate-300">Follow main walkway past central lawn</span>
-                  </div>
-                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">3</span>
-                    <span className="text-slate-300">Enter <strong>{navTargetRoom.block}</strong> main corridor</span>
-                  </div>
-                  <div className="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700/60 flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">4</span>
-                    <span className="text-slate-300">Head to <strong>{navTargetRoom.floor}</strong> → Room {navTargetRoom.name}</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
           </div>
         </div>
       )}
-
     </div>
   );
 }
