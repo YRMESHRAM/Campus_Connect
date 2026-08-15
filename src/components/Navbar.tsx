@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Search, Menu, Sun, Moon, User, LogOut, Settings, LogIn, Home } from 'lucide-react';
+import { 
+  Bell, 
+  Menu, 
+  Sun, 
+  Moon, 
+  User, 
+  LogOut, 
+  Settings, 
+  Home 
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import notifications from '../data/notifications.json';
 
@@ -13,10 +22,9 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
 
   const isLoggedIn = isFaculty || !!localStorage.getItem('facultyLoggedIn');
   const facultyName = localStorage.getItem('facultyName') || '';
@@ -26,11 +34,6 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const searchSuggestions = [
-    'Room 101', 'Computer Lab 1', 'Electronics Lab', 'Seminar Hall',
-    'Dr. Rajesh Sharma', 'Prof. Sunita Verma', 'CSE Department',
-  ].filter((s) => searchQuery && s.toLowerCase().includes(searchQuery.toLowerCase()));
-
   const handleLogout = () => {
     localStorage.removeItem('facultyLoggedIn');
     localStorage.removeItem('studentLoggedIn');
@@ -38,9 +41,10 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
   };
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 nav-blur border-b ${isDark ? 'border-gray-800 bg-gray-900/95' : 'border-gray-100'} shadow-sm`}>
+    <nav className={`fixed top-0 left-0 right-0 z-50 nav-blur border-b ${isDark ? 'border-gray-800 bg-gray-900/95' : 'border-gray-100 bg-white/95'} shadow-sm`}>
       <div className="flex items-center justify-between px-4 py-3">
-        {/* Left */}
+        
+        {/* Left Side: Menu + Logo */}
         <div className="flex items-center gap-3">
           {onMenuClick && (
             <button
@@ -51,7 +55,12 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
             </button>
           )}
           <Link to="/" className="flex items-center gap-2">
-            <img src="/images/logo.png" alt="SB Jain Logo" className="h-10 w-10 object-contain" />
+            <img 
+              src="/images/logo.png" 
+              alt="SB Jain Logo" 
+              className="h-10 w-10 object-contain" 
+              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} 
+            />
             <div className="hidden sm:block">
               <span className={`font-bold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>Campus Connect</span>
               <p className={`text-xs leading-tight ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>S.B. Jain Institute</p>
@@ -59,54 +68,8 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
           </Link>
         </div>
 
-        {/* Center Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4 relative">
-          <div className={`flex items-center gap-2 w-full px-4 py-2 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-gray-50 border-gray-200'}`}>
-            <Search size={16} className={isDark ? 'text-gray-400' : 'text-gray-400'} />
-            <input
-              type="text"
-              placeholder="Search rooms, faculty, labs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={`flex-1 bg-transparent text-sm outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-700 placeholder-gray-400'}`}
-            />
-          </div>
-          <AnimatePresence>
-            {searchSuggestions.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className={`absolute top-full mt-2 w-full rounded-xl shadow-xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
-              >
-                {searchSuggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}
-                    onClick={() => {
-                      navigate('/search?q=' + encodeURIComponent(s));
-                      setSearchQuery('');
-                    }}
-                  >
-                    <Search size={12} className="inline mr-2 opacity-50" />
-                    {s}
-                  </button>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Right */}
+        {/* Right Side Controls */}
         <div className="flex items-center gap-2">
-          {/* Mobile Search */}
-          <button
-            className={`md:hidden p-2 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
-            onClick={() => setShowSearch(!showSearch)}
-          >
-            <Search size={18} />
-          </button>
-
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -115,7 +78,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
             {isDark ? <Sun size={18} /> : <Moon size={18} />}
           </button>
 
-          {/* Notifications */}
+          {/* Notifications Dropdown */}
           <div className="relative">
             <button
               onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }}
@@ -168,112 +131,61 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
             </AnimatePresence>
           </div>
 
-          {/* Profile / Login */}
-          {isLoggedIn ? (
-            <div className="relative">
-              <button
-                onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
-                  <User size={16} className="text-white" />
-                </div>
-              </button>
-              <AnimatePresence>
-                {showProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                    className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
-                  >
-                    <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                        {facultyName || 'Faculty Portal'}
-                      </p>
-                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} truncate`}>
-                        {facultyName ? facultyDisplayRole : 'S.B. Jain Institute'}
-                      </p>
-                    </div>
-                    <div className="p-2">
+          {/* Profile Menu Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
+              className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+            >
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
+                <User size={16} className="text-white" />
+              </div>
+            </button>
+            <AnimatePresence>
+              {showProfile && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                  className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
+                >
+                  <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {isLoggedIn ? (facultyName || 'Faculty Portal') : 'Campus Connect'}
+                    </p>
+                    <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} truncate`}>
+                      {isLoggedIn ? (facultyName ? facultyDisplayRole : 'S.B. Jain Institute') : 'S.B. Jain Institute'}
+                    </p>
+                  </div>
+                  <div className="p-2">
+                    {isLoggedIn && (
                       <Link to="/faculty/profile" onClick={() => setShowProfile(false)}
                         className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
                         <User size={16} /> My Profile
                       </Link>
-                      <Link to="/settings" onClick={() => setShowProfile(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                        <Settings size={16} /> Settings
-                      </Link>
+                    )}
+                    <Link to="/settings" onClick={() => setShowProfile(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                      <Settings size={16} /> Settings
+                    </Link>
+                    <Link to="/" onClick={() => setShowProfile(false)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
+                      <Home size={16} /> Home
+                    </Link>
+                    {isLoggedIn && (
                       <button onClick={handleLogout}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors text-red-500 ${isDark ? 'hover:bg-red-900/20' : 'hover:bg-red-50'}`}>
                         <LogOut size={16} /> Logout
                       </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <div className="relative">
-              <button
-                onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-                className={`flex items-center gap-2 p-1.5 rounded-xl transition-all ${isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center">
-                  <User size={16} className="text-white" />
-                </div>
-              </button>
-              <AnimatePresence>
-                {showProfile && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                    className={`absolute right-0 mt-2 w-52 rounded-2xl shadow-2xl border overflow-hidden z-50 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'}`}
-                  >
-                    <div className={`px-4 py-3 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <p className={`font-semibold text-sm ${isDark ? 'text-white' : 'text-gray-900'}`}>Campus Connect</p>
-                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>S.B. Jain Institute</p>
-                    </div>
-                    <div className="p-2">
-                      <Link to="/settings" onClick={() => setShowProfile(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                        <Settings size={16} /> Settings
-                      </Link>
-                      <Link to="/home" onClick={() => setShowProfile(false)}
-                        className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${isDark ? 'hover:bg-gray-700 text-gray-200' : 'hover:bg-gray-50 text-gray-700'}`}>
-                        <Home size={16} /> Home
-                      </Link>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
         </div>
       </div>
-
-      {/* Mobile Search Bar */}
-      <AnimatePresence>
-        {showSearch && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className={`px-4 pb-3 md:hidden`}
-          >
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-              <Search size={16} className="text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search rooms, faculty, labs..."
-                className={`flex-1 bg-transparent text-sm outline-none ${isDark ? 'text-white placeholder-gray-500' : 'text-gray-700'}`}
-                autoFocus
-              />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </nav>
   );
 };

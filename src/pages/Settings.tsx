@@ -65,27 +65,7 @@ const Settings: React.FC = () => {
         },
       ],
     },
-    {
-      title: 'Language & Region',
-      icon: Globe,
-      items: [
-        {
-          label: 'Language',
-          desc: 'Choose your preferred language',
-          control: (
-            <select
-              value={settings.language}
-              onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-              className={`text-sm py-1.5 px-3 rounded-lg border outline-none ${isDark ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'}`}
-            >
-              <option>English</option>
-              <option>Hindi</option>
-              <option>Marathi</option>
-            </select>
-          ),
-        },
-      ],
-    },
+    
     {
       title: 'Privacy & Security',
       icon: Shield,
