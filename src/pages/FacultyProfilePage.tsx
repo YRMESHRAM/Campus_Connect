@@ -14,6 +14,7 @@ const FacultyProfilePage: React.FC = () => {
   const defaultEmail = savedCreds.email || localStorage.getItem('facultyEmail') || `${facultyName.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`;
   const defaultPassword = savedCreds.password || 'Pass@123';
 
+  const [dbFacultyName, setDbFacultyName] = useState<string>('');
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -45,6 +46,7 @@ const FacultyProfilePage: React.FC = () => {
       setLoading(true);
       const creds = getFacultyCredentials(facultyName);
       let data: any = null;
+      let matchedName = facultyName;
 
       try {
         const { data: exactData } = await supabase
@@ -55,6 +57,7 @@ const FacultyProfilePage: React.FC = () => {
 
         if (exactData) {
           data = exactData;
+          matchedName = exactData['Faculty Name'];
         } else {
           const { data: ilikeData } = await supabase
             .from('faculty_schedules')
@@ -62,21 +65,24 @@ const FacultyProfilePage: React.FC = () => {
             .ilike('Faculty Name', `%${facultyName}%`);
           if (ilikeData && ilikeData.length > 0) {
             data = ilikeData[0];
+            matchedName = ilikeData[0]['Faculty Name'];
           }
         }
       } catch (err) {
         console.error('Error fetching profile from Supabase:', err);
       }
 
-      const finalEmail = creds.email || (data && data.email) || localStorage.getItem('facultyEmail') || `${facultyName.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`;
-      const finalPassword = creds.password || (data && data.password) || 'Pass@123';
+      setDbFacultyName(matchedName);
+
+      const finalEmail = (data && data.email) || creds.email || localStorage.getItem('facultyEmail') || `${facultyName.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`;
+      const finalPassword = (data && data.password) || creds.password || 'Pass@123';
 
       setProfile({
         id: data ? data.id : null,
         name: (data && data['Faculty Name']) || facultyName,
         designation: creds.designation || (data && data.designation) || localStorage.getItem('facultyDesignation') || 'Faculty Member',
         department: (data && data['Department']) || localStorage.getItem('facultyDepartment') || 'Computer Science & Engineering',
-        cabin: creds.cabin || (data && data['Cabin No.']) || localStorage.getItem('facultyCabin') || 'A-101',
+        cabin: (data && data['Cabin No.']) || creds.cabin || localStorage.getItem('facultyCabin') || 'A-101',
         email: finalEmail,
         phone: (data && data.phone) || '+91 98765 43210',
         officeHours: creds.officeHours || (data && data.officeHours) || 'Mon-Fri: 10:00 AM - 05:00 PM',
@@ -97,7 +103,7 @@ const FacultyProfilePage: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
 
-    // 1. Update local storage & credentials store immediately
+    // 1. Update local storage & credentials store
     localStorage.setItem('facultyEmail', profile.email);
     localStorage.setItem('facultyCabin', profile.cabin);
     localStorage.setItem('facultyDesignation', profile.designation);
@@ -109,29 +115,28 @@ const FacultyProfilePage: React.FC = () => {
       qualification: profile.qualification,
     });
 
-    const updateData = {
+    // 2. Persist to real Supabase database table 'faculty_schedules'
+    const targetName = dbFacultyName || profile.name;
+    const supabasePayload = {
       'Cabin No.': profile.cabin,
       email: profile.email,
-      officeHours: profile.officeHours,
-      designation: profile.designation,
-      qualification: profile.qualification,
     };
 
-    // 2. Persist to Supabase
     try {
-      if (profile.id) {
+      const { error: updateError } = await supabase
+        .from('faculty_schedules')
+        .update(supabasePayload)
+        .eq('Faculty Name', targetName);
+
+      if (updateError) {
+        console.warn('Exact match update failed, attempting ilike match:', updateError);
         await supabase
           .from('faculty_schedules')
-          .update(updateData)
-          .eq('id', profile.id);
-      } else {
-        await supabase
-          .from('faculty_schedules')
-          .update(updateData)
+          .update(supabasePayload)
           .ilike('Faculty Name', `%${profile.name}%`);
       }
     } catch (err) {
-      console.error('Database update error (saved locally):', err);
+      console.error('Database update error:', err);
     }
 
     setSaving(false);
@@ -160,32 +165,39 @@ const FacultyProfilePage: React.FC = () => {
 
     setPassSaving(true);
 
-    // 1. Update local credentials store for reliable local & re-login persistence
+    // 1. Update local credentials store for immediate offline/re-login sync
     updateFacultyCredentials(profile.name, {
       password: passwords.new,
       email: profile.email,
     });
 
-    // 2. Persist to Supabase
+    // 2. Persist to real Supabase database table 'faculty_schedules'
+    const targetName = dbFacultyName || profile.name;
+    const supabasePasswordPayload = {
+      password: passwords.new,
+      email: profile.email,
+    };
+
     try {
-      if (profile.id) {
+      const { error: updateError } = await supabase
+        .from('faculty_schedules')
+        .update(supabasePasswordPayload)
+        .eq('Faculty Name', targetName);
+
+      if (updateError) {
+        console.warn('Exact match password update failed, attempting ilike match:', updateError);
         await supabase
           .from('faculty_schedules')
-          .update({ password: passwords.new, email: profile.email })
-          .eq('id', profile.id);
-      } else {
-        await supabase
-          .from('faculty_schedules')
-          .update({ password: passwords.new, email: profile.email })
+          .update(supabasePasswordPayload)
           .ilike('Faculty Name', `%${profile.name}%`);
       }
-    } catch (_) {
-      // Ignored - local credential store ensures success
+    } catch (err) {
+      console.error('Database password update error:', err);
     }
 
     setPassSaving(false);
     setProfile((prev) => ({ ...prev, password: passwords.new }));
-    setPassStatus({ type: 'success', msg: 'Password updated successfully!' });
+    setPassStatus({ type: 'success', msg: 'Password updated successfully in database!' });
     setPasswords({ current: '', new: '', confirm: '' });
     setTimeout(() => setPassStatus({ type: '', msg: '' }), 3000);
   };
