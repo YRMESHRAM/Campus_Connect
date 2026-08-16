@@ -4,7 +4,7 @@ import { Eye, EyeOff, LogIn, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../supabaseClient';
-import { fetchFacultyFromSupabase, getCachedFacultyData } from '../utils/facultyStore';
+import { fetchFacultyFromSupabase, getCachedFacultyData, verifyFacultyPassword, getFacultyCredentials } from '../utils/facultyStore';
 
 const FacultyLogin: React.FC = () => {
   const { isDark, toggleTheme } = useTheme();
@@ -18,7 +18,6 @@ const FacultyLogin: React.FC = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     const inputName = form.username.trim();
 
     try {
@@ -28,21 +27,33 @@ const FacultyLogin: React.FC = () => {
         const { data: results, error: supabaseError } = await supabase
           .from('faculty_schedules')
           .select('*')
-          .ilike('Faculty Name', `%${inputName}%`);
+          .or(`Faculty Name.ilike.%${inputName}%,email.ilike.%${inputName}%`);
 
         if (!supabaseError && results && results.length > 0) {
           data = results[0];
         }
       } catch (err) {
-        // Ignore Supabase fetch errors
+        // Ignore Supabase query error
       }
 
-      // If Supabase query failed or returned no exact match, check cached Supabase list
+      if (!data) {
+        // Check by exact or partial ilike on Faculty Name
+        try {
+          const { data: results } = await supabase
+            .from('faculty_schedules')
+            .select('*')
+            .ilike('Faculty Name', `%${inputName}%`);
+          if (results && results.length > 0) data = results[0];
+        } catch (_) {}
+      }
+
+      // If Supabase query failed or returned no match, check cached Supabase list
       if (!data) {
         const list = getCachedFacultyData().length > 0 ? getCachedFacultyData() : await fetchFacultyFromSupabase();
         const found = list.find((f) => {
           const n = f["Faculty Name"] || f.name || '';
-          return n.toLowerCase().includes(inputName.toLowerCase());
+          const e = f.email || '';
+          return n.toLowerCase().includes(inputName.toLowerCase()) || (e && e.toLowerCase() === inputName.toLowerCase());
         });
 
         if (found) {
@@ -62,23 +73,27 @@ const FacultyLogin: React.FC = () => {
       setLoading(false);
 
       if (!data) {
-        setError('Invalid faculty name. Please check your username.');
+        setError('Invalid faculty username or email.');
         return;
       }
 
-      // Check password (use data.password if exists, fallback to Pass@123)
-      const validPassword = data.password ? data.password === form.password : form.password === 'Pass@123';
+      const matchedName = data['Faculty Name'] || inputName;
+      const validPassword = verifyFacultyPassword(matchedName, form.password, data.password);
 
       if (!validPassword) {
         setError('Invalid password.');
         return;
       }
 
+      const creds = getFacultyCredentials(matchedName);
+      const savedEmail = creds.email || data.email || `${matchedName.toLowerCase().replace(/[^a-z]/g, '')}@sbjain.edu.in`;
+
       localStorage.setItem('facultyLoggedIn', 'true');
-      localStorage.setItem('facultyName', data['Faculty Name'] || inputName);
-      localStorage.setItem('facultyDepartment', data['Department'] || 'Computer Science & Engineering');
-      localStorage.setItem('facultyCabin', data['Cabin No.'] || 'Cabin A-101');
-      localStorage.setItem('facultyDesignation', data['designation'] || 'Faculty Member');
+      localStorage.setItem('facultyName', matchedName);
+      localStorage.setItem('facultyEmail', savedEmail);
+      localStorage.setItem('facultyDepartment', creds.department || data['Department'] || 'Computer Science & Engineering');
+      localStorage.setItem('facultyCabin', creds.cabin || data['Cabin No.'] || 'Cabin A-101');
+      localStorage.setItem('facultyDesignation', creds.designation || data.designation || 'Faculty Member');
       localStorage.setItem('facultyIsHOD', data.isHOD ? 'true' : 'false');
 
       if (form.remember) localStorage.setItem('rememberedFaculty', inputName);

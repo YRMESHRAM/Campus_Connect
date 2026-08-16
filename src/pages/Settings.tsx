@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Moon, Sun, Bell, Globe, Shield, Info, LogOut, Save, ChevronRight } from 'lucide-react';
+import { Moon, Sun, Bell, Shield, Info, LogOut, Save, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { useNavigate } from 'react-router-dom';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Navigation, BookOpen, MessageSquare, Bell, Phone, Clock, Users, Calendar, Edit3, Mail } from 'lucide-react';
+import { MessageSquare, Bell, Phone, Users, Calendar, Edit3, Mail } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';

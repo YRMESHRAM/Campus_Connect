@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { MapPin, Navigation, Mail, Phone, Clock, Star, ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
+import { MapPin, Navigation, Mail, Clock, Star, ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
 import { getCurrentTeacherStatus } from './FacultyDirectory';
-import { fetchFacultyFromSupabase, getCachedFacultyData, getFacultyAvailability, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
+import { getCachedFacultyData, getFacultyAvailability, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -250,13 +250,6 @@ const FacultyProfile: React.FC = () => {
                   <div>
                     <p className="text-xs text-gray-400">Email</p>
                     <p className="text-sm font-medium">{faculty.email}</p>
-                  </div>
-                </a>
-                <a href={`tel:${faculty.phone}`} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${isDark ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>
-                  <Phone size={16} className="text-blue-500" />
-                  <div>
-                    <p className="text-xs text-gray-400">Phone</p>
-                    <p className="text-sm font-medium">{faculty.phone}</p>
                   </div>
                 </a>
               </div>

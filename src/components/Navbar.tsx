@@ -32,7 +32,7 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
   const facultyDepartment = localStorage.getItem('facultyDepartment') || '';
   const facultyDisplayRole = facultyDepartment ? `${facultyDesignation}, ${facultyDepartment}` : facultyDesignation;
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const handleLogout = () => {
     localStorage.removeItem('facultyLoggedIn');
@@ -105,9 +105,9 @@ const Navbar: React.FC<NavbarProps> = ({ onMenuClick, isFaculty = false }) => {
                   </div>
                   <div className="max-h-80 overflow-y-auto scrollbar-thin">
                     {notifications.map((n) => (
-                      <div key={n.id} className={`px-4 py-3 border-b transition-colors cursor-pointer ${!n.read ? (isDark ? 'bg-green-900/20' : 'bg-green-50/50') : ''} ${isDark ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-50 hover:bg-gray-50'}`}>
+                      <div key={n.id} className={`px-4 py-3 border-b transition-colors cursor-pointer ${!n.isRead ? (isDark ? 'bg-green-900/20' : 'bg-green-50/50') : ''} ${isDark ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-50 hover:bg-gray-50'}`}>
                         <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.read ? 'bg-green-500' : (isDark ? 'bg-gray-600' : 'bg-gray-200')}`} />
+                          <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${!n.isRead ? 'bg-green-500' : (isDark ? 'bg-gray-600' : 'bg-gray-200')}`} />
                           <div>
                             <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{n.title}</p>
                             <p className={`text-xs mt-0.5 line-clamp-2 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{n.message}</p>

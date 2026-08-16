@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, Megaphone, User, AlertTriangle, Star, Wrench, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import notificationsData from '../data/notifications.json';
-
-const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  megaphone: Megaphone,
-  user: User,
-  alert: AlertTriangle,
-  star: Star,
-  tool: Wrench,
-};
 
 const typeColors: Record<string, { bg: string; text: string; border: string }> = {
   announcement: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
@@ -25,10 +17,10 @@ const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState(notificationsData);
   const [filter, setFilter] = useState('all');
 
-  const markAllRead = () => setNotifications((n) => n.map((notif) => ({ ...notif, read: true })));
+  const markAllRead = () => setNotifications((n) => n.map((notif) => ({ ...notif, isRead: true })));
   const filters = ['all', 'announcement', 'faculty', 'emergency', 'event'];
   const filtered = filter === 'all' ? notifications : notifications.filter((n) => n.type === filter);
-  const unread = notifications.filter((n) => !n.read).length;
+  const unread = notifications.filter((n) => !n.isRead).length;
 
   return (
     <Layout>
@@ -78,7 +70,7 @@ const Notifications: React.FC = () => {
         {/* Notifications List */}
         <div className="space-y-3">
           {filtered.map((notif, i) => {
-            const Icon = iconMap[notif.icon] || Bell;
+            const Icon = Bell;
             const colors = typeColors[notif.type] || typeColors.announcement;
 
             return (
@@ -87,9 +79,9 @@ const Notifications: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
-                onClick={() => setNotifications((ns) => ns.map((n) => n.id === notif.id ? { ...n, read: true } : n))}
+                onClick={() => setNotifications((ns) => ns.map((n) => n.id === notif.id ? { ...n, isRead: true } : n))}
                 className={`relative p-4 rounded-2xl border cursor-pointer transition-all ${
-                  !notif.read
+                  !notif.isRead
                     ? isDark ? 'bg-green-900/20 border-green-800/50 hover:bg-green-900/30' : 'bg-green-50/60 border-green-200 hover:bg-green-50'
                     : isDark ? 'bg-gray-800 border-gray-700 hover:bg-gray-750' : 'bg-white border-gray-200 shadow-sm hover:bg-gray-50'
                 }`}
@@ -102,7 +94,7 @@ const Notifications: React.FC = () => {
                     <div className="flex items-start justify-between gap-2">
                       <h3 className={`font-semibold text-sm leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{notif.title}</h3>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {!notif.read && <div className="w-2 h-2 bg-green-500 rounded-full" />}
+                        {!notif.isRead && <div className="w-2 h-2 bg-green-500 rounded-full" />}
                       </div>
                     </div>
                     <p className={`text-xs mt-1 leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>{notif.message}</p>

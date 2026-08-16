@@ -27,7 +27,6 @@ const CHANNEL_NAME = 'campus_connect_faculty_status';
 
 // ─── In-memory cache of Supabase faculty data ───
 let _cachedFacultyData: any[] = [];
-let _lastFetchTime = 0;
 
 /**
  * Normalizes a faculty name for flexible matching across components
@@ -56,6 +55,68 @@ function getStoredAvailabilities(): Record<string, AvailabilityStatus> {
   }
 }
 
+const CREDENTIALS_KEY = 'faculty_credentials_map';
+
+export interface FacultyCredentials {
+  password?: string;
+  email?: string;
+  cabin?: string;
+  designation?: string;
+  qualification?: string;
+  officeHours?: string;
+}
+
+/**
+ * Retrieves saved credentials override for a faculty member from localStorage.
+ */
+export function getFacultyCredentials(name: string): FacultyCredentials {
+  if (!name) return {};
+  try {
+    const raw = localStorage.getItem(CREDENTIALS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    const norm = normalizeFacultyName(name);
+    return map[name] || (norm ? map[norm] : {}) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+/**
+ * Updates stored credentials override for a faculty member in localStorage.
+ */
+export function updateFacultyCredentials(name: string, updates: FacultyCredentials): void {
+  if (!name) return;
+  try {
+    const raw = localStorage.getItem(CREDENTIALS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    const norm = normalizeFacultyName(name);
+
+    const existing = map[name] || (norm ? map[norm] : {}) || {};
+    const updated = { ...existing, ...updates };
+
+    map[name] = updated;
+    if (norm) map[norm] = updated;
+
+    localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.error('Error saving faculty credentials:', e);
+  }
+}
+
+/**
+ * Verifies password for a faculty member against localStorage override, Supabase data, or default 'Pass@123'.
+ */
+export function verifyFacultyPassword(name: string, passwordInput: string, supabaseDataPassword?: string): boolean {
+  const creds = getFacultyCredentials(name);
+  if (creds.password) {
+    return creds.password === passwordInput;
+  }
+  if (supabaseDataPassword) {
+    return supabaseDataPassword === passwordInput;
+  }
+  return passwordInput === 'Pass@123';
+}
+
 /**
  * Returns the cached Supabase faculty list
  */
@@ -74,7 +135,6 @@ export async function fetchFacultyFromSupabase(): Promise<any[]> {
 
     if (!error && data && data.length > 0) {
       _cachedFacultyData = data;
-      _lastFetchTime = Date.now();
 
       // Merge local availability overrides into cached Supabase data
       const localMap = getStoredAvailabilities();

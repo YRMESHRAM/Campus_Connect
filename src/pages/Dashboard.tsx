@@ -88,13 +88,6 @@ const Dashboard: React.FC = () => {
     },
   ];
 
-  const recentActivity = [
-    { text: 'Computer Lab 1 is now available', time: '5 min ago', dot: 'bg-green-500' },
-    { text: 'Dr. Rajesh Sharma changed status to Available', time: '12 min ago', dot: 'bg-blue-500' },
-    { text: 'Fire drill scheduled for tomorrow 11 AM', time: '1 hr ago', dot: 'bg-red-500' },
-    { text: 'TechVista 2025 registrations now open', time: '3 hrs ago', dot: 'bg-purple-500' },
-  ];
-
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-4 py-8">
