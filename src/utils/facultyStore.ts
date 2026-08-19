@@ -61,6 +61,7 @@ export interface FacultyCredentials {
   password?: string;
   email?: string;
   cabin?: string;
+  department?: string;
   designation?: string;
   qualification?: string;
   officeHours?: string;

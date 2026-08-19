@@ -39,7 +39,7 @@ const TIME_SLOTS = [
   "4:30-5:30"
 ];
 
-const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const getSlotRangeMinutes = (slotStr: string) => {
   const [startStr, endStr] = slotStr.split('-');
@@ -123,13 +123,16 @@ export default function ClassroomFinder() {
   const [navTargetRoom, setNavTargetRoom] = useState<{ name: string; floor: string; block: string } | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
 
+  // Automatically detect Today's day name (e.g. "Tuesday")
   const currentDayName = useMemo(() => {
-    const dayIndex = new Date().getDay();
-    if (dayIndex === 0 || dayIndex > 6) return "Saturday";
-    return DAYS_OF_WEEK[dayIndex - 1];
-  }, []);
+    return DAYS_OF_WEEK[now.getDay()];
+  }, [now]);
 
-  const [selectedDay] = useState<string>(currentDayName);
+  const [selectedDay, setSelectedDay] = useState<string>(currentDayName);
+
+  useEffect(() => {
+    setSelectedDay(currentDayName);
+  }, [currentDayName]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
@@ -156,7 +159,7 @@ export default function ClassroomFinder() {
 
   useEffect(() => {
     fetchRoomData();
-  }, [selectedDay]);
+  }, []);
 
   const currentSlotInfo = useMemo(() => {
     const currentMin = now.getHours() * 60 + now.getMinutes();
@@ -214,6 +217,29 @@ export default function ClassroomFinder() {
     return 'Block M';
   };
 
+  // Helper to extract Day column value from Supabase record
+  const getRoomDay = (room: RoomRecord): string => {
+    const keys = ['Day', 'day', 'DAY', 'Day of Week', 'Day_of_Week', 'day_of_week', 'DayName', 'day_name', 'Day Name', 'Days', 'days'];
+    for (const key of keys) {
+      if (room[key] !== undefined && room[key] !== null) {
+        return String(room[key]).trim();
+      }
+    }
+    return '';
+  };
+
+  // Flexible day matching (supports "Tuesday", "Tue", "tuesday")
+  const isMatchingDay = (room: RoomRecord, targetDay: string): boolean => {
+    const roomDay = getRoomDay(room);
+    if (!roomDay) return true;
+    const cleanRoomDay = roomDay.toLowerCase();
+    const cleanTarget = targetDay.toLowerCase();
+    return cleanRoomDay === cleanTarget || cleanRoomDay.slice(0, 3) === cleanTarget.slice(0, 3);
+  };
+
+  const getRoomName = (r: RoomRecord) => 
+    r['Lab Room No.'] || r['Room No.'] || r['Room'] || r['room_number'] || 'Unknown Room';
+
   const getRoomRealtimeDetails = (room: RoomRecord) => {
     const isToday = selectedDay === currentDayName;
     const isLiveOperating = isToday && currentSlotInfo.isOperating;
@@ -242,9 +268,6 @@ export default function ClassroomFinder() {
         }
       }
     }
-
-    const getRoomName = (r: RoomRecord) => 
-      r['Lab Room No.'] || r['Room No.'] || r['Room'] || r['room_number'] || 'Unknown Room';
 
     const getRoomFloor = (r: RoomRecord) => 
       r['Location / Floor'] || r['Floor'] || r['floor'] || 'Ground Floor';
@@ -276,7 +299,23 @@ export default function ClassroomFinder() {
   }, [rooms]);
 
   const filteredRooms = useMemo(() => {
-    return rooms.filter(room => {
+    // 1. Filter rows matching selected day
+    const dayFiltered = rooms.filter(room => isMatchingDay(room, selectedDay));
+
+    // 2. Strict Deduplication by Room Name so M-005 appears ONLY ONCE
+    const uniqueRoomsMap = new Map<string, RoomRecord>();
+
+    dayFiltered.forEach(room => {
+      const roomNumKey = String(getRoomName(room)).toUpperCase().trim();
+      if (!uniqueRoomsMap.has(roomNumKey)) {
+        uniqueRoomsMap.set(roomNumKey, room);
+      }
+    });
+
+    const uniqueRoomsList = Array.from(uniqueRoomsMap.values());
+
+    // 3. Apply Search, Floor, and Status filters
+    return uniqueRoomsList.filter(room => {
       const details = getRoomRealtimeDetails(room);
 
       const matchesSearch = 
@@ -313,7 +352,7 @@ export default function ClassroomFinder() {
       {/* Main Content Area */}
       <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
         
-        {/* Page Header (Faculty Directory Style) */}
+        {/* Page Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center shadow-md">
@@ -328,7 +367,7 @@ export default function ClassroomFinder() {
 
         {/* Filter Bar */}
         <div className={`p-5 rounded-2xl border shadow-sm space-y-4 ${isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             
             <div className="relative md:col-span-2">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -347,6 +386,20 @@ export default function ClassroomFinder() {
                   <XCircle className="w-4 h-4" />
                 </button>
               )}
+            </div>
+
+            <div>
+              <select
+                value={selectedDay}
+                onChange={e => setSelectedDay(e.target.value)}
+                className={`w-full py-2.5 px-3.5 text-sm rounded-xl border font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
+              >
+                {DAYS_OF_WEEK.filter(d => d !== 'Sunday').map(day => (
+                  <option key={day} value={day}>
+                    📅 {day} {day === currentDayName ? '(Today)' : ''}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
@@ -379,7 +432,7 @@ export default function ClassroomFinder() {
           <div className={`pt-2 border-t flex flex-wrap items-center justify-between gap-2 text-xs ${isDark ? 'border-gray-800 text-slate-400' : 'border-slate-100 text-slate-500'}`}>
             <div className="flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Showing <strong>{filteredRooms.length}</strong> of {rooms.length} rooms for <strong>{selectedDay}</strong></span>
+              <span>Showing <strong>{filteredRooms.length}</strong> classrooms for <strong>{selectedDay}</strong></span>
             </div>
             <div className={`flex items-center gap-2 px-3 py-1 rounded-lg font-medium ${isDark ? 'bg-indigo-950/60 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>
               <Clock className="w-3.5 h-3.5" />
@@ -707,11 +760,9 @@ export default function ClassroomFinder() {
                   )}
 
                   <div className="absolute left-[35%] top-[95%] -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center">
-                    <div className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center shadow">
-                      <Navigation className="w-2.5 h-2.5 text-white" />
-                    </div>
-                    <span className="text-[9px] font-bold bg-slate-900/90 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 mt-0.5">
-                      Main Gate
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 border-2 border-white shadow-lg animate-pulse" />
+                    <span className="mt-1 px-2 py-0.5 text-[10px] font-bold bg-emerald-600 text-white rounded shadow-md whitespace-nowrap">
+                      Main Gate / Entrance
                     </span>
                   </div>
 
@@ -719,9 +770,10 @@ export default function ClassroomFinder() {
               </div>
 
             </div>
+
           </div>
         </div>
       )}
     </Layout>
   );
-}
+}
