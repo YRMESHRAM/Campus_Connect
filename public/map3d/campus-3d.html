@@ -1,0 +1,521 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Campus Connect â€” 3D Campus Map</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; background: #dce8d4; }
+    canvas { display: block; }
+    .hud {
+      position: absolute; left: 16px; top: 16px; z-index: 2;
+      background: rgba(255,255,255,.94); border: 1px solid #d5d2c8;
+      border-radius: 12px; padding: 12px 14px; width: 268px;
+      box-shadow: 0 8px 24px rgba(30,40,50,.1);
+    }
+    .hud h1 { margin: 0 0 4px; font-size: 15px; color: #1e2933; }
+    .hud p { margin: 0 0 10px; font-size: 11px; color: #5b6772; line-height: 1.4; }
+    .views, .floors { display: flex; flex-wrap: wrap; gap: 6px; }
+    .floors { margin-top: 8px; }
+    button {
+      border: 1px solid #cfd4d8; background: #fff; border-radius: 8px;
+      padding: 6px 10px; font-size: 11px; cursor: pointer; color: #1e2933;
+    }
+    button.active { background: #2c4a6e; color: #fff; border-color: #2c4a6e; }
+    .now { margin-top: 10px; font-size: 12px; font-weight: 700; color: #2c4a6e; }
+    .legend { margin-top: 8px; font-size: 11px; color: #3b4650; }
+    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+    .hint { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: #3b4650; background: rgba(255,255,255,.85); padding: 6px 10px; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="hud">
+    <h1>3D Campus Map</h1>
+    <p>Pick a floor to isolate only that storey and its rooms.</p>
+    <div class="views">
+      <button data-view="iso" class="active">Isometric</button>
+      <button data-view="top">Top</button>
+      <button data-view="fl">Front-left</button>
+      <button data-view="fr">Front-right</button>
+    </div>
+    <div class="floors">
+      <button data-floor="all">All floors</button>
+      <button data-floor="0" class="active">Ground</button>
+      <button data-floor="1">1st</button>
+      <button data-floor="2">2nd</button>
+      <button data-floor="3">3rd</button>
+    </div>
+    <div class="now" id="now">Showing: Ground Floor only</div>
+    <div class="legend">
+      <div><i style="background:#c9a46c"></i>Admin / exam</div>
+      <div><i style="background:#6ea8d4"></i>Labs / halls / library</div>
+      <div><i style="background:#d89a62"></i>HOD</div>
+      <div><i style="background:#9aa7b5"></i>Working building</div>
+      <div><i style="background:#c5ced6"></i>Washroom / stairs</div>
+    </div>
+  </div>
+  <div class="hint">Drag to orbit Â· scroll to zoom</div>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/map3d/vendor/three/three.module.js",
+      "three/addons/": "/map3d/vendor/three/addons/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xd7e4cc);
+    scene.fog = new THREE.Fog(0xd7e4cc, 280, 700);
+
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 800);
+    camera.position.set(95, 70, 95);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.shadowMap.enabled = true;
+    document.body.appendChild(renderer.domElement);
+
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(innerWidth, innerHeight);
+    Object.assign(labelRenderer.domElement.style, { position: "absolute", top: "0", pointerEvents: "none" });
+    document.body.appendChild(labelRenderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.target.set(8, 3, 4);
+    controls.maxPolarAngle = Math.PI / 2.05;
+    controls.minDistance = 40;
+    controls.maxDistance = 520;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.74));
+    const sun = new THREE.DirectionalLight(0xfff4e0, 0.85);
+    sun.position.set(60, 90, 40);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(2048, 2048);
+    [-120, 120, 120, -120].forEach(() => {});
+    Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120 });
+    scene.add(sun);
+    scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x8fba7a, 0.32));
+
+    const mats = {
+      grass: new THREE.MeshStandardMaterial({ color: 0xb7d4a8, roughness: .95 }),
+      court: new THREE.MeshStandardMaterial({ color: 0xcfe3b8, roughness: .92 }),
+      road: new THREE.MeshStandardMaterial({ color: 0xb8bec6, roughness: .85 }),
+      pad: new THREE.MeshStandardMaterial({ color: 0xe8efe3, roughness: .9 }),
+      park: new THREE.MeshStandardMaterial({ color: 0xc5cad1, roughness: .88 }),
+      wall: new THREE.MeshStandardMaterial({ color: 0xf3eee6, roughness: .78 }),
+      wallWarm: new THREE.MeshStandardMaterial({ color: 0xe8d9b8, roughness: .78 }),
+      wallWork: new THREE.MeshStandardMaterial({ color: 0x8fa3b5, roughness: .7 }),
+      wallHOD: new THREE.MeshStandardMaterial({ color: 0xd89a62, roughness: .75 }),
+      wallLab: new THREE.MeshStandardMaterial({ color: 0x7eb6d9, roughness: .72 }),
+      roof: new THREE.MeshStandardMaterial({ color: 0x6d7c8a, roughness: .65 }),
+      wash: new THREE.MeshStandardMaterial({ color: 0xc5ced6, roughness: .8 }),
+      glass: new THREE.MeshStandardMaterial({ color: 0x9ec4de, roughness: .25, metalness: .12, transparent: true, opacity: .8 }),
+      trunk: new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 1 }),
+      leaf: new THREE.MeshStandardMaterial({ color: 0x5f9a4a, roughness: .85 }),
+      slab: new THREE.MeshStandardMaterial({ color: 0xd8d2c6, roughness: .9 }),
+    };
+
+    const campus = new THREE.Group();
+    scene.add(campus);
+    const ground = new THREE.Group();
+    ground.name = "ground-context";
+    campus.add(ground);
+
+    const floorGroups = [0, 1, 2, 3].map((i) => {
+      const g = new THREE.Group();
+      g.name = "floor-" + i;
+      campus.add(g);
+      return g;
+    });
+
+    const FH = 3.35;
+    const slabH = 0.22;
+    function floorY(n) { return 0.35 + n * FH + FH / 2; }
+
+    function box(w, h, d, mat, x, y, z, parent, id) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      if (id) m.name = id;
+      parent.add(m);
+      return m;
+    }
+
+    function label(parent, text, x, y, z, major = false) {
+      const el = document.createElement("div");
+      el.className = "map-label";
+      const floorId = parent.userData.floorId;
+      if (floorId !== undefined) el.dataset.floor = String(floorId);
+      el.textContent = text;
+      el.style.cssText = major
+        ? "font:700 11px Segoe UI,sans-serif;color:#1e2933;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:4px;white-space:nowrap;border:1px solid #d5d2c8"
+        : "font:650 9px Segoe UI,sans-serif;color:#24303a;background:rgba(255,255,255,.82);padding:1px 4px;border-radius:3px;white-space:nowrap";
+      const obj = new CSS2DObject(el);
+      obj.position.set(x, y, z);
+      obj.userData.isLabel = true;
+      parent.add(obj);
+      return obj;
+    }
+
+    function room(parent, id, w, d, x, z, floor, mat, title, major = false) {
+      const y = floorY(floor);
+      const h = FH - slabH - 0.15;
+      const m = box(w, h, d, mat, x, y, z, parent, id);
+      // window
+      if (w > 2.2 && d > 2.2) {
+        box(Math.max(w - 1.2, 1), 0.9, 0.08, mats.glass, x, y + 0.15, z + d / 2 + 0.02, parent);
+      }
+      if (title) label(parent, title, x, y + h / 2 + 0.15, z, major);
+      return m;
+    }
+
+    function slab(parent, w, d, x, z, floor) {
+      const y = 0.35 + floor * FH + slabH / 2;
+      box(w, slabH, d, mats.slab, x, y, z, parent);
+    }
+
+    // ===== GROUND CONTEXT (always visible) =====
+    box(320, 0.6, 560, mats.grass, -20, -0.3, -80, ground);
+    box(200, 0.4, 150, mats.pad, 4, 0.05, 4, ground);
+    const road = new THREE.Mesh(new THREE.RingGeometry(78, 92, 64), mats.road);
+    road.rotation.x = -Math.PI / 2;
+    road.position.set(4, 0.12, 6);
+    road.scale.set(1.15, 0.85, 1);
+    road.receiveShadow = true;
+    ground.add(road);
+    box(52, 0.25, 30, mats.court, -4, 0.22, -6, ground);
+    label(ground, "OPEN GROUND", -4, 1.0, -6, true);
+    box(32, 0.22, 16, mats.park, -2, 0.22, 28, ground);
+    box(8, 0.22, 22, mats.park, 48, 0.22, 22, ground);
+    box(16, 0.22, 12, mats.park, 72, 0.22, 36, ground);
+    label(ground, "PARKING", -2, 1.2, 28, true);
+    label(ground, "PARKING", 72, 1.2, 36);
+
+    box(6.4, 3.0, 4.8, mats.wallLab, -63, 1.7, 22.5, ground, "amul-franchise");
+    label(ground, "AMUL FRANCHISE", -63, 3.7, 22.5, true);
+    box(6.4, 3.0, 4.8, mats.wallLab, -63, 1.7, 28.4, ground, "snack-shop");
+    label(ground, "SNACK SHOP", -63, 3.7, 28.4, true);
+    box(5.6, 3.5, 18, mats.wallLab, -94, 1.95, -2, ground, "stationary-shop");
+    label(ground, "STATIONARY", -94, 4.2, -2, true);
+    box(8, 0.18, 88, mats.road, -94, 0.16, -50, ground, "canteen-road");
+    box(14, 3.6, 7.4, mats.wallLab, -94, 2.0, -96, ground, "canteen");
+    label(ground, "CANTEEN", -94, 4.4, -96, true);
+
+    function tree(x, z, s = 1) {
+      const t = new THREE.Group();
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * s, 0.26 * s, 1.6 * s, 6), mats.trunk);
+      tr.position.y = 0.8 * s; tr.castShadow = true;
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15 * s, 0), mats.leaf);
+      leaf.position.y = 2.1 * s; leaf.castShadow = true;
+      t.add(tr, leaf);
+      t.position.set(x, 0, z);
+      ground.add(t);
+    }
+    [[-70,-50],[-60,-55],[-40,-58],[-20,-60],[20,-58],[50,-52],[70,-30],[78,-10],
+     [-72,10],[-74,30],[-60,58],[-30,62],[10,64],[40,60],[70,50],[82,8],[84,20]]
+      .forEach(([x, z], i) => tree(x, z, 0.85 + (i % 3) * 0.15));
+
+    function working(f) {
+      const g = floorGroups[f];
+      room(g, "working-n", 34, 8.5, 18, -28, f, mats.wallWork, "WORKING BUILDING", true);
+      room(g, "working-e", 10, 32, 32, -10, f, mats.wallWork, null);
+    }
+
+    function stairs(f, x, z, title) {
+      room(floorGroups[f], "stairs", 3.4, 3.8, x, z, f, mats.wash, title || "STAIRS");
+    }
+
+    function shells(f) {
+      const g = floorGroups[f];
+      slab(g, 24, 12, -40, -28, f);
+      slab(g, 12, 42, -52, -1, f);
+      slab(g, 52, 10, -2, 12, f);
+      slab(g, 32, 24, -46, 26, f);
+      slab(g, 24, 26, 26, 24, f);
+      slab(g, 24, 10, -8, -28, f);
+    }
+
+    // ========== GROUND FLOOR ==========
+    {
+      const f = 0, g = floorGroups[0];
+      working(0);
+      shells(0);
+      room(g, "admin-block", 20, 8.5, -6, -28, 0, mats.wallWarm, "ADMIN BLOCK", true);
+      room(g, "student-section", 8, 6, -22, -27, 0, mats.wallLab, "STUDENT SECTION");
+
+      room(g, "room-F001", 6.5, 8, -32, -28, 0, mats.wall, "F001");
+      room(g, "room-F002", 6.5, 8, -39, -28, 0, mats.wall, "F002");
+      room(g, "room-F003", 8, 6, -52, -22, 0, mats.wall, "F003");
+      room(g, "room-F004", 8, 6.2, -52, -10, 0, mats.wall, "F004");
+      room(g, "entrance-f", 8, 3.2, -52, -4.2, 0, mats.wall, "ENTRANCE");
+      room(g, "room-G004", 6.2, 3.6, -43, -4.2, 0, mats.wall, "G004 STATIONARY");
+      stairs(0, -37, -4.2, "STAIRS");
+      room(g, "room-F005", 8, 4.2, -52, 1.2, 0, mats.wall, "F005");
+      room(g, "room-F006", 8, 4.2, -52, 6, 0, mats.wall, "F006");
+      room(g, "room-F007", 8, 4.2, -52, 10.8, 0, mats.wall, "F007");
+      room(g, "room-F008", 8, 5, -52, 15.4, 0, mats.wash, "F008 BW");
+      room(g, "entrance-f008", 8, 3.4, -54, 19.4, 0, mats.wall, "ENTRANCE");
+      room(g, "room-E001", 5, 5.5, -56, 24.2, 0, mats.wall, "E001");
+      room(g, "room-E0002", 6, 3.6, -56, 28, 0, mats.wall, "E0002");
+      room(g, "room-E003", 6, 3.6, -56, 32, 0, mats.wall, "E003");
+      room(g, "room-E004", 6, 3.6, -56, 36, 0, mats.wall, "E004");
+      room(g, "room-E005", 6.5, 7, -48, 34, 0, mats.wallLab, "E005");
+      room(g, "room-E006", 6.5, 7, -41, 34, 0, mats.wallLab, "E006");
+      room(g, "etc", 7, 4.2, -44, 26, 0, mats.wallLab, "ETC", true);
+      room(g, "room-G005", 5, 3.4, -50, 24, 0, mats.wall, "G005");
+      stairs(0, -38, 17.5, "STAIRS");
+      room(g, "seek-room", 6.5, 3.6, -32, 17.5, 0, mats.wall, "SEEK ROOM");
+      room(g, "room-E007", 5.5, 3.6, -25, 17.5, 0, mats.wash, "E007 GW");
+      room(g, "computer-lab", 6, 6, -34, 30, 0, mats.wallLab, "COMPUTER LAB", true);
+      room(g, "room-E010", 6, 3.4, -34, 36, 0, mats.wallHOD, "E010 HOD");
+      room(g, "room-E011", 5, 4, -41, 38, 0, mats.wall, "E011");
+      room(g, "room-E009", 3.6, 5, -29, 35, 0, mats.wall, "E009");
+
+      room(g, "room-B001", 5.4, 4.4, -22, 11, 0, mats.wall, "B001");
+      room(g, "room-B002", 6.2, 4.8, -16, 11, 0, mats.wallHOD, "B002 HOD");
+      room(g, "project-lab", 7.2, 4.6, -8.5, 11, 0, mats.wallLab, "PROJECT LAB", true);
+      room(g, "room-B003", 6, 5.2, -1.5, 11, 0, mats.wall, "B003 A2");
+      room(g, "stage", 14, 6.4, 9, 11, 0, mats.wallHOD, "STAGE", true);
+      room(g, "room-B004", 5.4, 5.2, 19, 11, 0, mats.wall, "B004");
+      room(g, "room-B005", 4.8, 5.2, 24.2, 11, 0, mats.wall, "B005");
+      room(g, "room-B007", 4.6, 3.4, 8, 17.2, 0, mats.wall, "B007");
+      stairs(0, 13.2, 17.2, "STAIRS");
+      room(g, "entrance-stage", 6.4, 3, 8, 21.2, 0, mats.wall, "ENTRANCE");
+
+      room(g, "auditorium", 14, 8, 20, 20, 0, mats.wallLab, "AUDITORIUM M008", true);
+      stairs(0, 29, 16, "STAIRS TO TERRACE");
+      room(g, "room-M007", 6, 5, 18, 28, 0, mats.wall, "M007");
+      room(g, "room-M006", 6, 5, 18, 34, 0, mats.wall, "M006");
+      room(g, "room-CL", 4, 3.2, 18, 39, 0, mats.wallLab, "CL");
+      room(g, "room-M001", 6.2, 3.6, 32, 20, 0, mats.wall, "M001");
+      room(g, "room-M002", 6.2, 3.8, 32, 24.2, 0, mats.wash, "M002 BW");
+      room(g, "room-M003A1", 6.2, 3.4, 32, 28.2, 0, mats.wall, "M003 A1");
+      room(g, "room-M003A4", 6.2, 3.4, 32, 32, 0, mats.wall, "M003 A4");
+      room(g, "room-M004", 4.2, 3, 21.6, 39, 0, mats.wall, "M004");
+      room(g, "room-M003A5", 4.2, 3, 26, 39, 0, mats.wall, "M003 A5");
+      room(g, "room-M003A7", 4.2, 3, 30.6, 39, 0, mats.wall, "M003 A7");
+      room(g, "room-M003A8", 4.2, 3, 35.2, 39, 0, mats.wall, "M003 A8");
+      room(g, "entrance-e", 6, 2.8, 40, 16, 0, mats.wall, "ENTRANCE");
+      room(g, "mw", 5, 4, 72, 4, 0, mats.wash, "MW");
+      room(g, "canteen-entrance", 6.6, 3.2, -84, -96, 0, mats.wall, "CANTEEN ENTRANCE");
+    }
+
+    // ========== 1st FLOOR ==========
+    {
+      const f = 1, g = floorGroups[1];
+      working(1);
+      shells(1);
+      room(g, "room-F101", 6.5, 8, -32, -28, 1, mats.wall, "F101");
+      room(g, "room-F102", 6.5, 8, -39, -28, 1, mats.wall, "F102");
+      room(g, "room-F103A1", 8, 5, -52, -20, 1, mats.wallLab, "F103 A1 PL");
+      room(g, "room-F103", 8, 4.4, -52, -14, 1, mats.wall, "F103");
+      room(g, "room-F104", 8, 4.2, -52, 2, 1, mats.wall, "F104");
+      room(g, "room-F105", 8, 4.4, -52, 7, 1, mats.wall, "F105 CR");
+      room(g, "room-F106", 8, 4.4, -52, 12, 1, mats.wall, "F106");
+      room(g, "room-F107", 8, 4.2, -52, 17, 1, mats.wash, "F107 GW");
+
+      room(g, "room-B101", 6, 4.2, -20, 12, 1, mats.wall, "B101");
+      room(g, "room-B102", 6, 4.2, -12, 11, 1, mats.wall, "B102");
+      room(g, "room-B103", 10, 5.8, -2, 11, 1, mats.wallHOD, "B103 HOD", true);
+      room(g, "room-B104", 6, 4.2, 8, 11, 1, mats.wall, "B104");
+      room(g, "room-B105", 4, 6, 14, 11, 1, mats.wall, "B105");
+      stairs(1, 0.5, 16.6, "STAIRS");
+      room(g, "room-B106A1", 3.6, 4.5, 5, 16.6, 1, mats.wall, "B106 A1");
+      room(g, "room-B106A2", 3.6, 4.5, 9, 16.6, 1, mats.wall, "B106 A2");
+
+      room(g, "room-E101", 5, 6, -56, 20, 1, mats.wall, "E101");
+      room(g, "room-E102", 6, 3.6, -56, 26, 1, mats.wall, "E102");
+      room(g, "room-E103", 6, 3.6, -56, 30.2, 1, mats.wallHOD, "E103 HOD");
+      room(g, "room-E104", 6, 3.6, -56, 34.2, 1, mats.wall, "E104");
+      room(g, "room-E105", 6.5, 7, -48, 32, 1, mats.wall, "E105");
+      room(g, "mca-lab", 9, 8.5, -39, 30, 1, mats.wallLab, "MCA LAB", true);
+      stairs(1, -50, 20, "STAIRS");
+      room(g, "room-E107", 6.5, 3.6, -42, 20, 1, mats.wall, "E107");
+      room(g, "room-E-BW", 4.5, 3.2, -34, 20, 1, mats.wash, "BW");
+      room(g, "room-E111", 3.6, 5, -40, 28, 1, mats.wall, "E111");
+      room(g, "room-E108", 3.4, 3.6, -36, 28, 1, mats.wall, "E108");
+      room(g, "room-E110", 6, 3, -38, 35, 1, mats.wall, "E110");
+      room(g, "room-E109", 3.4, 5, -32, 33, 1, mats.wall, "E109");
+      room(g, "faculty-e109", 5.2, 3.4, -32, 28.4, 1, mats.wall, "FACULTY ROOM");
+
+      room(g, "cad-2", 8, 4, 20, 18, 1, mats.wallLab, "CAD-2", true);
+      stairs(1, 27, 18, "STAIRS");
+      room(g, "room-M114", 3.6, 8, 16, 26, 1, mats.wall, "M114");
+      room(g, "room-M113", 3.6, 5, 16, 34, 1, mats.wall, "M113");
+      room(g, "room-M101", 6.5, 3.8, 32, 18, 1, mats.wall, "M101");
+      room(g, "room-M102", 6.5, 3.4, 32, 22.5, 1, mats.wash, "M102 GW");
+      room(g, "room-M103", 6.5, 3.4, 32, 26.4, 1, mats.wall, "M103");
+      room(g, "room-M104", 6.5, 3.4, 32, 30.2, 1, mats.wall, "M104");
+      room(g, "room-M105", 5.4, 3.4, 33, 34, 1, mats.wall, "M105");
+      room(g, "room-M106", 3.6, 3.4, 27.6, 34, 1, mats.wash, "M106 FW");
+      room(g, "room-M107", 3.6, 3.4, 23.6, 34, 1, mats.wall, "M107");
+      room(g, "room-M108", 4, 3.6, 19.4, 34, 1, mats.wallHOD, "M108 HOD");
+      room(g, "room-M109", 3.6, 3.2, 19.4, 29.8, 1, mats.wall, "M109");
+      room(g, "room-M110", 3.6, 3.2, 23.4, 29.8, 1, mats.wall, "M110");
+      room(g, "room-M111", 3.6, 3.2, 27.4, 29.8, 1, mats.wall, "M111");
+      room(g, "room-M112A1", 4.5, 3, 24, 24, 1, mats.wall, "M112 A1");
+      room(g, "room-M112A2", 3.6, 3, 29, 24, 1, mats.wall, "M112 A2");
+    }
+
+    // ========== 2nd FLOOR ==========
+    {
+      const f = 2, g = floorGroups[2];
+      working(2);
+      shells(2);
+      room(g, "room-F201", 6.5, 8, -32, -28, 2, mats.wall, "F201");
+      room(g, "room-F202", 6.5, 8, -39, -28, 2, mats.wall, "F202");
+      room(g, "library", 9, 9, -52, -4, 2, mats.wallLab, "CENTRAL LIBRARY F203", true);
+      room(g, "room-F205", 8, 5.2, -52, 8, 2, mats.wall, "F205");
+      room(g, "room-F206", 8, 4.2, -52, 15, 2, mats.wash, "F206 BW");
+
+      room(g, "room-B201", 4.5, 6.5, -10, 11, 2, mats.wall, "B201");
+      room(g, "room-B202", 4.5, 6.5, -5, 11, 2, mats.wall, "B202");
+      room(g, "room-B203", 5, 6.5, 3, 11, 2, mats.wall, "B203");
+      stairs(2, 3, 17.4, "STAIRS");
+      room(g, "room-B206A2", 3.6, 3.6, 8, 16.5, 2, mats.wall, "B206 A2");
+      room(g, "room-B206FW", 3.6, 3.6, 12, 16.5, 2, mats.wash, "B206 FW");
+
+      room(g, "room-E201", 6.5, 5.2, -56, 20, 2, mats.wall, "E201");
+      room(g, "exam-center", 12, 11, -52, 30, 2, mats.wallWarm, "EXAM CENTER", true);
+      room(g, "faculty-e", 7, 3.8, -48, 20, 2, mats.wall, "FACULTY ROOM");
+      stairs(2, -40, 20, "STAIRS");
+      room(g, "room-E207", 3.6, 4.5, -34, 20, 2, mats.wall, "E207");
+      room(g, "room-E-GW", 3, 3.6, -30, 20, 2, mats.wash, "GW");
+      room(g, "room-E211", 4, 6, -42, 30, 2, mats.wall, "E211");
+      room(g, "room-E208", 3.6, 5, -37, 28, 2, mats.wall, "E208");
+      room(g, "room-E210", 6, 3, -38, 36, 2, mats.wall, "E210");
+      room(g, "room-E209", 3.4, 5.5, -32, 33, 2, mats.wall, "E209");
+      room(g, "room-E206", 5, 3, -46, 36, 2, mats.wall, "E206 A1");
+
+      room(g, "room-M215", 10, 3.6, 20, 18, 2, mats.wall, "M215");
+      stairs(2, 28, 18, "STAIRS");
+      room(g, "room-M214", 3.6, 8, 16, 26, 2, mats.wall, "M214");
+      room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wall, "M213");
+      room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wall, "M201");
+      room(g, "room-M202", 6.2, 3.6, 33, 22.2, 2, mats.wash, "M202 BW");
+      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wall, "FACULTY ROOM");
+      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wall, "M204");
+      room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wall, "M205");
+      room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wall, "M209");
+      room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "DEPT LIBRARY", true);
+      room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD");
+      room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wall, "M207");
+      room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wall, "M206");
+      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wall, "M203");
+      room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wall, "M211");
+      room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wall, "M212 A2");
+    }
+
+    // ========== 3rd FLOOR ==========
+    {
+      const f = 3, g = floorGroups[3];
+      working(3);
+      shells(3);
+
+      room(g, "room-E303", 3.6, 8, -56, 30, 3, mats.wall, "E303");
+      room(g, "room-E301", 6, 3.6, -50, 26, 3, mats.wall, "E301");
+      room(g, "room-E302", 6, 3.6, -50, 30.2, 3, mats.wall, "E302");
+      room(g, "seminar-hall-etc", 10, 5, -48, 35, 3, mats.wallLab, "E305 SEMINAR HALL ETC", true);
+      stairs(3, -38, 20, "STAIRS");
+
+      room(g, "seminar-hall", 13, 11, 24, 24, 3, mats.wallLab, "SEMINAR HALL", true);
+      room(g, "room-M309", 4.5, 6, 14, 18, 3, mats.wall, "M309");
+      room(g, "room-M308", 3.6, 5, 14, 26, 3, mats.wall, "M308");
+      room(g, "room-M307", 5.2, 3.4, 15, 34, 3, mats.wall, "M307");
+      room(g, "room-M301", 6.2, 3.4, 34, 18, 3, mats.wall, "M301");
+      room(g, "room-M302", 6.2, 3.4, 34, 22.2, 3, mats.wash, "M302 GW");
+      room(g, "room-B201-3", 6.2, 3.4, 34, 26.4, 3, mats.wall, "B201");
+      room(g, "room-B202-3", 6.2, 3.4, 34, 30.4, 3, mats.wall, "B202");
+      room(g, "room-M304", 6.2, 3.6, 34, 34.8, 3, mats.wall, "M304");
+      room(g, "room-M305", 6.2, 3.6, 27.4, 35, 3, mats.wall, "M305");
+      stairs(3, 12, 12, "STAIRS");
+      stairs(3, 22, 16, "STAIRS");
+    }
+
+    const names = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor"];
+    const now = document.getElementById("now");
+
+    // CSS2DRenderer ignores parent.visible â€” hide every child + DOM label.
+    function isolateFloor(group, on) {
+      if (on) {
+        if (!group.parent) campus.add(group);
+      } else if (group.parent) {
+        campus.remove(group);
+      }
+      group.visible = on;
+      group.traverse((obj) => {
+        obj.visible = on;
+        if (obj.isCSS2DObject && obj.element) {
+          obj.element.style.display = on ? "" : "none";
+          if (!on && obj.element.parentNode) obj.element.remove();
+        }
+      });
+    }
+
+    function showFloor(key) {
+      if (key === "all") {
+        floorGroups.forEach((g) => isolateFloor(g, true));
+        now.textContent = "Showing: All floors stacked";
+        return;
+      }
+      const n = Number(key);
+      floorGroups.forEach((g, i) => isolateFloor(g, i === n));
+      document.querySelectorAll(".map-label[data-floor]").forEach((el) => {
+        el.style.display = el.dataset.floor === String(n) ? "" : "none";
+      });
+      now.textContent = "Showing: " + names[n] + " only";
+    }
+    showFloor("0");
+
+    const views = {
+      iso: { pos: [95, 70, 95], tgt: [8, 3, 4] },
+      top: { pos: [6, 155, 10], tgt: [6, 0, 6] },
+      fl: { pos: [-90, 50, 100], tgt: [4, 4, 6] },
+      fr: { pos: [110, 48, 90], tgt: [4, 4, 6] },
+    };
+    document.querySelectorAll(".views button").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".views button").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        const v = views[b.dataset.view];
+        camera.position.set(...v.pos);
+        controls.target.set(...v.tgt);
+      };
+    });
+    document.querySelectorAll(".floors button").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".floors button").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        showFloor(b.dataset.floor);
+      };
+    });
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+      labelRenderer.setSize(innerWidth, innerHeight);
+    });
+
+        window.addEventListener('message', function(e) { if (e.data && e.data.type === 'SHOW_FLOOR') { var f = e.data.floor; document.querySelectorAll('.floors button').forEach(function(b) { b.classList.remove('active'); if (b.dataset.floor === String(f)) b.classList.add('active'); }); showFloor(String(f)); } });
+
+    (function tick() {
+      requestAnimationFrame(tick);
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    })();
+  </script>
+</body>
+</html>
+
+
