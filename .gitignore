@@ -30,4 +30,4 @@ dist-ssr
 .env.test.local
 .env.production.local
 .env.local
-src/supabaseClient.ts
+**/supabaseClient.ts
