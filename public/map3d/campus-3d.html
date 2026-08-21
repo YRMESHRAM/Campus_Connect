@@ -898,17 +898,58 @@
       });
     }
 
+    let currentStartLocation = "ENTRANCE_F";
+
+    const startLocations = {
+      ENTRANCE_F: { label: "🚩 ENTRANCE (F004-F005)", pos: new THREE.Vector3(-52, 0.45, -4.2) },
+      MAIN_GATE: { label: "🚩 MAIN GATE", pos: new THREE.Vector3(-2, 0.45, 60) },
+      PARKING: { label: "🚩 PARKING AREA", pos: new THREE.Vector3(-2, 0.45, 28) },
+      ADM: { label: "🚩 ADMIN BLOCK", pos: new THREE.Vector3(-6, 0.45, -24) },
+      BLOCK_E: { label: "🚩 BLOCK E ENTRANCE", pos: new THREE.Vector3(-54, 0.45, 19.4) },
+      BLOCK_B: { label: "🚩 BLOCK B ENTRANCE", pos: new THREE.Vector3(8, 0.45, 17.2) },
+      BLOCK_M: { label: "🚩 BLOCK M ENTRANCE", pos: new THREE.Vector3(25, 0.45, 16) },
+      CANTEEN: { label: "🚩 CANTEEN ENTRANCE", pos: new THREE.Vector3(-84, 0.45, -96) }
+    };
+
     // Precise corridor, doorway, staircase, and floor hallway waypoint router
-    function getRoutePoints(targetBlock, floorLevel = 0) {
+    function getRoutePoints(targetBlock, floorLevel = 0, startKey = currentStartLocation) {
       const pts = [];
       const fY = floorY(floorLevel) + 0.15;
 
-      // Entrance between F004 and F005 (Start Point)
-      const startPos = new THREE.Vector3(-52, 0.45, -4.2);
+      const startObj = startLocations[startKey] || startLocations.ENTRANCE_F;
+      const startPos = startObj.pos.clone();
       pts.push(startPos);
 
-      // Exit F entrance to main left corridor junction
-      pts.push(new THREE.Vector3(-43, 0.45, -4.2));
+      // Transition from chosen start point into the main corridor network
+      if (startKey === "MAIN_GATE") {
+        pts.push(new THREE.Vector3(-2, 0.45, 28));
+        pts.push(new THREE.Vector3(-2, 0.45, 17.2));
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+      } else if (startKey === "PARKING") {
+        pts.push(new THREE.Vector3(-2, 0.45, 17.2));
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+      } else if (startKey === "ADM") {
+        pts.push(new THREE.Vector3(-6, 0.45, -22));
+        pts.push(new THREE.Vector3(-43, 0.45, -22));
+        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
+      } else if (startKey === "BLOCK_E") {
+        pts.push(new THREE.Vector3(-43, 0.45, 19.4));
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+      } else if (startKey === "BLOCK_B") {
+        pts.push(new THREE.Vector3(8, 0.45, 17.2));
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+      } else if (startKey === "BLOCK_M") {
+        pts.push(new THREE.Vector3(25, 0.45, 16));
+        pts.push(new THREE.Vector3(25, 0.45, 17.2));
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+      } else if (startKey === "CANTEEN") {
+        pts.push(new THREE.Vector3(-60, 0.45, -50));
+        pts.push(new THREE.Vector3(-60, 0.45, -4.2));
+        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
+      } else {
+        // ENTRANCE_F (Default)
+        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
+      }
 
       let finalTargetPos = null;
       if (targetDestinationObject) {
@@ -920,13 +961,12 @@
       const blockUpper = (targetBlock || "M").toUpperCase();
 
       if (blockUpper === "M") {
-        // Main building corridor BELOW grass field (z = 17.2) connecting Block F to Block M
         pts.push(new THREE.Vector3(-43, 0.45, 17.2));
         pts.push(new THREE.Vector3(25, 0.45, 17.2));
-        pts.push(new THREE.Vector3(25, 0.45, 16)); // Block M Entrance
+        pts.push(new THREE.Vector3(25, 0.45, 16));
 
         if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(29, 0.45, 16)); // Staircase Landing
+          pts.push(new THREE.Vector3(29, 0.45, 16));
           for (let i = 1; i <= 6; i++) {
             const ratio = i / 6;
             pts.push(new THREE.Vector3(
@@ -935,8 +975,8 @@
               16 + ratio * 1.5
             ));
           }
-          pts.push(new THREE.Vector3(29, fY, 16)); // Upper Landing
-          pts.push(new THREE.Vector3(26, fY, 16)); // Upper Corridor
+          pts.push(new THREE.Vector3(29, fY, 16));
+          pts.push(new THREE.Vector3(26, fY, 16));
           if (finalTargetPos) {
             pts.push(new THREE.Vector3(26, fY, finalTargetPos.z));
             pts.push(finalTargetPos);
@@ -959,12 +999,11 @@
         }
       } else if (blockUpper === "F") {
         if (finalTargetPos && finalTargetPos.z <= -20) {
-          // Top wing (F001, F002, etc.)
           pts.push(new THREE.Vector3(-43, 0.45, -22));
           pts.push(new THREE.Vector3(finalTargetPos.x, 0.45, -22));
           pts.push(finalTargetPos);
         } else if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(-37, 0.45, -4.2)); // Stairwell
+          pts.push(new THREE.Vector3(-37, 0.45, -4.2));
           for (let i = 1; i <= 6; i++) {
             const ratio = i / 6;
             pts.push(new THREE.Vector3(
@@ -973,8 +1012,8 @@
               -4.2
             ));
           }
-          pts.push(new THREE.Vector3(-37, fY, -4.2)); // Upper Landing
-          pts.push(new THREE.Vector3(-43, fY, -4.2)); // Upper Left Corridor
+          pts.push(new THREE.Vector3(-37, fY, -4.2));
+          pts.push(new THREE.Vector3(-43, fY, -4.2));
           if (finalTargetPos) {
             pts.push(new THREE.Vector3(-43, fY, finalTargetPos.z));
             pts.push(finalTargetPos);
@@ -992,7 +1031,7 @@
       } else if (blockUpper === "ADM") {
         pts.push(new THREE.Vector3(-43, 0.45, -22));
         pts.push(new THREE.Vector3(-6, 0.45, -22));
-        pts.push(new THREE.Vector3(-6, 0.45, -24)); // Admin Entrance
+        pts.push(new THREE.Vector3(-6, 0.45, -24));
         if (finalTargetPos) {
           pts.push(finalTargetPos);
         } else {
@@ -1000,9 +1039,9 @@
         }
       } else if (blockUpper === "E") {
         pts.push(new THREE.Vector3(-43, 0.45, 19.4));
-        pts.push(new THREE.Vector3(-54, 0.45, 19.4)); // Block E Entrance
+        pts.push(new THREE.Vector3(-54, 0.45, 19.4));
         if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(-38, 0.45, 20)); // Stairwell
+          pts.push(new THREE.Vector3(-38, 0.45, 20));
           for (let i = 1; i <= 6; i++) {
             const ratio = i / 6;
             pts.push(new THREE.Vector3(
@@ -1028,9 +1067,9 @@
         }
       } else if (blockUpper === "B") {
         pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-        pts.push(new THREE.Vector3(8, 0.45, 17.2)); // Block B Entrance
+        pts.push(new THREE.Vector3(8, 0.45, 17.2));
         if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(13.2, 0.45, 17.2)); // Stairwell
+          pts.push(new THREE.Vector3(13.2, 0.45, 17.2));
           for (let i = 1; i <= 6; i++) {
             const ratio = i / 6;
             pts.push(new THREE.Vector3(
@@ -1071,6 +1110,9 @@
     let targetBeacon = null;
     let isPathVisible = true;
     let currentRouteFloor = 0;
+    let currentTargetBlock = "M";
+    let currentTargetName = null;
+    let currentCabinCode = null;
 
     function createCustomLabel(text, className, pos) {
       const el = document.createElement("div");
@@ -1082,7 +1124,13 @@
       return obj;
     }
 
-    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null) {
+    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null) {
+      if (startKey) currentStartLocation = startKey;
+      currentTargetBlock = targetBlock;
+      currentRouteFloor = floorLevel;
+      currentTargetName = customTargetName;
+      currentCabinCode = cabinCode;
+
       while (pathGroup.children.length > 0) {
         const child = pathGroup.children[0];
         if (child.isCSS2DObject && child.element && child.element.parentNode) {
@@ -1094,14 +1142,11 @@
 
       const cabin = cabinCode || customTargetName || targetBlock;
 
-      // Highlight destination room and fade out every single other room
       setRoomFocus(targetBlock, cabin, floorLevel);
 
       if (!isPathVisible) return;
 
-      currentRouteFloor = floorLevel;
-
-      const points = getRoutePoints(targetBlock, floorLevel);
+      const points = getRoutePoints(targetBlock, floorLevel, currentStartLocation);
       if (points.length < 2) return;
 
       activeCurve = new CorridorCurve(points);
@@ -1128,7 +1173,9 @@
       startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), pathMat);
       startBeacon.position.copy(startPos).add(new THREE.Vector3(0, 1.25, 0));
       pathGroup.add(startBeacon);
-      createCustomLabel("🚩 ENTRANCE (F004-F005)", "pin-label-start", startPos.clone().add(new THREE.Vector3(0, 3.2, 0)));
+
+      const startObj = startLocations[currentStartLocation] || startLocations.ENTRANCE_F;
+      createCustomLabel(startObj.label, "pin-label-start", startPos.clone().add(new THREE.Vector3(0, 3.2, 0)));
 
       const targetPos = points[points.length - 1];
       targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.2, 16), pulseMat);
@@ -1136,7 +1183,6 @@
       targetBeacon.position.copy(targetPos).add(new THREE.Vector3(0, 2.5, 0));
       pathGroup.add(targetBeacon);
 
-      // Glowing aura box around target destination
       const auraGeo = new THREE.BoxGeometry(4.5, 4.5, 4.5);
       const auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.8 });
       targetAuraBox = new THREE.Mesh(auraGeo, auraMat);
@@ -1165,11 +1211,11 @@
         if (isPathVisible) {
           togglePathBtn.textContent = "Path: ON";
           togglePathBtn.classList.remove("off");
-          render3DGreenPath(routeSelect ? routeSelect.value : "M", currentRouteFloor);
+          render3DGreenPath(currentTargetBlock, currentRouteFloor, currentTargetName, currentCabinCode);
         } else {
           togglePathBtn.textContent = "Path: OFF";
           togglePathBtn.classList.add("off");
-          render3DGreenPath(routeSelect ? routeSelect.value : "M", currentRouteFloor);
+          render3DGreenPath(currentTargetBlock, currentRouteFloor, currentTargetName, currentCabinCode);
         }
       };
     }
@@ -1194,6 +1240,7 @@
         var floor = e.data.floor !== undefined ? Number(e.data.floor) : 0;
         var cabin = e.data.cabin || '';
         var name = e.data.name || cabin || block;
+        var startLoc = e.data.startLocation || e.data.start || currentStartLocation;
 
         document.querySelectorAll('.floors button').forEach(function (b) {
           b.classList.remove('active');
@@ -1207,7 +1254,7 @@
           togglePathBtn.textContent = "Path: ON";
           togglePathBtn.classList.remove("off");
         }
-        render3DGreenPath(block, floor, name, cabin);
+        render3DGreenPath(block, floor, name, cabin, startLoc);
       }
     });
 

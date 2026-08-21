@@ -105,17 +105,49 @@ const CampusMap: React.FC = () => {
     );
   }, [searchQuery, facultyList]);
 
+  const [startLocation, setStartLocation] = useState<string>('ENTRANCE_F');
+  const currentTargetRef = useRef<{ block: string; floor: number; name?: string; cabin?: string }>({
+    block: 'M',
+    floor: 0,
+    name: 'Block M (CSE / AIML)',
+  });
+
+  const startLocationOptions = [
+    { key: 'ENTRANCE_F', label: 'Entrance (F004-F005)' },
+    { key: 'MAIN_GATE', label: 'Main Gate' },
+    { key: 'PARKING', label: 'Parking Area' },
+    { key: 'ADM', label: 'Admin Block' },
+    { key: 'BLOCK_E', label: 'Block E Entrance' },
+    { key: 'BLOCK_B', label: 'Block B Entrance' },
+    { key: 'BLOCK_M', label: 'Block M Entrance' },
+    { key: 'CANTEEN', label: 'Canteen' },
+  ];
+
   /** Send a postMessage to the iframe to show 3D green navigation path */
-  const sendNavigateToIframe = (block: string, floor: number, name?: string, cabin?: string) => {
+  const sendNavigateToIframe = (
+    block: string,
+    floor: number,
+    name?: string,
+    cabin?: string,
+    startLoc: string = startLocation
+  ) => {
+    currentTargetRef.current = { block, floor, name, cabin };
     try {
       iframeRef.current?.contentWindow?.postMessage({
         type: 'NAVIGATE',
         block,
         floor,
         name: name || `Block ${block}`,
-        cabin
+        cabin,
+        startLocation: startLoc
       }, '*');
     } catch (_) { }
+  };
+
+  const handleStartLocationChange = (newStart: string) => {
+    setStartLocation(newStart);
+    const curr = currentTargetRef.current;
+    sendNavigateToIframe(curr.block, curr.floor, curr.name, curr.cabin, newStart);
   };
 
   const handleSelectFaculty = (faculty: FacultyMember) => {
@@ -149,49 +181,73 @@ const CampusMap: React.FC = () => {
           </p>
         </motion.div>
 
-        {/* Quick 3D Green Path Presets Bar */}
-        <div className={`p-3 rounded-2xl border mb-6 flex flex-wrap items-center gap-2 ${isDark ? 'bg-emerald-950/30 border-emerald-800/50' : 'bg-emerald-50/80 border-emerald-200'
-          }`}>
-          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
-            Quick 3D Path:
-          </span>
-          <button
-            onClick={() => handleSelectRoutePreset('M', 'Block M (CSE / AIML)')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Block M (CSE/AIML)
-          </button>
-          <button
-            onClick={() => handleSelectRoutePreset('F', 'Block F (1st Year)')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Block F (1st Year)
-          </button>
-          <button
-            onClick={() => handleSelectRoutePreset('ADM', 'Admin Block')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Admin Block
-          </button>
-          <button
-            onClick={() => handleSelectRoutePreset('E', 'Block E (ETC/MCA)')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Block E (ETC/MCA)
-          </button>
-          <button
-            onClick={() => handleSelectRoutePreset('B', 'Block B (Mechanical)')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Block B (Mechanical)
-          </button>
-          <button
-            onClick={() => handleSelectRoutePreset('CANTEEN', 'Campus Canteen')}
-            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
-          >
-            Canteen
-          </button>
+        {/* Start Location & Destination Controls Bar */}
+        <div className={`p-3.5 rounded-2xl border mb-6 flex flex-wrap items-center justify-between gap-3 ${
+          isDark ? 'bg-emerald-950/40 border-emerald-800/60' : 'bg-emerald-50/90 border-emerald-200'
+        }`}>
+          {/* Start Location Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-1">
+              <Navigation className="w-4 h-4 text-emerald-500 animate-pulse" />
+              Route From:
+            </span>
+            <select
+              value={startLocation}
+              onChange={(e) => handleStartLocationChange(e.target.value)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
+                isDark
+                  ? 'bg-gray-800 border-gray-700 text-emerald-300'
+                  : 'bg-white border-emerald-300 text-emerald-900 shadow-sm'
+              }`}
+            >
+              {startLocationOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  🚩 {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Quick Destination Presets */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 mr-1">Destination:</span>
+            <button
+              onClick={() => handleSelectRoutePreset('M', 'Block M (CSE / AIML)')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Block M
+            </button>
+            <button
+              onClick={() => handleSelectRoutePreset('F', 'Block F (1st Year)')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Block F
+            </button>
+            <button
+              onClick={() => handleSelectRoutePreset('ADM', 'Admin Block')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Admin Block
+            </button>
+            <button
+              onClick={() => handleSelectRoutePreset('E', 'Block E (ETC/MCA)')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Block E
+            </button>
+            <button
+              onClick={() => handleSelectRoutePreset('B', 'Block B (Mechanical)')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Block B
+            </button>
+            <button
+              onClick={() => handleSelectRoutePreset('CANTEEN', 'Campus Canteen')}
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+            >
+              Canteen
+            </button>
+          </div>
         </div>
 
         {/* Search & Faculty Quick-Select */}
