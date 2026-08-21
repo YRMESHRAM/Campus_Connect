@@ -1,36 +1,210 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Campus Connect â€” 3D Campus Map</title>
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; overflow: hidden; font-family: "Segoe UI", system-ui, sans-serif; background: #dce8d4; }
-    canvas { display: block; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #dce8d4;
+    }
+
+    canvas {
+      display: block;
+    }
+
     .hud {
-      position: absolute; left: 16px; top: 16px; z-index: 2;
-      background: rgba(255,255,255,.94); border: 1px solid #d5d2c8;
-      border-radius: 12px; padding: 12px 14px; width: 268px;
-      box-shadow: 0 8px 24px rgba(30,40,50,.1);
+      position: absolute;
+      left: 16px;
+      top: 50px;
+      z-index: 10;
+      background: rgba(255, 255, 255, .96);
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      padding: 12px 14px;
+      width: 260px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+      display: none;
+      transition: opacity 0.2s ease;
     }
-    .hud h1 { margin: 0 0 4px; font-size: 15px; color: #1e2933; }
-    .hud p { margin: 0 0 10px; font-size: 11px; color: #5b6772; line-height: 1.4; }
-    .views, .floors { display: flex; flex-wrap: wrap; gap: 6px; }
-    .floors { margin-top: 8px; }
+
+    .hud-toggle-btn {
+      position: absolute;
+      left: 16px;
+      top: 14px;
+      z-index: 12;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1e293b;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .hud-toggle-btn:hover {
+      background: #f8fafc;
+      border-color: #10b981;
+      color: #059669;
+    }
+
+    .hud h1 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      color: #1e2933;
+    }
+
+    .hud p {
+      margin: 0 0 10px;
+      font-size: 11px;
+      color: #5b6772;
+      line-height: 1.4;
+    }
+
+    .views,
+    .floors {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .floors {
+      margin-top: 8px;
+    }
+
     button {
-      border: 1px solid #cfd4d8; background: #fff; border-radius: 8px;
-      padding: 6px 10px; font-size: 11px; cursor: pointer; color: #1e2933;
+      border: 1px solid #cfd4d8;
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      color: #1e2933;
     }
-    button.active { background: #2c4a6e; color: #fff; border-color: #2c4a6e; }
-    .now { margin-top: 10px; font-size: 12px; font-weight: 700; color: #2c4a6e; }
-    .legend { margin-top: 8px; font-size: 11px; color: #3b4650; }
-    .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-    .hint { position: absolute; right: 16px; bottom: 14px; font-size: 11px; color: #3b4650; background: rgba(255,255,255,.85); padding: 6px 10px; border-radius: 8px; }
+
+    button.active {
+      background: #2c4a6e;
+      color: #fff;
+      border-color: #2c4a6e;
+    }
+
+    .now {
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #2c4a6e;
+    }
+
+    .legend {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #3b4650;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: -1px;
+    }
+
+    .path-controls {
+      margin-top: 10px;
+      border-top: 1px solid #d5d2c8;
+      padding-top: 8px;
+    }
+
+    .path-btn {
+      background: #10b981;
+      color: white;
+      border: none;
+      font-weight: 700;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .path-btn:hover {
+      background: #059669;
+    }
+
+    .path-btn.off {
+      background: #9ca3af;
+    }
+
+    .path-select {
+      width: 100%;
+      border: 1px solid #cfd4d8;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 11px;
+      margin-top: 4px;
+      background: white;
+      color: #1e2933;
+      font-weight: 600;
+      outline: none;
+    }
+
+    .pin-label-start {
+      font: 700 11px Segoe UI, sans-serif;
+      color: #ffffff !important;
+      background: #10b981 !important;
+      padding: 3px 8px !important;
+      border-radius: 6px !important;
+      white-space: nowrap;
+      border: 1.5px solid #ffffff !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5) !important;
+    }
+
+    .pin-label-target {
+      font: 800 11px Segoe UI, sans-serif;
+      color: #ffffff !important;
+      background: #059669 !important;
+      padding: 3px 8px !important;
+      border-radius: 6px !important;
+      white-space: nowrap;
+      border: 1.5px solid #ffffff !important;
+      box-shadow: 0 4px 14px rgba(5, 150, 105, 0.7) !important;
+    }
+
+    .hint {
+      position: absolute;
+      right: 16px;
+      bottom: 14px;
+      font-size: 11px;
+      color: #3b4650;
+      background: rgba(255, 255, 255, .85);
+      padding: 6px 10px;
+      border-radius: 8px;
+    }
   </style>
 </head>
+
 <body>
-  <div class="hud">
+  <button id="hud-toggle-btn" class="hud-toggle-btn">
+    <span>🎛️</span> Controls
+  </button>
+  <div class="hud" id="hud-panel">
     <h1>3D Campus Map</h1>
     <p>Pick a floor to isolate only that storey and its rooms.</p>
     <div class="views">
@@ -47,12 +221,34 @@
       <button data-floor="3">3rd</button>
     </div>
     <div class="now" id="now">Showing: Ground Floor only</div>
+
+    <!-- Green Navigation Path Controls -->
+    <div class="path-controls">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-weight:700; font-size:11px; color:#059669; display:flex; align-items:center; gap:4px;">
+          <span
+            style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
+          3D Green Path:
+        </span>
+        <button id="toggle-path-btn" class="path-btn">Path: ON</button>
+      </div>
+      <select id="route-select" class="path-select">
+        <option value="M">Route ➔ Block M (CSE / AIML)</option>
+        <option value="F">Route ➔ Block F (First Year)</option>
+        <option value="ADM">Route ➔ Admin Block</option>
+        <option value="E">Route ➔ Block E (ETC / MCA)</option>
+        <option value="B">Route ➔ Block B (Mechanical)</option>
+        <option value="CANTEEN">Route ➔ Canteen</option>
+      </select>
+    </div>
+
     <div class="legend">
       <div><i style="background:#c9a46c"></i>Admin / exam</div>
       <div><i style="background:#6ea8d4"></i>Labs / halls / library</div>
       <div><i style="background:#d89a62"></i>HOD</div>
       <div><i style="background:#9aa7b5"></i>Working building</div>
       <div><i style="background:#c5ced6"></i>Washroom / stairs</div>
+      <div><i style="background:#10b981; box-shadow: 0 0 6px #10b981;"></i>Active 3D Green Path</div>
     </div>
   </div>
   <div class="hint">Drag to orbit Â· scroll to zoom</div>
@@ -99,7 +295,7 @@
     sun.position.set(60, 90, 40);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    [-120, 120, 120, -120].forEach(() => {});
+    [-120, 120, 120, -120].forEach(() => { });
     Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120 });
     scene.add(sun);
     scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x8fba7a, 0.32));
@@ -220,8 +416,8 @@
       t.position.set(x, 0, z);
       ground.add(t);
     }
-    [[-70,-50],[-60,-55],[-40,-58],[-20,-60],[20,-58],[50,-52],[70,-30],[78,-10],
-     [-72,10],[-74,30],[-60,58],[-30,62],[10,64],[40,60],[70,50],[82,8],[84,20]]
+    [[-70, -50], [-60, -55], [-40, -58], [-20, -60], [20, -58], [50, -52], [70, -30], [78, -10],
+    [-72, 10], [-74, 30], [-60, 58], [-30, 62], [10, 64], [40, 60], [70, 50], [82, 8], [84, 20]]
       .forEach(([x, z], i) => tree(x, z, 0.85 + (i % 3) * 0.15));
 
     function working(f) {
@@ -499,6 +695,15 @@
       };
     });
 
+    const hudToggleBtn = document.getElementById("hud-toggle-btn");
+    const hudPanel = document.getElementById("hud-panel");
+    if (hudToggleBtn && hudPanel) {
+      hudToggleBtn.onclick = () => {
+        const isHidden = getComputedStyle(hudPanel).display === "none";
+        hudPanel.style.display = isHidden ? "block" : "none";
+      };
+    }
+
     addEventListener("resize", () => {
       camera.aspect = innerWidth / innerHeight;
       camera.updateProjectionMatrix();
@@ -506,16 +711,532 @@
       labelRenderer.setSize(innerWidth, innerHeight);
     });
 
-        window.addEventListener('message', function(e) { if (e.data && e.data.type === 'SHOW_FLOOR') { var f = e.data.floor; document.querySelectorAll('.floors button').forEach(function(b) { b.classList.remove('active'); if (b.dataset.floor === String(f)) b.classList.add('active'); }); showFloor(String(f)); } });
+    // ==================== 3D GREEN NAVIGATION PATH & BLOCK FOCUS SYSTEM ====================
+    const pathGroup = new THREE.Group();
+    pathGroup.name = "navigation-path-group";
+    scene.add(pathGroup);
+
+    const pathMat = new THREE.MeshStandardMaterial({
+      color: 0x00ff88,
+      emissive: 0x10b981,
+      emissiveIntensity: 1.0,
+      roughness: 0.1,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.95
+    });
+
+    const pulseMat = new THREE.MeshStandardMaterial({
+      color: 0x34d399,
+      emissive: 0x059669,
+      emissiveIntensity: 1.0,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 0.98
+    });
+
+    // Check if mesh belongs to target building block
+    function isMeshInBlock(mesh, targetBlock) {
+      if (!targetBlock || targetBlock === "ALL") return true;
+
+      const name = (mesh.name || "").toLowerCase();
+      const parentName = (mesh.parent ? mesh.parent.name || "" : "").toLowerCase();
+      const x = mesh.position.x;
+      const z = mesh.position.z;
+
+      if (targetBlock === "M") {
+        return name.includes("m") || name.includes("auditorium") || name.includes("stage") || name.includes("working") || (x > 8 && z > 8);
+      }
+      if (targetBlock === "F") {
+        return name.includes("f") || name.includes("library") || name.includes("student-section") || (x < -25 && z < 18);
+      }
+      if (targetBlock === "ADM") {
+        return name.includes("admin") || (x >= -22 && x <= 6 && z <= -20);
+      }
+      if (targetBlock === "E") {
+        return name.includes("e") || name.includes("etc") || name.includes("mca") || name.includes("exam") || (x < -20 && z > 18);
+      }
+      if (targetBlock === "B") {
+        return name.includes("b") || name.includes("project") || (x >= -24 && x <= 26 && z >= 8 && z <= 22);
+      }
+      if (targetBlock === "CANTEEN") {
+        return name.includes("canteen") || name.includes("snack") || name.includes("amul") || name.includes("stationary") || x < -55;
+      }
+      return true;
+    }
+
+    let targetAuraBox = null;
+
+    // Linear piecewise curve for strict corridor and pathway navigation without curved overshooting into rooms
+    class CorridorCurve extends THREE.Curve {
+      constructor(points) {
+        super();
+        this.points = points;
+      }
+      getPoint(t, optionalTarget = new THREE.Vector3()) {
+        if (!this.points || this.points.length < 2) return optionalTarget.set(0, 0, 0);
+        if (t <= 0) return optionalTarget.copy(this.points[0]);
+        if (t >= 1) return optionalTarget.copy(this.points[this.points.length - 1]);
+
+        let totalDist = 0;
+        const dists = [];
+        for (let i = 0; i < this.points.length - 1; i++) {
+          const d = this.points[i].distanceTo(this.points[i + 1]);
+          dists.push(d);
+          totalDist += d;
+        }
+        const targetDist = t * totalDist;
+        let accum = 0;
+        for (let i = 0; i < dists.length; i++) {
+          if (accum + dists[i] >= targetDist) {
+            const segT = dists[i] > 0 ? (targetDist - accum) / dists[i] : 0;
+            return optionalTarget.lerpVectors(this.points[i], this.points[i + 1], segT);
+          }
+          accum += dists[i];
+        }
+        return optionalTarget.copy(this.points[this.points.length - 1]);
+      }
+    }
+
+    let targetDestinationObject = null;
+
+    // Highlight exact target destination room and fade out every other room & label
+    function setRoomFocus(targetBlock, targetCabin, targetFloor) {
+      if (targetAuraBox) {
+        scene.remove(targetAuraBox);
+        targetAuraBox = null;
+      }
+
+      targetDestinationObject = null;
+
+      const cabinKey = (targetCabin || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const hasSpecificCabin = cabinKey && cabinKey.length > 1 && cabinKey !== (targetBlock || "").toLowerCase();
+
+      scene.traverse((obj) => {
+        if (obj.isMesh) {
+          const isBaseTerrain = obj.parent && obj.parent.name === "ground-context" && 
+            (obj.material === mats.grass || obj.material === mats.road || obj.material === mats.pad || obj.material === mats.court || obj.material === mats.park);
+          if (isBaseTerrain) return;
+
+          if (obj.parent && obj.parent.name === "navigation-path-group") return;
+
+          if (!obj.userData.origMaterial) {
+            obj.userData.origMaterial = obj.material;
+          }
+
+          const name = (obj.name || "").toLowerCase();
+          let isDestinationRoom = false;
+
+          if (hasSpecificCabin) {
+            if ((name === "room-" + cabinKey || name === cabinKey) && !targetDestinationObject) {
+              isDestinationRoom = true;
+            } else if (name.includes(cabinKey) && !targetDestinationObject) {
+              isDestinationRoom = true;
+            } else if (cabinKey.includes("adm") && name.includes("admin") && !targetDestinationObject) {
+              isDestinationRoom = true;
+            } else if (cabinKey.includes("library") && name.includes("library") && !targetDestinationObject) {
+              isDestinationRoom = true;
+            } else if (cabinKey.includes("canteen") && name.includes("canteen") && !targetDestinationObject) {
+              isDestinationRoom = true;
+            }
+          } else if (targetBlock) {
+            const primaryRoomMap = {
+              "M": "auditorium",
+              "F": "room-f001",
+              "ADM": "admin-block",
+              "E": "etc",
+              "B": "stage",
+              "CANTEEN": "canteen-entrance"
+            };
+            const primaryName = primaryRoomMap[targetBlock.toUpperCase()] || "auditorium";
+            if ((name === primaryName || name.includes(primaryName)) && !targetDestinationObject) {
+              isDestinationRoom = true;
+            }
+          }
+
+          if (isDestinationRoom) {
+            targetDestinationObject = obj;
+            if (!obj.userData.targetMaterial) {
+              obj.userData.targetMaterial = obj.userData.origMaterial.clone();
+              obj.userData.targetMaterial.emissive = new THREE.Color(0x10b981);
+              obj.userData.targetMaterial.emissiveIntensity = 0.65;
+            }
+            obj.material = obj.userData.targetMaterial;
+            obj.material.transparent = false;
+            obj.material.opacity = 1.0;
+          } else {
+            if (!obj.userData.dimMaterial) {
+              obj.userData.dimMaterial = obj.userData.origMaterial.clone();
+            }
+            obj.userData.dimMaterial.transparent = true;
+            obj.userData.dimMaterial.opacity = 0.04;
+            obj.material = obj.userData.dimMaterial;
+          }
+        }
+      });
+
+      document.querySelectorAll(".map-label").forEach((el) => {
+        const text = (el.textContent || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        let isTargetLabel = false;
+
+        if (hasSpecificCabin) {
+          if (text === cabinKey || text.includes(cabinKey)) {
+            isTargetLabel = true;
+          }
+        } else if (targetBlock) {
+          const blockLower = targetBlock.toLowerCase();
+          if (blockLower === "m" && text.includes("auditorium")) isTargetLabel = true;
+          else if (blockLower === "f" && text.includes("f001")) isTargetLabel = true;
+          else if (blockLower === "adm" && text.includes("admin")) isTargetLabel = true;
+          else if (blockLower === "e" && text.includes("etc")) isTargetLabel = true;
+          else if (blockLower === "b" && text.includes("stage")) isTargetLabel = true;
+          else if (blockLower === "canteen" && text.includes("canteen")) isTargetLabel = true;
+        }
+
+        el.style.display = isTargetLabel ? "" : "none";
+        el.style.opacity = isTargetLabel ? "1.0" : "0";
+      });
+    }
+
+    // Precise corridor, doorway, staircase, and floor hallway waypoint router
+    function getRoutePoints(targetBlock, floorLevel = 0) {
+      const pts = [];
+      const fY = floorY(floorLevel) + 0.15;
+
+      // Entrance between F004 and F005 (Start Point)
+      const startPos = new THREE.Vector3(-52, 0.45, -4.2);
+      pts.push(startPos);
+
+      // Exit F entrance to main left corridor junction
+      pts.push(new THREE.Vector3(-43, 0.45, -4.2));
+
+      let finalTargetPos = null;
+      if (targetDestinationObject) {
+        finalTargetPos = new THREE.Vector3();
+        targetDestinationObject.getWorldPosition(finalTargetPos);
+        finalTargetPos.y = fY;
+      }
+
+      const blockUpper = (targetBlock || "M").toUpperCase();
+
+      if (blockUpper === "M") {
+        // Main building corridor BELOW grass field (z = 17.2) connecting Block F to Block M
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+        pts.push(new THREE.Vector3(25, 0.45, 17.2));
+        pts.push(new THREE.Vector3(25, 0.45, 16)); // Block M Entrance
+
+        if (floorLevel > 0) {
+          pts.push(new THREE.Vector3(29, 0.45, 16)); // Staircase Landing
+          for (let i = 1; i <= 6; i++) {
+            const ratio = i / 6;
+            pts.push(new THREE.Vector3(
+              29 + (i % 2 === 1 ? -1 : 1),
+              0.45 + (fY - 0.45) * ratio,
+              16 + ratio * 1.5
+            ));
+          }
+          pts.push(new THREE.Vector3(29, fY, 16)); // Upper Landing
+          pts.push(new THREE.Vector3(26, fY, 16)); // Upper Corridor
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(26, fY, finalTargetPos.z));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(26, fY, 28));
+          }
+        } else {
+          if (finalTargetPos) {
+            if (finalTargetPos.x > 25) {
+              pts.push(new THREE.Vector3(32, 0.45, 16));
+              pts.push(new THREE.Vector3(32, 0.45, finalTargetPos.z));
+            } else {
+              pts.push(new THREE.Vector3(18, 0.45, 16));
+              pts.push(new THREE.Vector3(18, 0.45, finalTargetPos.z));
+            }
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(25, 0.45, 20));
+          }
+        }
+      } else if (blockUpper === "F") {
+        if (finalTargetPos && finalTargetPos.z <= -20) {
+          // Top wing (F001, F002, etc.)
+          pts.push(new THREE.Vector3(-43, 0.45, -22));
+          pts.push(new THREE.Vector3(finalTargetPos.x, 0.45, -22));
+          pts.push(finalTargetPos);
+        } else if (floorLevel > 0) {
+          pts.push(new THREE.Vector3(-37, 0.45, -4.2)); // Stairwell
+          for (let i = 1; i <= 6; i++) {
+            const ratio = i / 6;
+            pts.push(new THREE.Vector3(
+              -37 + (i % 2 === 1 ? 1 : -1),
+              0.45 + (fY - 0.45) * ratio,
+              -4.2
+            ));
+          }
+          pts.push(new THREE.Vector3(-37, fY, -4.2)); // Upper Landing
+          pts.push(new THREE.Vector3(-43, fY, -4.2)); // Upper Left Corridor
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(-43, fY, finalTargetPos.z));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-52, fY, -16));
+          }
+        } else {
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(-43, 0.45, finalTargetPos.z));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-52, 0.45, -16));
+          }
+        }
+      } else if (blockUpper === "ADM") {
+        pts.push(new THREE.Vector3(-43, 0.45, -22));
+        pts.push(new THREE.Vector3(-6, 0.45, -22));
+        pts.push(new THREE.Vector3(-6, 0.45, -24)); // Admin Entrance
+        if (finalTargetPos) {
+          pts.push(finalTargetPos);
+        } else {
+          pts.push(new THREE.Vector3(-6, 0.45, -28));
+        }
+      } else if (blockUpper === "E") {
+        pts.push(new THREE.Vector3(-43, 0.45, 19.4));
+        pts.push(new THREE.Vector3(-54, 0.45, 19.4)); // Block E Entrance
+        if (floorLevel > 0) {
+          pts.push(new THREE.Vector3(-38, 0.45, 20)); // Stairwell
+          for (let i = 1; i <= 6; i++) {
+            const ratio = i / 6;
+            pts.push(new THREE.Vector3(
+              -38 + (i % 2 === 1 ? -1 : 1),
+              0.45 + (fY - 0.45) * ratio,
+              20
+            ));
+          }
+          pts.push(new THREE.Vector3(-38, fY, 20));
+          pts.push(new THREE.Vector3(-43, fY, 26));
+          if (finalTargetPos) {
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-48, fY, 30));
+          }
+        } else {
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(-43, 0.45, finalTargetPos.z));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-44, 0.45, 34));
+          }
+        }
+      } else if (blockUpper === "B") {
+        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
+        pts.push(new THREE.Vector3(8, 0.45, 17.2)); // Block B Entrance
+        if (floorLevel > 0) {
+          pts.push(new THREE.Vector3(13.2, 0.45, 17.2)); // Stairwell
+          for (let i = 1; i <= 6; i++) {
+            const ratio = i / 6;
+            pts.push(new THREE.Vector3(
+              13.2,
+              0.45 + (fY - 0.45) * ratio,
+              17.2 + (i % 2 === 1 ? -1 : 1)
+            ));
+          }
+          pts.push(new THREE.Vector3(13.2, fY, 17.2));
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(finalTargetPos.x, fY, 17.2));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-2, fY, 11));
+          }
+        } else {
+          if (finalTargetPos) {
+            pts.push(new THREE.Vector3(finalTargetPos.x, 0.45, 17.2));
+            pts.push(finalTargetPos);
+          } else {
+            pts.push(new THREE.Vector3(-1.5, 0.45, 11));
+          }
+        }
+      } else if (blockUpper === "CANTEEN") {
+        pts.push(new THREE.Vector3(-60, 0.45, -4.2));
+        pts.push(new THREE.Vector3(-60, 0.45, -50));
+        pts.push(new THREE.Vector3(-84, 0.45, -96));
+      }
+
+      return pts;
+    }
+
+    let activeCurve = null;
+    let pulseOrbs = [];
+    let pathMesh = null;
+    let pathCoreLine = null;
+    let startBeacon = null;
+    let targetBeacon = null;
+    let isPathVisible = true;
+    let currentRouteFloor = 0;
+
+    function createCustomLabel(text, className, pos) {
+      const el = document.createElement("div");
+      el.className = className;
+      el.textContent = text;
+      const obj = new CSS2DObject(el);
+      obj.position.copy(pos);
+      pathGroup.add(obj);
+      return obj;
+    }
+
+    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null) {
+      while (pathGroup.children.length > 0) {
+        const child = pathGroup.children[0];
+        if (child.isCSS2DObject && child.element && child.element.parentNode) {
+          child.element.remove();
+        }
+        pathGroup.remove(child);
+      }
+      pulseOrbs = [];
+
+      const cabin = cabinCode || customTargetName || targetBlock;
+
+      // Highlight destination room and fade out every single other room
+      setRoomFocus(targetBlock, cabin, floorLevel);
+
+      if (!isPathVisible) return;
+
+      currentRouteFloor = floorLevel;
+
+      const points = getRoutePoints(targetBlock, floorLevel);
+      if (points.length < 2) return;
+
+      activeCurve = new CorridorCurve(points);
+
+      const tubeGeo = new THREE.TubeGeometry(activeCurve, 120, 0.42, 12, false);
+      pathMesh = new THREE.Mesh(tubeGeo, pathMat);
+      pathMesh.castShadow = true;
+      pathGroup.add(pathMesh);
+
+      const curvePts = activeCurve.getPoints(140);
+      const coreGeo = new THREE.BufferGeometry().setFromPoints(curvePts);
+      const coreMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+      pathCoreLine = new THREE.Line(coreGeo, coreMat);
+      pathGroup.add(pathCoreLine);
+
+      for (let i = 0; i < 6; i++) {
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), pulseMat);
+        orb.userData = { progress: i * 0.16 };
+        pathGroup.add(orb);
+        pulseOrbs.push(orb);
+      }
+
+      const startPos = points[0];
+      startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), pathMat);
+      startBeacon.position.copy(startPos).add(new THREE.Vector3(0, 1.25, 0));
+      pathGroup.add(startBeacon);
+      createCustomLabel("🚩 ENTRANCE (F004-F005)", "pin-label-start", startPos.clone().add(new THREE.Vector3(0, 3.2, 0)));
+
+      const targetPos = points[points.length - 1];
+      targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.2, 16), pulseMat);
+      targetBeacon.rotation.x = Math.PI;
+      targetBeacon.position.copy(targetPos).add(new THREE.Vector3(0, 2.5, 0));
+      pathGroup.add(targetBeacon);
+
+      // Glowing aura box around target destination
+      const auraGeo = new THREE.BoxGeometry(4.5, 4.5, 4.5);
+      const auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.8 });
+      targetAuraBox = new THREE.Mesh(auraGeo, auraMat);
+      targetAuraBox.position.copy(targetPos);
+      pathGroup.add(targetAuraBox);
+
+      const blockNames = {
+        M: "Block M (CSE / AIML)",
+        F: "Block F (First Year)",
+        ADM: "Admin Block",
+        E: "Block E (ETC / MCA)",
+        B: "Block B (Mechanical)",
+        CANTEEN: "Canteen"
+      };
+      const targetTitle = customTargetName || blockNames[targetBlock] || targetBlock;
+      const floorTag = floorLevel > 0 ? ` [${floorLevel}th Floor]` : "";
+      createCustomLabel(`📍 TARGET: ${targetTitle}${floorTag}`, "pin-label-target", targetPos.clone().add(new THREE.Vector3(0, 4.5, 0)));
+    }
+
+    const togglePathBtn = document.getElementById("toggle-path-btn");
+    const routeSelect = document.getElementById("route-select");
+
+    if (togglePathBtn) {
+      togglePathBtn.onclick = () => {
+        isPathVisible = !isPathVisible;
+        if (isPathVisible) {
+          togglePathBtn.textContent = "Path: ON";
+          togglePathBtn.classList.remove("off");
+          render3DGreenPath(routeSelect ? routeSelect.value : "M", currentRouteFloor);
+        } else {
+          togglePathBtn.textContent = "Path: OFF";
+          togglePathBtn.classList.add("off");
+          render3DGreenPath(routeSelect ? routeSelect.value : "M", currentRouteFloor);
+        }
+      };
+    }
+
+    if (routeSelect) {
+      routeSelect.onchange = () => {
+        render3DGreenPath(routeSelect.value, 0);
+      };
+    }
+
+    window.addEventListener('message', function (e) {
+      if (!e.data) return;
+      if (e.data.type === 'SHOW_FLOOR') {
+        var f = e.data.floor;
+        document.querySelectorAll('.floors button').forEach(function (b) {
+          b.classList.remove('active');
+          if (b.dataset.floor === String(f)) b.classList.add('active');
+        });
+        showFloor(String(f));
+      } else if (e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
+        var block = e.data.block || 'M';
+        var floor = e.data.floor !== undefined ? Number(e.data.floor) : 0;
+        var cabin = e.data.cabin || '';
+        var name = e.data.name || cabin || block;
+
+        document.querySelectorAll('.floors button').forEach(function (b) {
+          b.classList.remove('active');
+          if (b.dataset.floor === String(floor)) b.classList.add('active');
+        });
+        showFloor(String(floor));
+
+        if (routeSelect) routeSelect.value = block;
+        isPathVisible = true;
+        if (togglePathBtn) {
+          togglePathBtn.textContent = "Path: ON";
+          togglePathBtn.classList.remove("off");
+        }
+        render3DGreenPath(block, floor, name, cabin);
+      }
+    });
+
+    render3DGreenPath("M", 0);
 
     (function tick() {
       requestAnimationFrame(tick);
       controls.update();
+
+      if (isPathVisible && activeCurve && pulseOrbs.length > 0) {
+        pulseOrbs.forEach((orb) => {
+          orb.userData.progress = (orb.userData.progress + 0.005) % 1.0;
+          const pt = activeCurve.getPointAt(orb.userData.progress);
+          if (pt) orb.position.copy(pt);
+        });
+      }
+
+      if (targetBeacon) {
+        targetBeacon.rotation.y += 0.03;
+      }
+      if (targetAuraBox) {
+        targetAuraBox.rotation.y += 0.015;
+        targetAuraBox.rotation.x += 0.01;
+      }
+
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
     })();
   </script>
 </body>
+
 </html>
-
-

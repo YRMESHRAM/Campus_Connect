@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
+import { fetchFacultyFromSupabase, getCachedFacultyData } from '../utils/facultyStore';
 
 interface FacultyMember {
   id: string;
@@ -23,22 +24,47 @@ interface FacultyMember {
   floor: number;
 }
 
-const facultyList: FacultyMember[] = [
-  { id: '1', name: 'Ms. Swati Thakur',       department: 'CSE (AI&ML)',    cabin: 'M202',   block: 'M', floor: 2 },
-  { id: '2', name: 'Ms. Harshika Dehariya',  department: 'CSE (AI&ML)',    cabin: 'M204',   block: 'M', floor: 2 },
-  { id: '3', name: 'Dr. Animesh Tayal',      department: 'CSE (AI&ML)',    cabin: 'M107',   block: 'M', floor: 1 },
-  { id: '4', name: 'Prof. Rashmi Deshmukh',  department: 'First Year',     cabin: 'F102',   block: 'F', floor: 1 },
-  { id: '5', name: 'Dr. Narendra Bawane',    department: 'Administration', cabin: 'ADM101', block: 'ADM', floor: 1 },
-  { id: '6', name: 'Prof. Amit Sharma',      department: 'ETC / MCA',      cabin: 'E201',   block: 'E', floor: 2 },
-  { id: '7', name: 'Dr. Suresh Kumar',       department: 'Mechanical',     cabin: 'B101',   block: 'B', floor: 1 },
-];
+/** Derive block letter from cabin string, e.g. "M202" → "M", "ADM101" → "ADM" */
+function deriveBlock(cabin: string): string {
+  if (!cabin) return 'M';
+  const upper = cabin.toUpperCase();
+  if (upper.startsWith('ADM')) return 'ADM';
+  const match = upper.match(/^([A-Z]+)/);
+  return match ? match[1] : 'M';
+}
+
+/** Derive floor number from cabin string, e.g. "M202" → 2, "F102" → 1 */
+function deriveFloor(cabin: string): number {
+  if (!cabin) return 0;
+  const digits = cabin.replace(/^[A-Za-z]+/, '');
+  if (digits.length >= 1) {
+    const firstDigit = parseInt(digits[0], 10);
+    if (!isNaN(firstDigit)) return firstDigit;
+  }
+  return 0;
+}
+
+/** Convert raw Supabase faculty record to our FacultyMember shape */
+function toFacultyMember(raw: any, index: number): FacultyMember {
+  const name = raw['Faculty Name'] || raw.name || 'Faculty Member';
+  const department = raw['Department'] || raw.department || 'N/A';
+  const cabin = raw['Cabin No.'] || raw.cabin || '';
+  return {
+    id: String(raw.id ?? index),
+    name,
+    department,
+    cabin,
+    block: deriveBlock(cabin),
+    floor: deriveFloor(cabin),
+  };
+}
 
 const blockInfo: Record<string, { label: string; color: string }> = {
-  F:   { label: 'Block F – First Year',                       color: '#16a34a' },
-  ADM: { label: 'Admin Block – Principal Office',             color: '#eab308' },
-  E:   { label: 'Block E – ETC / MBA / BCA / MCA',            color: '#3b82f6' },
-  B:   { label: 'Block B – Mechanical / Electrical',          color: '#f97316' },
-  M:   { label: 'Block M – CSE / AIML / DS / IT',             color: '#84cc16' },
+  F: { label: 'Block F – First Year', color: '#16a34a' },
+  ADM: { label: 'Admin Block – Principal Office', color: '#eab308' },
+  E: { label: 'Block E – ETC / MBA / BCA / MCA', color: '#3b82f6' },
+  B: { label: 'Block B – Mechanical / Electrical', color: '#f97316' },
+  M: { label: 'Block M – CSE / AIML / DS / IT', color: '#84cc16' },
 };
 
 const floorLabels = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
@@ -50,6 +76,23 @@ const CampusMap: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [_iframeReady, setIframeReady] = useState(false);
+  const [facultyList, setFacultyList] = useState<FacultyMember[]>([]);
+
+  // Fetch all faculty from Supabase on mount
+  useEffect(() => {
+    async function loadFaculty() {
+      const data = await fetchFacultyFromSupabase();
+      if (data && data.length > 0) {
+        setFacultyList(data.map(toFacultyMember));
+      }
+    }
+    // Try cached data first for instant display
+    const cached = getCachedFacultyData();
+    if (cached && cached.length > 0) {
+      setFacultyList(cached.map(toFacultyMember));
+    }
+    loadFaculty();
+  }, []);
 
   const filteredFaculty = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -60,24 +103,35 @@ const CampusMap: React.FC = () => {
         f.department.toLowerCase().includes(q) ||
         f.cabin.toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [searchQuery, facultyList]);
 
-  /** Send a postMessage to the iframe to highlight a floor */
-  const sendFloorToIframe = (floor: number) => {
+  /** Send a postMessage to the iframe to show 3D green navigation path */
+  const sendNavigateToIframe = (block: string, floor: number, name?: string, cabin?: string) => {
     try {
-      iframeRef.current?.contentWindow?.postMessage({ type: 'SHOW_FLOOR', floor }, '*');
-    } catch (_) {}
+      iframeRef.current?.contentWindow?.postMessage({
+        type: 'NAVIGATE',
+        block,
+        floor,
+        name: name || `Block ${block}`,
+        cabin
+      }, '*');
+    } catch (_) { }
   };
 
   const handleSelectFaculty = (faculty: FacultyMember) => {
     setSelectedFaculty(faculty);
     setSearchQuery('');
-    sendFloorToIframe(faculty.floor);
+    sendNavigateToIframe(faculty.block, faculty.floor, faculty.name, faculty.cabin);
+  };
+
+  const handleSelectRoutePreset = (blockKey: string, label: string) => {
+    setSelectedFaculty(null);
+    sendNavigateToIframe(blockKey, 0, label);
   };
 
   const handleReset = () => {
     setSelectedFaculty(null);
-    sendFloorToIframe(0);
+    sendNavigateToIframe('M', 0, 'Block M (CSE / AIML)');
   };
 
   const toggleFullscreen = () => setIsFullscreen((f) => !f);
@@ -88,12 +142,57 @@ const CampusMap: React.FC = () => {
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
           <h1 className={`text-2xl md:text-3xl font-black mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            Campus Map <span className="text-green-500 text-lg font-bold ml-2">3D</span>
+            Campus Map <span className="text-emerald-500 text-lg font-bold ml-2">3D</span>
           </h1>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            S.B. Jain Institute of Technology, Management &amp; Research — Interactive 3D Building Map
+            S.B. Jain Institute of Technology, Management &amp; Research — Interactive 3D Building Map &amp; Green Path Navigation
           </p>
         </motion.div>
+
+        {/* Quick 3D Green Path Presets Bar */}
+        <div className={`p-3 rounded-2xl border mb-6 flex flex-wrap items-center gap-2 ${isDark ? 'bg-emerald-950/30 border-emerald-800/50' : 'bg-emerald-50/80 border-emerald-200'
+          }`}>
+          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 px-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+            Quick 3D Path:
+          </span>
+          <button
+            onClick={() => handleSelectRoutePreset('M', 'Block M (CSE / AIML)')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Block M (CSE/AIML)
+          </button>
+          <button
+            onClick={() => handleSelectRoutePreset('F', 'Block F (1st Year)')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Block F (1st Year)
+          </button>
+          <button
+            onClick={() => handleSelectRoutePreset('ADM', 'Admin Block')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Admin Block
+          </button>
+          <button
+            onClick={() => handleSelectRoutePreset('E', 'Block E (ETC/MCA)')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Block E (ETC/MCA)
+          </button>
+          <button
+            onClick={() => handleSelectRoutePreset('B', 'Block B (Mechanical)')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Block B (Mechanical)
+          </button>
+          <button
+            onClick={() => handleSelectRoutePreset('CANTEEN', 'Campus Canteen')}
+            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs transition shadow"
+          >
+            Canteen
+          </button>
+        </div>
 
         {/* Search & Faculty Quick-Select */}
         <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -105,11 +204,10 @@ const CampusMap: React.FC = () => {
               placeholder="Search faculty, department or cabin (e.g. Swati Thakur, M202)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-9 pr-4 py-3 rounded-xl border text-sm outline-none transition-all ${
-                isDark
+              className={`w-full pl-9 pr-4 py-3 rounded-xl border text-sm outline-none transition-all ${isDark
                   ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-green-500'
                   : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-green-500'
-              }`}
+                }`}
             />
 
             {/* Dropdown */}
@@ -119,19 +217,17 @@ const CampusMap: React.FC = () => {
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 5 }}
-                  className={`absolute left-0 right-0 top-full mt-2 rounded-xl border shadow-xl z-50 overflow-hidden ${
-                    isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                  }`}
+                  className={`absolute left-0 right-0 top-full mt-2 rounded-xl border shadow-xl z-50 overflow-hidden ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}
                 >
                   {filteredFaculty.map((f) => (
                     <button
                       key={f.id}
                       onClick={() => handleSelectFaculty(f)}
-                      className={`w-full text-left p-3 text-xs flex items-center justify-between border-b last:border-0 transition ${
-                        isDark
+                      className={`w-full text-left p-3 text-xs flex items-center justify-between border-b last:border-0 transition ${isDark
                           ? 'border-gray-700 hover:bg-gray-700 text-white'
                           : 'border-gray-100 hover:bg-gray-50 text-gray-800'
-                      }`}
+                        }`}
                     >
                       <div>
                         <p className="font-bold">{f.name}</p>
@@ -140,7 +236,7 @@ const CampusMap: React.FC = () => {
                         </p>
                       </div>
                       <span className="px-2 py-0.5 bg-green-600 text-white rounded-md text-[10px] font-bold flex items-center gap-1">
-                        <Navigation size={10} /> Navigate
+                        <Navigation size={10} /> Navigate 3D Path
                       </span>
                     </button>
                   ))}
@@ -158,11 +254,10 @@ const CampusMap: React.FC = () => {
                 const fac = facultyList.find((f) => f.id === e.target.value);
                 if (fac) handleSelectFaculty(fac);
               }}
-              className={`py-3 px-4 rounded-xl border text-sm outline-none ${
-                isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
-              }`}
+              className={`py-3 px-4 rounded-xl border text-sm outline-none ${isDark ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+                }`}
             >
-              <option value="" disabled>Select Faculty</option>
+              <option value="" disabled>Select Faculty Target</option>
               {facultyList.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name} ({f.cabin})
@@ -174,13 +269,12 @@ const CampusMap: React.FC = () => {
           {/* Reset button */}
           <button
             onClick={handleReset}
-            className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${
-              isDark
+            className={`px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 ${isDark
                 ? 'bg-gray-800 border border-gray-700 text-gray-300 hover:border-gray-500'
                 : 'bg-white border border-gray-200 text-gray-700 hover:border-green-500'
-            }`}
+              }`}
           >
-            <RotateCcw size={15} /> Reset
+            <RotateCcw size={15} /> Reset Path
           </button>
         </div>
 
@@ -191,9 +285,8 @@ const CampusMap: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
-              className={`relative rounded-3xl overflow-hidden border shadow-lg ${
-                isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-100'
-              }`}
+              className={`relative rounded-3xl overflow-hidden border shadow-lg ${isDark ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-100'
+                }`}
               style={{ height: isFullscreen ? '78vh' : '560px' }}
             >
               <iframe
@@ -208,9 +301,8 @@ const CampusMap: React.FC = () => {
               {/* Fullscreen toggle */}
               <button
                 onClick={toggleFullscreen}
-                className={`absolute right-4 top-4 p-2.5 rounded-xl shadow-lg z-40 transition-all ${
-                  isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+                className={`absolute right-4 top-4 p-2.5 rounded-xl shadow-lg z-40 transition-all ${isDark ? 'bg-gray-800 text-white hover:bg-gray-700' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
                 title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
               >
                 {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -252,11 +344,10 @@ const CampusMap: React.FC = () => {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
-                    className={`p-4 rounded-2xl border ${
-                      isDark
+                    className={`p-4 rounded-2xl border ${isDark
                         ? 'bg-green-950/40 border-green-700/80 text-white'
                         : 'bg-green-50 border-green-200 text-gray-900'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-2 pb-2 border-b border-green-500/20">
                       <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">
@@ -283,34 +374,7 @@ const CampusMap: React.FC = () => {
                 )}
               </AnimatePresence>
 
-              {/* Floor quick-switch */}
-              <div
-                className={`p-3 rounded-2xl border ${
-                  isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Layers size={14} className="text-green-500" />
-                  <span className={`text-xs font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                    Floor Quick-Switch
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {floorLabels.map((label, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => sendFloorToIframe(idx)}
-                      className={`py-1.5 text-[11px] font-semibold rounded-lg transition-all ${
-                        isDark
-                          ? 'bg-gray-700 text-gray-200 hover:bg-green-700 hover:text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-green-100 hover:text-green-800'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+
 
               {/* Faculty List */}
               <div>
@@ -322,13 +386,12 @@ const CampusMap: React.FC = () => {
                     <button
                       key={f.id}
                       onClick={() => handleSelectFaculty(f)}
-                      className={`w-full text-left p-3 rounded-xl border text-xs transition flex items-center justify-between ${
-                        selectedFaculty?.id === f.id
+                      className={`w-full text-left p-3 rounded-xl border text-xs transition flex items-center justify-between ${selectedFaculty?.id === f.id
                           ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                           : isDark
-                          ? 'border-gray-700 bg-gray-800 hover:bg-gray-750'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
+                            ? 'border-gray-700 bg-gray-800 hover:bg-gray-750'
+                            : 'border-gray-200 bg-white hover:bg-gray-50'
+                        }`}
                     >
                       <div>
                         <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>{f.name}</p>
@@ -349,9 +412,8 @@ const CampusMap: React.FC = () => {
 
               {/* Legend */}
               <div
-                className={`p-3 rounded-2xl border ${
-                  isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                }`}
+                className={`p-3 rounded-2xl border ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                  }`}
               >
                 <h3 className={`font-bold mb-2 text-xs uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                   Map Legend
