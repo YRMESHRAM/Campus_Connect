@@ -302,7 +302,7 @@ const FacultyDirectory: React.FC = () => {
                         View Profile
                       </button>
                       <button
-                        onClick={() => navigate('/campus-map')}
+                        onClick={() => navigate(`/campus-map?cabin=${encodeURIComponent(cabin || '')}&name=${encodeURIComponent(teacherName || '')}`)}
                         className="text-xs font-semibold py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-700 text-white flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
                       >
                         <Navigation size={12} /> Navigate

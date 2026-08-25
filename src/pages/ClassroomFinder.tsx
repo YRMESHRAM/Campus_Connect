@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { useTheme } from '../context/ThemeContext';
@@ -106,6 +107,7 @@ const BLOCK_MAP_DATA: Record<string, { label: string; left: string; top: string;
 };
 
 export default function ClassroomFinder() {
+  const navigate = useNavigate();
   const { isDark } = useTheme();
 
   // Classroom & Search State
@@ -343,8 +345,7 @@ export default function ClassroomFinder() {
 
   const handleOpenNavigation = (roomName: string, floor: string) => {
     const block = getBlockName(roomName);
-    setNavTargetRoom({ name: roomName, floor, block });
-    setZoomLevel(100);
+    navigate(`/campus-map?room=${encodeURIComponent(roomName)}&floor=${encodeURIComponent(floor)}&block=${encodeURIComponent(block)}`);
   };
 
   return (

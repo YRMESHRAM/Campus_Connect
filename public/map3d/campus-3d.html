@@ -497,6 +497,7 @@
       room(g, "room-M003A1", 6.2, 3.4, 32, 28.2, 0, mats.wall, "M003 A1");
       room(g, "room-M003A4", 6.2, 3.4, 32, 32, 0, mats.wall, "M003 A4");
       room(g, "room-M004", 4.2, 3, 21.6, 39, 0, mats.wall, "M004");
+      room(g, "room-M005", 4.2, 3, 23.8, 39, 0, mats.wall, "M005");
       room(g, "room-M003A5", 4.2, 3, 26, 39, 0, mats.wall, "M003 A5");
       room(g, "room-M003A7", 4.2, 3, 30.6, 39, 0, mats.wall, "M003 A7");
       room(g, "room-M003A8", 4.2, 3, 35.2, 39, 0, mats.wall, "M003 A8");
@@ -809,7 +810,10 @@
 
       targetDestinationObject = null;
 
-      const cabinKey = (targetCabin || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      let rawCabinKey = (targetCabin || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (rawCabinKey.startsWith("roomno")) rawCabinKey = rawCabinKey.replace("roomno", "");
+      else if (rawCabinKey.startsWith("room")) rawCabinKey = rawCabinKey.replace("room", "");
+      const cabinKey = rawCabinKey;
       const hasSpecificCabin = cabinKey && cabinKey.length > 1 && cabinKey !== (targetBlock || "").toLowerCase();
 
       scene.traverse((obj) => {

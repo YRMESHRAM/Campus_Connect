@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -9,7 +10,7 @@ import {
   Minimize2,
   RotateCcw,
   ChevronRight,
-  Layers,
+  GraduationCap
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
@@ -44,6 +45,29 @@ function deriveFloor(cabin: string): number {
   return 0;
 }
 
+function parseBlockParam(blockStr: string | null, roomStr: string | null): string {
+  if (blockStr) {
+    const upper = blockStr.toUpperCase().trim();
+    if (upper.includes('ADM') || upper.includes('ADMIN') || upper.includes('PRINCIPAL')) return 'ADM';
+    if (upper.includes('CANTEEN')) return 'CANTEEN';
+    if (upper.startsWith('BLOCK ')) return upper.replace('BLOCK ', '').trim();
+    if (upper.startsWith('BLOCK-')) return upper.replace('BLOCK-', '').trim();
+    return upper;
+  }
+  return deriveBlock(roomStr || '');
+}
+
+function parseFloorParam(floorStr: string | null, roomStr: string | null): number {
+  if (floorStr) {
+    const lower = floorStr.toLowerCase().trim();
+    if (lower.includes('ground') || lower === '0' || lower === 'g') return 0;
+    if (lower.includes('1') || lower.includes('first')) return 1;
+    if (lower.includes('2') || lower.includes('second')) return 2;
+    if (lower.includes('3') || lower.includes('third')) return 3;
+  }
+  return deriveFloor(roomStr || '');
+}
+
 /** Convert raw Supabase faculty record to our FacultyMember shape */
 function toFacultyMember(raw: any, index: number): FacultyMember {
   const name = raw['Faculty Name'] || raw.name || 'Faculty Member';
@@ -71,8 +95,15 @@ const floorLabels = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
 
 const CampusMap: React.FC = () => {
   const { isDark } = useTheme();
+  const [searchParams] = useSearchParams();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [selectedFaculty, setSelectedFaculty] = useState<FacultyMember | null>(null);
+  const [selectedClassroom, setSelectedClassroom] = useState<{
+    name: string;
+    block: string;
+    floor: number;
+    floorLabel: string;
+  } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [_iframeReady, setIframeReady] = useState(false);
@@ -144,6 +175,40 @@ const CampusMap: React.FC = () => {
     } catch (_) { }
   };
 
+  // Handle URL Query Params (e.g. ?room=M-005&block=Block%20M&floor=Ground%20Floor)
+  useEffect(() => {
+    const roomParam = searchParams.get('room');
+    const cabinParam = searchParams.get('cabin');
+    const blockParam = searchParams.get('block');
+    const floorParam = searchParams.get('floor');
+    const nameParam = searchParams.get('name');
+
+    const targetRoomName = roomParam || cabinParam;
+    if (targetRoomName) {
+      const block = parseBlockParam(blockParam, targetRoomName);
+      const floor = parseFloorParam(floorParam, targetRoomName);
+      const displayName = nameParam || `Room ${targetRoomName}`;
+      const floorName = floorLabels[floor] || (floor === 0 ? 'Ground Floor' : `${floor}th Floor`);
+
+      setSelectedClassroom({
+        name: targetRoomName,
+        block,
+        floor,
+        floorLabel: floorName,
+      });
+      setSelectedFaculty(null);
+
+      // Attempt navigation
+      sendNavigateToIframe(block, floor, displayName, targetRoomName, startLocation);
+      
+      // Retry in 300ms if iframe was still completing initial render
+      const timer = setTimeout(() => {
+        sendNavigateToIframe(block, floor, displayName, targetRoomName, startLocation);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
   const handleStartLocationChange = (newStart: string) => {
     setStartLocation(newStart);
     const curr = currentTargetRef.current;
@@ -152,17 +217,20 @@ const CampusMap: React.FC = () => {
 
   const handleSelectFaculty = (faculty: FacultyMember) => {
     setSelectedFaculty(faculty);
+    setSelectedClassroom(null);
     setSearchQuery('');
     sendNavigateToIframe(faculty.block, faculty.floor, faculty.name, faculty.cabin);
   };
 
   const handleSelectRoutePreset = (blockKey: string, label: string) => {
     setSelectedFaculty(null);
+    setSelectedClassroom(null);
     sendNavigateToIframe(blockKey, 0, label);
   };
 
   const handleReset = () => {
     setSelectedFaculty(null);
+    setSelectedClassroom(null);
     sendNavigateToIframe('M', 0, 'Block M (CSE / AIML)');
   };
 
@@ -350,7 +418,11 @@ const CampusMap: React.FC = () => {
                 src="/map3d/campus-3d.html"
                 title="3D Campus Map"
                 className="w-full h-full border-0"
-                onLoad={() => setIframeReady(true)}
+                onLoad={() => {
+                  setIframeReady(true);
+                  const curr = currentTargetRef.current;
+                  sendNavigateToIframe(curr.block, curr.floor, curr.name, curr.cabin, startLocation);
+                }}
                 allow="fullscreen"
               />
 
@@ -380,6 +452,31 @@ const CampusMap: React.FC = () => {
                     </span>
                   </motion.div>
                 )}
+
+                {/* Selected classroom navigation badge */}
+                {selectedClassroom && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute left-4 bottom-4 z-40 flex items-center gap-2.5 bg-indigo-600/95 backdrop-blur-md text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow-2xl border border-indigo-400/40"
+                  >
+                    <div className="p-1 rounded-lg bg-indigo-700/80">
+                      <GraduationCap size={15} className="text-emerald-300 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span>Room {selectedClassroom.name}</span>
+                        <span className="px-1.5 py-0.2 rounded bg-indigo-800 text-[10px] text-indigo-200">
+                          Block {selectedClassroom.block}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-indigo-200 font-normal">
+                        {selectedClassroom.floorLabel} · 3D Green Path Active
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             </motion.div>
 
@@ -392,6 +489,55 @@ const CampusMap: React.FC = () => {
           {/* Right Sidebar – hidden when fullscreen */}
           {!isFullscreen && (
             <div className="space-y-4">
+              {/* Selected Classroom Card */}
+              <AnimatePresence>
+                {selectedClassroom && (
+                  <motion.div
+                    key={selectedClassroom.name}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className={`p-4 rounded-2xl border ${isDark
+                        ? 'bg-indigo-950/40 border-indigo-700/80 text-white'
+                        : 'bg-indigo-50 border-indigo-200 text-gray-900'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b border-indigo-500/20">
+                      <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1">
+                        <Navigation size={11} className="text-indigo-500 animate-pulse" />
+                        Classroom Target
+                      </span>
+                      <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                        {selectedClassroom.floorLabel}
+                      </span>
+                    </div>
+                    <div className="text-xs space-y-1.5 pt-1">
+                      <p className="text-sm font-bold flex items-center gap-1.5 text-indigo-900 dark:text-indigo-200">
+                        <GraduationCap size={15} className="text-indigo-500" />
+                        Room {selectedClassroom.name}
+                      </p>
+                      <p>
+                        <strong>Block:</strong>{' '}
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-middle"
+                          style={{ backgroundColor: blockInfo[selectedClassroom.block]?.color || '#6366f1' }}
+                        />
+                        {blockInfo[selectedClassroom.block]?.label || `Block ${selectedClassroom.block}`}
+                      </p>
+                      <p><strong>Floor:</strong> {selectedClassroom.floorLabel}</p>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-indigo-200 dark:border-indigo-800/50 flex justify-end">
+                      <button
+                        onClick={handleReset}
+                        className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <RotateCcw size={10} /> Clear target
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               {/* Selected Faculty Card */}
               <AnimatePresence>
                 {selectedFaculty && (

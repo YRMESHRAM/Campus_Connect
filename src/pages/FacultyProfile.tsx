@@ -215,7 +215,7 @@ const FacultyProfile: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => navigate('/campus-map')}
+                  onClick={() => navigate(`/campus-map?cabin=${encodeURIComponent(faculty.cabin || '')}&name=${encodeURIComponent(faculty.name || '')}&block=${encodeURIComponent(faculty.block || '')}&floor=${encodeURIComponent(faculty.floor !== undefined ? faculty.floor : '')}`)}
                   className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-purple-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity whitespace-nowrap"
                 >
                   <Navigation size={16} /> Navigate to Cabin
