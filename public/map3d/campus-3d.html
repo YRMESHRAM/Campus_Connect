@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Campus Connect â€” 3D Campus Map</title>
+  <title>Campus Connect — 3D Campus Map</title>
   <style>
     * {
       box-sizing: border-box;
@@ -15,187 +15,438 @@
       margin: 0;
       height: 100%;
       overflow: hidden;
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: #dce8d4;
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      user-select: none;
+      transition: background-color 0.3s ease;
+    }
+
+    body.light-theme {
+      background: #e2e8f0;
+      color: #0f172a;
     }
 
     canvas {
       display: block;
+      width: 100%;
+      height: 100%;
     }
 
+    /* Modern Glassmorphic HUD Panel */
     .hud {
       position: absolute;
       left: 16px;
-      top: 50px;
-      z-index: 10;
-      background: rgba(255, 255, 255, .96);
-      border: 1px solid #cbd5e1;
-      border-radius: 14px;
-      padding: 12px 14px;
-      width: 260px;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+      top: 54px;
+      z-index: 20;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      padding: 16px;
+      width: 290px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
       display: none;
-      transition: opacity 0.2s ease;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.light-theme .hud {
+      background: rgba(255, 255, 255, 0.94);
+      border-color: rgba(15, 23, 42, 0.12);
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+      color: #0f172a;
     }
 
     .hud-toggle-btn {
       position: absolute;
       left: 16px;
       top: 14px;
-      z-index: 12;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 10px;
-      padding: 6px 12px;
-      font-size: 11px;
+      z-index: 22;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 7px 14px;
+      font-size: 12px;
       font-weight: 700;
-      color: #1e293b;
+      color: #f8fafc;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
       display: flex;
       align-items: center;
-      gap: 6px;
-      transition: all 0.2s;
+      gap: 7px;
+      transition: all 0.2s ease;
+    }
+
+    body.light-theme .hud-toggle-btn {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(15, 23, 42, 0.15);
+      color: #0f172a;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
     }
 
     .hud-toggle-btn:hover {
-      background: #f8fafc;
+      background: rgba(16, 185, 129, 0.2);
       border-color: #10b981;
-      color: #059669;
+      color: #10b981;
+      transform: translateY(-1px);
     }
 
     .hud h1 {
       margin: 0 0 4px;
-      font-size: 15px;
-      color: #1e2933;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    body.light-theme .hud h1 {
+      color: #0f172a;
+    }
+
+    .theme-toggle-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    body.light-theme .theme-toggle-btn {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+
+    .theme-toggle-btn:hover {
+      background: #10b981;
+      color: #ffffff;
+      border-color: #10b981;
     }
 
     .hud p {
       margin: 0 0 10px;
       font-size: 11px;
-      color: #5b6772;
+      color: #94a3b8;
       line-height: 1.4;
     }
 
+    body.light-theme .hud p {
+      color: #64748b;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #64748b;
+      margin: 10px 0 5px;
+    }
+
+    body.light-theme .section-label {
+      color: #94a3b8;
+    }
+
     .views,
-    .floors {
+    .floors,
+    .label-modes {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 5px;
     }
 
-    .floors {
-      margin-top: 8px;
-    }
-
-    button {
-      border: 1px solid #cfd4d8;
-      background: #fff;
+    .btn-chip {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.06);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 5px 9px;
       font-size: 11px;
+      font-weight: 600;
       cursor: pointer;
-      color: #1e2933;
+      color: #cbd5e1;
+      transition: all 0.18s ease;
     }
 
-    button.active {
-      background: #2c4a6e;
-      color: #fff;
-      border-color: #2c4a6e;
+    body.light-theme .btn-chip {
+      border-color: #e2e8f0;
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .btn-chip:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    body.light-theme .btn-chip:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .btn-chip.active {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #ffffff !important;
+      border-color: #10b981 !important;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
     }
 
     .now {
       margin-top: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #2c4a6e;
-    }
-
-    .legend {
-      margin-top: 8px;
       font-size: 11px;
-      color: #3b4650;
+      font-weight: 700;
+      color: #34d399;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
 
-    .legend i {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 2px;
-      margin-right: 6px;
-      vertical-align: -1px;
+    body.light-theme .now {
+      color: #059669;
     }
 
     .path-controls {
-      margin-top: 10px;
-      border-top: 1px solid #d5d2c8;
-      padding-top: 8px;
+      margin-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 10px;
+    }
+
+    body.light-theme .path-controls {
+      border-top-color: #e2e8f0;
     }
 
     .path-btn {
-      background: #10b981;
+      background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       border: none;
       font-weight: 700;
-      border-radius: 6px;
-      padding: 4px 8px;
+      border-radius: 8px;
+      padding: 4px 10px;
       font-size: 11px;
       cursor: pointer;
       transition: all 0.2s;
-    }
-
-    .path-btn:hover {
-      background: #059669;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
     }
 
     .path-btn.off {
-      background: #9ca3af;
+      background: #475569;
+      box-shadow: none;
+      color: #cbd5e1;
     }
 
     .path-select {
       width: 100%;
-      border: 1px solid #cfd4d8;
-      border-radius: 6px;
-      padding: 4px 6px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 8px;
+      padding: 6px 8px;
       font-size: 11px;
-      margin-top: 4px;
-      background: white;
-      color: #1e2933;
+      margin-top: 6px;
+      background: #1e293b;
+      color: #f8fafc;
       font-weight: 600;
       outline: none;
     }
 
-    .pin-label-start {
-      font: 700 11px Segoe UI, sans-serif;
-      color: #ffffff !important;
-      background: #10b981 !important;
-      padding: 3px 8px !important;
-      border-radius: 6px !important;
+    body.light-theme .path-select {
+      background: #f8fafc;
+      color: #0f172a;
+      border-color: #cbd5e1;
+    }
+
+    .legend {
+      margin-top: 12px;
+      font-size: 10px;
+      color: #94a3b8;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 8px;
+    }
+
+    body.light-theme .legend {
+      border-top-color: #e2e8f0;
+      color: #64748b;
+    }
+
+    .legend div {
+      display: flex;
+      align-items: center;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border-radius: 3px;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+
+    /* 3D UI Badges and Labels */
+    .block-badge-3d {
+      font-family: system-ui, sans-serif;
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #ffffff;
+      padding: 5px 12px;
+      border-radius: 24px;
       white-space: nowrap;
+      border: 1.5px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transform: translate(-50%, -50%);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    .block-badge-3d:hover {
+      transform: translate(-50%, -58%) scale(1.08);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    .map-label {
+      font-family: system-ui, sans-serif;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #0f172a;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 2px 6px;
+      border-radius: 6px;
+      white-space: nowrap;
+      border: 1px solid rgba(15, 23, 42, 0.15);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+
+    body:not(.light-theme) .map-label {
+      background: rgba(30, 41, 59, 0.92);
+      color: #f8fafc;
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+    }
+
+    .map-label.stairs-label {
+      background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+      color: #ffffff !important;
+      font-weight: 800;
       border: 1.5px solid #ffffff !important;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5) !important;
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5) !important;
+      border-radius: 8px !important;
+      padding: 2px 7px !important;
+    }
+
+    .map-label.major {
+      font-size: 10.5px;
+      font-weight: 800;
+      color: #ffffff;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      padding: 3px 8px;
+      border: 1.5px solid #38bdf8;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4);
+    }
+
+    .pin-label-start {
+      font-family: system-ui, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      padding: 4px 10px !important;
+      border-radius: 8px !important;
+      white-space: nowrap;
+      border: 2px solid #ffffff !important;
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.7) !important;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
     }
 
     .pin-label-target {
-      font: 800 11px Segoe UI, sans-serif;
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      font-weight: 900;
       color: #ffffff !important;
-      background: #059669 !important;
-      padding: 3px 8px !important;
-      border-radius: 6px !important;
+      background: linear-gradient(135deg, #059669, #047857) !important;
+      padding: 6px 14px !important;
+      border-radius: 10px !important;
       white-space: nowrap;
-      border: 1.5px solid #ffffff !important;
-      box-shadow: 0 4px 14px rgba(5, 150, 105, 0.7) !important;
+      border: 2px solid #ffffff !important;
+      box-shadow: 0 8px 25px rgba(5, 150, 105, 0.8) !important;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      animation: bounce 2s infinite ease-in-out;
     }
 
-    .hint {
-      position: absolute;
-      right: 16px;
-      bottom: 14px;
+    @keyframes bounce {
+      0%, 100% { transform: translate(-50%, -100%); }
+      50% { transform: translate(-50%, -115%); }
+    }
+
+    .custom-pin-label {
+      font-family: system-ui, sans-serif;
       font-size: 11px;
-      color: #3b4650;
-      background: rgba(255, 255, 255, .85);
-      padding: 6px 10px;
+      font-weight: 800;
+      color: #ffffff !important;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
       border-radius: 8px;
+      white-space: nowrap;
+      border: 1.5px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+    }
+
+    /* Mobile responsive optimizations */
+    @media (max-width: 640px) {
+      .hud {
+        left: 8px;
+        top: 48px;
+        width: calc(100vw - 16px);
+        max-width: 300px;
+        padding: 12px;
+      }
+      .hud-toggle-btn {
+        left: 8px;
+        top: 8px;
+        padding: 5px 10px;
+        font-size: 11px;
+      }
+      .block-badge-3d {
+        font-size: 9.5px;
+        padding: 3px 8px;
+      }
+      .map-label {
+        font-size: 8px;
+        padding: 2px 5px;
+      }
+      .pin-label-start, .pin-label-target {
+        font-size: 10px !important;
+        padding: 3px 8px !important;
+      }
+      .hint {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -204,54 +455,70 @@
   <button id="hud-toggle-btn" class="hud-toggle-btn">
     <span>🎛️</span> Controls
   </button>
+
   <div class="hud" id="hud-panel">
-    <h1>3D Campus Map</h1>
-    <p>Pick a floor to isolate only that storey and its rooms.</p>
+    <h1>
+      <span>🏛️ Campus Map 3D</span>
+      <button id="theme-btn" class="theme-toggle-btn" title="Toggle Light/Dark Theme">
+        <span id="theme-icon">☀️</span> <span id="theme-label">Light</span>
+      </button>
+    </h1>
+    <p>Navigate all campus building blocks, floors & classrooms in real-time 3D.</p>
+
+    <div class="section-label">Camera Angle</div>
     <div class="views">
-      <button data-view="iso" class="active">Isometric</button>
-      <button data-view="top">Top</button>
-      <button data-view="fl">Front-left</button>
-      <button data-view="fr">Front-right</button>
+      <button class="btn-chip active" data-view="iso">Isometric</button>
+      <button class="btn-chip" data-view="top">Top View</button>
+      <button class="btn-chip" data-view="fl">Front-Left</button>
+      <button class="btn-chip" data-view="fr">Front-Right</button>
     </div>
+
+    <div class="section-label">Floor Storey</div>
     <div class="floors">
-      <button data-floor="all">All floors</button>
-      <button data-floor="0" class="active">Ground</button>
-      <button data-floor="1">1st</button>
-      <button data-floor="2">2nd</button>
-      <button data-floor="3">3rd</button>
+      <button class="btn-chip" data-floor="all">All Floors</button>
+      <button class="btn-chip active" data-floor="0">Ground</button>
+      <button class="btn-chip" data-floor="1">1st Floor</button>
+      <button class="btn-chip" data-floor="2">2nd Floor</button>
+      <button class="btn-chip" data-floor="3">3rd Floor</button>
     </div>
-    <div class="now" id="now">Showing: Ground Floor only</div>
+
+    <div class="now" id="now">
+      <span>●</span> Ground Floor Active
+    </div>
 
     <!-- Green Navigation Path Controls -->
     <div class="path-controls">
       <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span style="font-weight:700; font-size:11px; color:#059669; display:flex; align-items:center; gap:4px;">
-          <span
-            style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
+        <span style="font-weight:800; font-size:11px; color:#34d399; display:flex; align-items:center; gap:5px;">
+          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
           3D Green Path:
         </span>
         <button id="toggle-path-btn" class="path-btn">Path: ON</button>
       </div>
       <select id="route-select" class="path-select">
-        <option value="M">Route ➔ Block M (CSE / AIML)</option>
-        <option value="F">Route ➔ Block F (First Year)</option>
-        <option value="ADM">Route ➔ Admin Block</option>
-        <option value="E">Route ➔ Block E (ETC / MCA)</option>
-        <option value="B">Route ➔ Block B (Mechanical)</option>
-        <option value="CANTEEN">Route ➔ Canteen</option>
+        <option value="M">Block M (CSE / AIML / DS)</option>
+        <option value="F">Block F (First Year)</option>
+        <option value="ADM">Admin Block (Principal)</option>
+        <option value="E">Block E (ETC / MCA / MBA)</option>
+        <option value="B">Block B (Mechanical / Elec)</option>
+        <option value="CANTEEN">Campus Canteen & Snacks</option>
       </select>
     </div>
 
     <div class="legend">
-      <div><i style="background:#c9a46c"></i>Admin / exam</div>
-      <div><i style="background:#6ea8d4"></i>Labs / halls / library</div>
-      <div><i style="background:#d89a62"></i>HOD</div>
-      <div><i style="background:#9aa7b5"></i>Working building</div>
-      <div><i style="background:#c5ced6"></i>Washroom / stairs</div>
-      <div><i style="background:#10b981; box-shadow: 0 0 6px #10b981;"></i>Active 3D Green Path</div>
+      <div><i style="background:#84cc16"></i>Block M (CSE)</div>
+      <div><i style="background:#16a34a"></i>Block F (1st Yr)</div>
+      <div><i style="background:#eab308"></i>Admin Block</div>
+      <div><i style="background:#3b82f6"></i>Block E (ETC)</div>
+      <div><i style="background:#f97316"></i>Block B (Mech)</div>
+      <div><i style="background:#ef4444"></i>Canteen Area</div>
+      <div><i style="background:#f59e0b"></i>Stairs / Ramps</div>
+      <div><i style="background:#10b981; box-shadow: 0 0 6px #10b981;"></i>Shortest Green Path</div>
     </div>
   </div>
-  <div class="hint">Drag to orbit Â· scroll to zoom</div>
+
+  <div class="hint">🖱 Drag to Orbit · 🔍 Scroll to Zoom · Click Badges to Fly-In</div>
+
   <script type="importmap">
   {
     "imports": {
@@ -260,67 +527,232 @@
     }
   }
   </script>
+
   <script type="module">
     import * as THREE from "three";
     import { OrbitControls } from "three/addons/controls/OrbitControls.js";
     import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 
+    // ─── Theme Configurations ──────────────────────────────────
+    let isDarkTheme = true;
+
+    const themeColors = {
+      dark: {
+        bg: 0x0f172a,
+        fog: 0x0f172a,
+        grass: 0x14291f,
+        innerLawn: 0x1b3829,
+        court: 0x1e3a8a,
+        road: 0x1e293b,
+        pad: 0x334155,
+        park: 0x1e293b,
+        wallBase: 0x334155,
+        wallM: 0x334155,
+        wallF: 0x334155,
+        wallAdmin: 0x78350f,
+        wallE: 0x1e3a8a,
+        wallB: 0x431407,
+        wallCanteen: 0x4c0519,
+        slab: 0x0f172a,
+        stairsMat: 0xf59e0b,
+        sunColor: 0xfff5e6,
+        sunIntensity: 1.25,
+        ambientColor: 0xffffff,
+        ambientIntensity: 0.85,
+        hemiSky: 0x38bdf8,
+        hemiGround: 0x0f172a,
+      },
+      light: {
+        bg: 0xe0e7ef,
+        fog: 0xe0e7ef,
+        grass: 0x4ade80,
+        innerLawn: 0x22c55e,
+        court: 0x3b82f6,
+        road: 0x64748b,
+        pad: 0xcbd5e1,
+        park: 0x94a3b8,
+        wallBase: 0xf8fafc,
+        wallM: 0xf8fafc,
+        wallF: 0xf8fafc,
+        wallAdmin: 0xfef3c7,
+        wallE: 0xf8fafc,
+        wallB: 0xf8fafc,
+        wallCanteen: 0xffedd5,
+        slab: 0x475569,
+        stairsMat: 0xd97706,
+        sunColor: 0xfffbf0,
+        sunIntensity: 1.5,
+        ambientColor: 0xffffff,
+        ambientIntensity: 0.95,
+        hemiSky: 0x60a5fa,
+        hemiGround: 0xe2e8f0,
+      }
+    };
+
+    // ─── Scene Setup ───────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xd7e4cc);
-    scene.fog = new THREE.Fog(0xd7e4cc, 280, 700);
+    scene.background = new THREE.Color(themeColors.dark.bg);
+    scene.fog = new THREE.FogExp2(themeColors.dark.fog, 0.0028);
 
-    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 800);
-    camera.position.set(95, 70, 95);
+    const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.5, 900);
+    camera.position.set(95, 75, 95);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
     renderer.setSize(innerWidth, innerHeight);
     renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
     document.body.appendChild(renderer.domElement);
 
     const labelRenderer = new CSS2DRenderer();
     labelRenderer.setSize(innerWidth, innerHeight);
-    Object.assign(labelRenderer.domElement.style, { position: "absolute", top: "0", pointerEvents: "none" });
+    Object.assign(labelRenderer.domElement.style, { position: "absolute", top: "0", pointerEvents: "none", zIndex: "10" });
     document.body.appendChild(labelRenderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.target.set(8, 3, 4);
+    controls.dampingFactor = 0.05;
+    controls.target.set(6, 4, 6);
     controls.maxPolarAngle = Math.PI / 2.05;
-    controls.minDistance = 40;
-    controls.maxDistance = 520;
+    controls.minDistance = 25;
+    controls.maxDistance = 550;
+    controls.touches = {
+      ONE: THREE.TOUCH.ROTATE,
+      TWO: THREE.TOUCH.DOLLY_PAN
+    };
+    controls.rotateSpeed = 0.8;
+    controls.zoomSpeed = 1.0;
+    controls.panSpeed = 0.8;
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.74));
-    const sun = new THREE.DirectionalLight(0xfff4e0, 0.85);
-    sun.position.set(60, 90, 40);
+    // ─── Lighting Setup ─────────────────────────────────────────
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
+    scene.add(ambientLight);
+
+    const sun = new THREE.DirectionalLight(0xfff5e6, 1.25);
+    sun.position.set(75, 110, 55);
     sun.castShadow = true;
     sun.shadow.mapSize.set(2048, 2048);
-    [-120, 120, 120, -120].forEach(() => { });
-    Object.assign(sun.shadow.camera, { left: -120, right: 120, top: 120, bottom: -120 });
+    sun.shadow.camera.near = 10;
+    sun.shadow.camera.far = 400;
+    sun.shadow.camera.left = -140;
+    sun.shadow.camera.right = 140;
+    sun.shadow.camera.top = 140;
+    sun.shadow.camera.bottom = -140;
+    sun.shadow.bias = -0.0005;
     scene.add(sun);
-    scene.add(new THREE.HemisphereLight(0xcfe8ff, 0x8fba7a, 0.32));
 
+    const fillLight = new THREE.DirectionalLight(0x7dd3fc, 0.45);
+    fillLight.position.set(-60, 50, -60);
+    scene.add(fillLight);
+
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.4);
+    scene.add(hemiLight);
+
+    // ─── Architectural Materials Palette ────────────────────────
     const mats = {
-      grass: new THREE.MeshStandardMaterial({ color: 0xb7d4a8, roughness: .95 }),
-      court: new THREE.MeshStandardMaterial({ color: 0xcfe3b8, roughness: .92 }),
-      road: new THREE.MeshStandardMaterial({ color: 0xb8bec6, roughness: .85 }),
-      pad: new THREE.MeshStandardMaterial({ color: 0xe8efe3, roughness: .9 }),
-      park: new THREE.MeshStandardMaterial({ color: 0xc5cad1, roughness: .88 }),
-      wall: new THREE.MeshStandardMaterial({ color: 0xf3eee6, roughness: .78 }),
-      wallWarm: new THREE.MeshStandardMaterial({ color: 0xe8d9b8, roughness: .78 }),
-      wallWork: new THREE.MeshStandardMaterial({ color: 0x8fa3b5, roughness: .7 }),
-      wallHOD: new THREE.MeshStandardMaterial({ color: 0xd89a62, roughness: .75 }),
-      wallLab: new THREE.MeshStandardMaterial({ color: 0x7eb6d9, roughness: .72 }),
-      roof: new THREE.MeshStandardMaterial({ color: 0x6d7c8a, roughness: .65 }),
-      wash: new THREE.MeshStandardMaterial({ color: 0xc5ced6, roughness: .8 }),
-      glass: new THREE.MeshStandardMaterial({ color: 0x9ec4de, roughness: .25, metalness: .12, transparent: true, opacity: .8 }),
-      trunk: new THREE.MeshStandardMaterial({ color: 0x6b4a2e, roughness: 1 }),
-      leaf: new THREE.MeshStandardMaterial({ color: 0x5f9a4a, roughness: .85 }),
-      slab: new THREE.MeshStandardMaterial({ color: 0xd8d2c6, roughness: .9 }),
+      grass: new THREE.MeshStandardMaterial({ color: themeColors.dark.grass, roughness: 0.9, metalness: 0.05 }),
+      innerLawn: new THREE.MeshStandardMaterial({ color: themeColors.dark.innerLawn, roughness: 0.85 }),
+      court: new THREE.MeshStandardMaterial({ color: themeColors.dark.court, roughness: 0.75 }),
+      courtLines: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }),
+      road: new THREE.MeshStandardMaterial({ color: themeColors.dark.road, roughness: 0.8 }),
+      roadLine: new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }),
+      pad: new THREE.MeshStandardMaterial({ color: themeColors.dark.pad, roughness: 0.85 }),
+      park: new THREE.MeshStandardMaterial({ color: themeColors.dark.park, roughness: 0.85 }),
+      parkingLines: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+
+      wallBase: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallBase, roughness: 0.45, metalness: 0.05 }),
+      wallBlockM: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallM, roughness: 0.4 }),
+      wallBlockF: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallF, roughness: 0.4 }),
+      wallAdmin: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallAdmin, roughness: 0.45 }),
+      wallBlockE: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallE, roughness: 0.4 }),
+      wallBlockB: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallB, roughness: 0.4 }),
+      wallCanteen: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallCanteen, roughness: 0.45 }),
+
+      trimM: new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.3, metalness: 0.2 }),
+      trimF: new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.3, metalness: 0.2 }),
+      trimAdmin: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.2 }),
+      trimE: new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3, metalness: 0.2 }),
+      trimB: new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3, metalness: 0.2 }),
+      trimCanteen: new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, metalness: 0.2 }),
+
+      wallHOD: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 }),
+      wallLab: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 }),
+      wallWork: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 }),
+      wash: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.6 }),
+
+      stairs: new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.35,
+        roughness: 0.4,
+        metalness: 0.1
+      }),
+
+      glass: new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        roughness: 0.1,
+        metalness: 0.6,
+        transparent: true,
+        opacity: 0.85
+      }),
+      slab: new THREE.MeshStandardMaterial({ color: themeColors.dark.slab, roughness: 0.6 }),
+      slabGhost: new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.08, depthWrite: false }),
+      trunk: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 }),
+      leaf: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }),
     };
 
+    function applyTheme(isDark) {
+      isDarkTheme = isDark;
+      const t = isDark ? themeColors.dark : themeColors.light;
+
+      document.body.classList.toggle("light-theme", !isDark);
+      const themeIcon = document.getElementById("theme-icon");
+      const themeLabel = document.getElementById("theme-label");
+      if (themeIcon && themeLabel) {
+        themeIcon.textContent = isDark ? "☀️" : "🌙";
+        themeLabel.textContent = isDark ? "Light" : "Dark";
+      }
+
+      scene.background.setHex(t.bg);
+      scene.fog.color.setHex(t.fog);
+
+      sun.color.setHex(t.sunColor);
+      sun.intensity = t.sunIntensity;
+      ambientLight.color.setHex(t.ambientColor);
+      ambientLight.intensity = t.ambientIntensity;
+      hemiLight.color.setHex(t.hemiSky);
+      hemiLight.groundColor.setHex(t.hemiGround);
+
+      mats.grass.color.setHex(t.grass);
+      mats.innerLawn.color.setHex(t.innerLawn);
+      mats.court.color.setHex(t.court);
+      mats.road.color.setHex(t.road);
+      mats.pad.color.setHex(t.pad);
+      mats.park.color.setHex(t.park);
+
+      mats.wallBase.color.setHex(t.wallBase);
+      mats.wallBlockM.color.setHex(t.wallM);
+      mats.wallBlockF.color.setHex(t.wallF);
+      mats.wallAdmin.color.setHex(t.wallAdmin);
+      mats.wallBlockE.color.setHex(t.wallE);
+      mats.wallBlockB.color.setHex(t.wallB);
+      mats.wallCanteen.color.setHex(t.wallCanteen);
+      mats.slab.color.setHex(t.slab);
+    }
+
+    const themeBtn = document.getElementById("theme-btn");
+    if (themeBtn) {
+      themeBtn.onclick = () => {
+        applyTheme(!isDarkTheme);
+      };
+    }
+
+    // ─── Hierarchy Groups ────────────────────────────────────────
     const campus = new THREE.Group();
     scene.add(campus);
+
     const ground = new THREE.Group();
     ground.name = "ground-context";
     campus.add(ground);
@@ -328,16 +760,21 @@
     const floorGroups = [0, 1, 2, 3].map((i) => {
       const g = new THREE.Group();
       g.name = "floor-" + i;
+      g.userData = { floorId: i };
       campus.add(g);
       return g;
     });
 
+    const blockBadgesGroup = new THREE.Group();
+    scene.add(blockBadgesGroup);
+
     const FH = 3.35;
-    const slabH = 0.22;
+    const slabH = 0.25;
     function floorY(n) { return 0.35 + n * FH + FH / 2; }
 
     function box(w, h, d, mat, x, y, z, parent, id) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const m = new THREE.Mesh(geo, mat);
       m.position.set(x, y, z);
       m.castShadow = true;
       m.receiveShadow = true;
@@ -346,79 +783,220 @@
       return m;
     }
 
-    function label(parent, text, x, y, z, major = false) {
+    function label(parent, text, x, y, z, major = false, isStairs = false) {
       const el = document.createElement("div");
-      el.className = "map-label";
+      el.className = `map-label ${isStairs ? 'stairs-label' : (major ? 'major' : '')}`;
       const floorId = parent.userData.floorId;
       if (floorId !== undefined) el.dataset.floor = String(floorId);
+      el.dataset.major = major ? "true" : "false";
+      el.dataset.stairs = isStairs ? "true" : "false";
       el.textContent = text;
-      el.style.cssText = major
-        ? "font:700 11px Segoe UI,sans-serif;color:#1e2933;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:4px;white-space:nowrap;border:1px solid #d5d2c8"
-        : "font:650 9px Segoe UI,sans-serif;color:#24303a;background:rgba(255,255,255,.82);padding:1px 4px;border-radius:3px;white-space:nowrap";
+
       const obj = new CSS2DObject(el);
       obj.position.set(x, y, z);
       obj.userData.isLabel = true;
+      obj.userData.isMajor = major;
+      obj.userData.isStairs = isStairs;
+      obj.userData.text = text;
       parent.add(obj);
       return obj;
     }
 
-    function room(parent, id, w, d, x, z, floor, mat, title, major = false) {
+    function room(parent, id, w, d, x, z, floor, mat, title, major = false, isStairs = false) {
       const y = floorY(floor);
-      const h = FH - slabH - 0.15;
+      const h = FH - slabH - 0.12;
       const m = box(w, h, d, mat, x, y, z, parent, id);
-      // window
-      if (w > 2.2 && d > 2.2) {
-        box(Math.max(w - 1.2, 1), 0.9, 0.08, mats.glass, x, y + 0.15, z + d / 2 + 0.02, parent);
+      m.userData = {
+        isRoom: true,
+        roomId: id,
+        floor: floor,
+        isStairs: isStairs || id === 'stairs' || (id && id.includes('stairs'))
+      };
+
+      if (w > 2.5 && d > 2.5 && !isStairs) {
+        box(Math.max(w - 1.2, 1), 1.1, 0.1, mats.glass, x, y + 0.2, z + d / 2 + 0.05, parent);
       }
-      if (title) label(parent, title, x, y + h / 2 + 0.15, z, major);
+      if (title) label(parent, title, x, y + h / 2 + 0.3, z, major, isStairs);
       return m;
+    }
+
+    function stairs(f, x, z, title) {
+      return room(floorGroups[f], "stairs-" + f + "-" + Math.round(x), 3.8, 4.2, x, z, f, mats.stairs, title || "🪜 STAIRS", true, true);
     }
 
     function slab(parent, w, d, x, z, floor) {
       const y = 0.35 + floor * FH + slabH / 2;
-      box(w, slabH, d, mats.slab, x, y, z, parent);
+      const m = box(w, slabH, d, mats.slab, x, y, z, parent);
+      m.userData = { isSlab: true };
+      return m;
     }
 
-    // ===== GROUND CONTEXT (always visible) =====
-    box(320, 0.6, 560, mats.grass, -20, -0.3, -80, ground);
-    box(200, 0.4, 150, mats.pad, 4, 0.05, 4, ground);
-    const road = new THREE.Mesh(new THREE.RingGeometry(78, 92, 64), mats.road);
+    // ─── Multi-Staircase Infrastructure ───────────────────────────
+    const staircases = [
+      {
+        id: "STAIRS_F",
+        name: "Staircase F (1st Year Wing)",
+        block: "F",
+        groundPos: new THREE.Vector3(-37, 0.55, -4.2),
+        floorPositions: {
+          0: new THREE.Vector3(-37, floorY(0) + 0.35, -4.2),
+          1: new THREE.Vector3(-37, floorY(1) + 0.35, -4.2),
+          2: new THREE.Vector3(-37, floorY(2) + 0.35, -4.2),
+          3: new THREE.Vector3(-37, floorY(3) + 0.35, -4.2),
+        }
+      },
+      {
+        id: "STAIRS_E",
+        name: "Staircase E (ETC / MCA)",
+        block: "E",
+        groundPos: new THREE.Vector3(-38, 0.55, 17.5),
+        floorPositions: {
+          0: new THREE.Vector3(-38, floorY(0) + 0.35, 17.5),
+          1: new THREE.Vector3(-50, floorY(1) + 0.35, 20),
+          2: new THREE.Vector3(-40, floorY(2) + 0.35, 20),
+          3: new THREE.Vector3(-38, floorY(3) + 0.35, 20),
+        }
+      },
+      {
+        id: "STAIRS_B",
+        name: "Staircase B (Mech / Elec)",
+        block: "B",
+        groundPos: new THREE.Vector3(13.2, 0.55, 17.2),
+        floorPositions: {
+          0: new THREE.Vector3(13.2, floorY(0) + 0.35, 17.2),
+          1: new THREE.Vector3(0.5, floorY(1) + 0.35, 16.6),
+          2: new THREE.Vector3(3, floorY(2) + 0.35, 17.4),
+          3: new THREE.Vector3(12, floorY(3) + 0.35, 12),
+        }
+      },
+      {
+        id: "STAIRS_M",
+        name: "Staircase M (CSE / AIML)",
+        block: "M",
+        groundPos: new THREE.Vector3(29, 0.55, 16),
+        floorPositions: {
+          0: new THREE.Vector3(29, floorY(0) + 0.35, 16),
+          1: new THREE.Vector3(27, floorY(1) + 0.35, 18),
+          2: new THREE.Vector3(28, floorY(2) + 0.35, 18),
+          3: new THREE.Vector3(22, floorY(3) + 0.35, 16),
+        }
+      }
+    ];
+
+    // ─── Building 3D Roof Floating Badges ─────────────────────────
+    const blockMetadata = [
+      { id: 'M', name: 'BLOCK M', subtitle: 'CSE / AIML / DS / IT', color: '#84cc16', pos: [25, 23, 28], icon: '💻', cameraPos: [65, 45, 65] },
+      { id: 'F', name: 'BLOCK F', subtitle: 'First Year Wing', color: '#16a34a', pos: [-48, 23, -10], icon: '🎓', cameraPos: [-80, 45, 25] },
+      { id: 'ADM', name: 'ADMIN BLOCK', subtitle: 'Principal & Exam', color: '#eab308', pos: [-12, 23, -28], icon: '🏛️', cameraPos: [-30, 45, -60] },
+      { id: 'E', name: 'BLOCK E', subtitle: 'ETC / MCA / MBA', color: '#3b82f6', pos: [-46, 23, 30], icon: '📡', cameraPos: [-75, 45, 65] },
+      { id: 'B', name: 'BLOCK B', subtitle: 'Mech & Electrical', color: '#f97316', pos: [2, 23, 12], icon: '⚙️', cameraPos: [15, 45, 55] },
+      { id: 'CANTEEN', name: 'CANTEEN', subtitle: 'Food Court & Refreshments', color: '#ef4444', pos: [-88, 14, -80], icon: '🍽️', cameraPos: [-110, 35, -45] },
+    ];
+
+    function createBlockBadges() {
+      blockMetadata.forEach(block => {
+        const el = document.createElement("div");
+        el.className = "block-badge-3d";
+        el.style.background = `linear-gradient(135deg, ${block.color}ee, ${block.color}cc)`;
+        el.innerHTML = `<span style="font-size:13px;">${block.icon}</span> <span>${block.name}</span>`;
+        el.title = `${block.name} – ${block.subtitle}`;
+
+        el.onclick = (e) => {
+          e.stopPropagation();
+          flyToBlock(block.id);
+          render3DGreenPath(block.id, 0);
+          if (window.parent) {
+            window.parent.postMessage({ type: 'BLOCK_SELECTED', block: block.id }, '*');
+          }
+        };
+
+        const obj = new CSS2DObject(el);
+        obj.position.set(block.pos[0], block.pos[1], block.pos[2]);
+        obj.userData.isBlockBadge = true;
+        obj.userData.blockId = block.id;
+        blockBadgesGroup.add(obj);
+      });
+    }
+    createBlockBadges();
+
+    // ─── Camera Smooth Transition Animation ───────────────────────
+    let isCameraAnimating = false;
+    let cameraStartPos = new THREE.Vector3();
+    let cameraTargetPos = new THREE.Vector3();
+    let controlsStartTgt = new THREE.Vector3();
+    let controlsTargetTgt = new THREE.Vector3();
+    let animProgress = 0;
+
+    function smoothFlyCamera(targetCamPos, targetLookAt) {
+      cameraStartPos.copy(camera.position);
+      cameraTargetPos.copy(targetCamPos);
+      controlsStartTgt.copy(controls.target);
+      controlsTargetTgt.copy(targetLookAt);
+      animProgress = 0;
+      isCameraAnimating = true;
+    }
+
+    function flyToBlock(blockId) {
+      const meta = blockMetadata.find(b => b.id === blockId);
+      if (!meta) return;
+      smoothFlyCamera(
+        new THREE.Vector3(meta.cameraPos[0], meta.cameraPos[1], meta.cameraPos[2]),
+        new THREE.Vector3(meta.pos[0], 4, meta.pos[2])
+      );
+    }
+
+    // ─── GROUND TERRAIN & AMENITIES ──────────────────────────────
+    box(340, 0.8, 580, mats.grass, -20, -0.4, -80, ground);
+    box(210, 0.45, 160, mats.pad, 4, 0.05, 4, ground);
+    box(54, 0.3, 34, mats.innerLawn, -4, 0.22, -6, ground);
+    label(ground, "🌿 OPEN GROUND", -4, 1.2, -6, true);
+
+    const road = new THREE.Mesh(new THREE.RingGeometry(78, 94, 64), mats.road);
     road.rotation.x = -Math.PI / 2;
-    road.position.set(4, 0.12, 6);
+    road.position.set(4, 0.14, 6);
     road.scale.set(1.15, 0.85, 1);
     road.receiveShadow = true;
     ground.add(road);
-    box(52, 0.25, 30, mats.court, -4, 0.22, -6, ground);
-    label(ground, "OPEN GROUND", -4, 1.0, -6, true);
-    box(32, 0.22, 16, mats.park, -2, 0.22, 28, ground);
-    box(8, 0.22, 22, mats.park, 48, 0.22, 22, ground);
-    box(16, 0.22, 12, mats.park, 72, 0.22, 36, ground);
-    label(ground, "PARKING", -2, 1.2, 28, true);
-    label(ground, "PARKING", 72, 1.2, 36);
 
-    box(6.4, 3.0, 4.8, mats.wallLab, -63, 1.7, 22.5, ground, "amul-franchise");
-    label(ground, "AMUL FRANCHISE", -63, 3.7, 22.5, true);
-    box(6.4, 3.0, 4.8, mats.wallLab, -63, 1.7, 28.4, ground, "snack-shop");
-    label(ground, "SNACK SHOP", -63, 3.7, 28.4, true);
-    box(5.6, 3.5, 18, mats.wallLab, -94, 1.95, -2, ground, "stationary-shop");
-    label(ground, "STATIONARY", -94, 4.2, -2, true);
-    box(8, 0.18, 88, mats.road, -94, 0.16, -50, ground, "canteen-road");
-    box(14, 3.6, 7.4, mats.wallLab, -94, 2.0, -96, ground, "canteen");
-    label(ground, "CANTEEN", -94, 4.4, -96, true);
+    box(34, 0.25, 18, mats.park, -2, 0.22, 28, ground, "parking-a");
+    label(ground, "🅿️ PARKING A", -2, 1.2, 28, true);
+    box(10, 0.25, 24, mats.park, 48, 0.22, 22, ground, "parking-b-sub");
+    box(18, 0.25, 14, mats.park, 72, 0.22, 36, ground, "parking-b");
+    label(ground, "🅿️ PARKING B", 72, 1.2, 36);
+
+    box(7.5, 3.4, 5.5, mats.wallLab, -63, 1.7, 22.5, ground, "amul-franchise");
+    label(ground, "🍦 AMUL", -63, 3.8, 22.5, true);
+
+    box(7.5, 3.4, 5.5, mats.wallLab, -63, 1.7, 29.5, ground, "snack-shop");
+    label(ground, "☕ SNACKS", -63, 3.8, 29.5, true);
+
+    box(6.5, 3.6, 20, mats.wallLab, -94, 1.95, -2, ground, "stationary-shop");
+    label(ground, "📚 STATIONERY", -94, 4.3, -2, true);
+
+    box(10, 0.2, 94, mats.road, -94, 0.16, -50, ground, "canteen-road");
+    box(18, 4.2, 12, mats.wallCanteen, -94, 2.1, -96, ground, "canteen");
+    box(18.6, 0.5, 12.6, mats.trimCanteen, -94, 4.3, -96, ground);
+    label(ground, "🍽️ CANTEEN", -94, 5.0, -96, true);
 
     function tree(x, z, s = 1) {
       const t = new THREE.Group();
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.18 * s, 0.26 * s, 1.6 * s, 6), mats.trunk);
-      tr.position.y = 0.8 * s; tr.castShadow = true;
-      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.15 * s, 0), mats.leaf);
-      leaf.position.y = 2.1 * s; leaf.castShadow = true;
+      t.name = "tree";
+      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.32 * s, 1.8 * s, 6), mats.trunk);
+      tr.position.y = 0.9 * s;
+      tr.castShadow = true;
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3 * s, 1), mats.leaf);
+      leaf.position.y = 2.4 * s;
+      leaf.castShadow = true;
       t.add(tr, leaf);
       t.position.set(x, 0, z);
       ground.add(t);
     }
-    [[-70, -50], [-60, -55], [-40, -58], [-20, -60], [20, -58], [50, -52], [70, -30], [78, -10],
-    [-72, 10], [-74, 30], [-60, 58], [-30, 62], [10, 64], [40, 60], [70, 50], [82, 8], [84, 20]]
-      .forEach(([x, z], i) => tree(x, z, 0.85 + (i % 3) * 0.15));
+
+    [
+      [-70, -50], [-60, -55], [-40, -58], [-20, -60], [20, -58], [50, -52], [70, -30], [78, -10],
+      [-72, 10], [-74, 30], [-60, 58], [-30, 62], [10, 64], [40, 60], [70, 50], [82, 8], [84, 20],
+      [-10, 42], [22, 48], [-48, 48], [-12, -45], [12, -48]
+    ].forEach(([x, z], i) => tree(x, z, 0.9 + (i % 3) * 0.18));
 
     function working(f) {
       const g = floorGroups[f];
@@ -426,365 +1004,845 @@
       room(g, "working-e", 10, 32, 32, -10, f, mats.wallWork, null);
     }
 
-    function stairs(f, x, z, title) {
-      room(floorGroups[f], "stairs", 3.4, 3.8, x, z, f, mats.wash, title || "STAIRS");
-    }
-
     function shells(f) {
       const g = floorGroups[f];
-      slab(g, 24, 12, -40, -28, f);
-      slab(g, 12, 42, -52, -1, f);
-      slab(g, 52, 10, -2, 12, f);
-      slab(g, 32, 24, -46, 26, f);
-      slab(g, 24, 26, 26, 24, f);
-      slab(g, 24, 10, -8, -28, f);
+      slab(g, 25, 13, -40, -28, f);
+      slab(g, 13, 44, -52, -1, f);
+      slab(g, 54, 11, -2, 12, f);
+      slab(g, 34, 25, -46, 26, f);
+      slab(g, 26, 28, 26, 24, f);
+      slab(g, 25, 11, -8, -28, f);
     }
 
-    // ========== GROUND FLOOR ==========
+    // ─── GROUND FLOOR (Floor 0) ──────────────────────────────────
     {
       const f = 0, g = floorGroups[0];
       working(0);
       shells(0);
-      room(g, "admin-block", 20, 8.5, -6, -28, 0, mats.wallWarm, "ADMIN BLOCK", true);
+
+      room(g, "admin-block", 22, 9.0, -6, -28, 0, mats.wallAdmin, "🏛️ ADMIN & PRINCIPAL", true);
+      box(22.6, 0.4, 9.6, mats.trimAdmin, -6, floorY(0) + FH / 2 - 0.2, -28, g);
       room(g, "student-section", 8, 6, -22, -27, 0, mats.wallLab, "STUDENT SECTION");
 
-      room(g, "room-F001", 6.5, 8, -32, -28, 0, mats.wall, "F001");
-      room(g, "room-F002", 6.5, 8, -39, -28, 0, mats.wall, "F002");
-      room(g, "room-F003", 8, 6, -52, -22, 0, mats.wall, "F003");
-      room(g, "room-F004", 8, 6.2, -52, -10, 0, mats.wall, "F004");
-      room(g, "entrance-f", 8, 3.2, -52, -4.2, 0, mats.wall, "ENTRANCE");
-      room(g, "room-G004", 6.2, 3.6, -43, -4.2, 0, mats.wall, "G004 STATIONARY");
-      stairs(0, -37, -4.2, "STAIRS");
-      room(g, "room-F005", 8, 4.2, -52, 1.2, 0, mats.wall, "F005");
-      room(g, "room-F006", 8, 4.2, -52, 6, 0, mats.wall, "F006");
-      room(g, "room-F007", 8, 4.2, -52, 10.8, 0, mats.wall, "F007");
-      room(g, "room-F008", 8, 5, -52, 15.4, 0, mats.wash, "F008 BW");
-      room(g, "entrance-f008", 8, 3.4, -54, 19.4, 0, mats.wall, "ENTRANCE");
-      room(g, "room-E001", 5, 5.5, -56, 24.2, 0, mats.wall, "E001");
-      room(g, "room-E0002", 6, 3.6, -56, 28, 0, mats.wall, "E0002");
-      room(g, "room-E003", 6, 3.6, -56, 32, 0, mats.wall, "E003");
-      room(g, "room-E004", 6, 3.6, -56, 36, 0, mats.wall, "E004");
-      room(g, "room-E005", 6.5, 7, -48, 34, 0, mats.wallLab, "E005");
+      room(g, "room-F001", 6.5, 8, -32, -28, 0, mats.wallBlockF, "F001 (Physics Lab)", true);
+      room(g, "room-F002", 6.5, 8, -39, -28, 0, mats.wallBlockF, "F002 (Chemistry)");
+      room(g, "room-F003", 8, 6, -52, -22, 0, mats.wallBlockF, "F003");
+      room(g, "room-F004", 8, 6.2, -52, -10, 0, mats.wallBlockF, "F004 Classroom");
+      room(g, "entrance-f", 8, 3.2, -52, -4.2, 0, mats.trimF, "🚪 ENTRANCE (F)");
+      room(g, "room-G004", 6.2, 3.6, -43, -4.2, 0, mats.wallBlockF, "G004");
+      stairs(0, -37, -4.2, "🪜 STAIRS (F)");
+      room(g, "room-F005", 8, 4.2, -52, 1.2, 0, mats.wallBlockF, "F005");
+      room(g, "room-F006", 8, 4.2, -52, 6, 0, mats.wallBlockF, "F006");
+      room(g, "room-F007", 8, 4.2, -52, 10.8, 0, mats.wallBlockF, "F007");
+      room(g, "room-F008", 8, 5, -52, 15.4, 0, mats.wash, "F008");
+
+      room(g, "entrance-f008", 8, 3.4, -54, 19.4, 0, mats.trimE, "BLOCK E ENTRANCE");
+      room(g, "room-E001", 5, 5.5, -56, 24.2, 0, mats.wallBlockE, "E001");
+      room(g, "room-E0002", 6, 3.6, -56, 28, 0, mats.wallBlockE, "E0002");
+      room(g, "room-E003", 6, 3.6, -56, 32, 0, mats.wallBlockE, "E003");
+      room(g, "room-E004", 6, 3.6, -56, 36, 0, mats.wallBlockE, "E004");
+      room(g, "room-E005", 6.5, 7, -48, 34, 0, mats.wallLab, "E005 (Robotics)");
       room(g, "room-E006", 6.5, 7, -41, 34, 0, mats.wallLab, "E006");
-      room(g, "etc", 7, 4.2, -44, 26, 0, mats.wallLab, "ETC", true);
-      room(g, "room-G005", 5, 3.4, -50, 24, 0, mats.wall, "G005");
-      stairs(0, -38, 17.5, "STAIRS");
-      room(g, "seek-room", 6.5, 3.6, -32, 17.5, 0, mats.wall, "SEEK ROOM");
-      room(g, "room-E007", 5.5, 3.6, -25, 17.5, 0, mats.wash, "E007 GW");
-      room(g, "computer-lab", 6, 6, -34, 30, 0, mats.wallLab, "COMPUTER LAB", true);
-      room(g, "room-E010", 6, 3.4, -34, 36, 0, mats.wallHOD, "E010 HOD");
-      room(g, "room-E011", 5, 4, -41, 38, 0, mats.wall, "E011");
-      room(g, "room-E009", 3.6, 5, -29, 35, 0, mats.wall, "E009");
+      room(g, "etc", 7, 4.2, -44, 26, 0, mats.wallLab, "ETC DEPT", true);
+      room(g, "room-G005", 5, 3.4, -50, 24, 0, mats.wallBlockE, "G005");
+      stairs(0, -38, 17.5, "🪜 STAIRS (E)");
+      room(g, "seek-room", 6.5, 3.6, -32, 17.5, 0, mats.wallBlockE, "SEEK ROOM");
+      room(g, "room-E007", 5.5, 3.6, -25, 17.5, 0, mats.wash, "E007");
+      room(g, "computer-lab", 6, 6, -34, 30, 0, mats.wallLab, "💻 COMPUTER LAB", true);
+      room(g, "room-E010", 6, 3.4, -34, 36, 0, mats.wallHOD, "E010 HOD ETC", true);
+      room(g, "room-E011", 5, 4, -41, 38, 0, mats.wallBlockE, "E011");
+      room(g, "room-E009", 3.6, 5, -29, 35, 0, mats.wallBlockE, "E009");
 
-      room(g, "room-B001", 5.4, 4.4, -22, 11, 0, mats.wall, "B001");
-      room(g, "room-B002", 6.2, 4.8, -16, 11, 0, mats.wallHOD, "B002 HOD");
-      room(g, "project-lab", 7.2, 4.6, -8.5, 11, 0, mats.wallLab, "PROJECT LAB", true);
-      room(g, "room-B003", 6, 5.2, -1.5, 11, 0, mats.wall, "B003 A2");
-      room(g, "stage", 14, 6.4, 9, 11, 0, mats.wallHOD, "STAGE", true);
-      room(g, "room-B004", 5.4, 5.2, 19, 11, 0, mats.wall, "B004");
-      room(g, "room-B005", 4.8, 5.2, 24.2, 11, 0, mats.wall, "B005");
-      room(g, "room-B007", 4.6, 3.4, 8, 17.2, 0, mats.wall, "B007");
-      stairs(0, 13.2, 17.2, "STAIRS");
-      room(g, "entrance-stage", 6.4, 3, 8, 21.2, 0, mats.wall, "ENTRANCE");
+      room(g, "room-B001", 5.4, 4.4, -22, 11, 0, mats.wallBlockB, "B001");
+      room(g, "room-B002", 6.2, 4.8, -16, 11, 0, mats.wallHOD, "B002 HOD MECH", true);
+      room(g, "project-lab", 7.2, 4.6, -8.5, 11, 0, mats.wallLab, "⚙️ PROJECT LAB", true);
+      room(g, "room-B003", 6, 5.2, -1.5, 11, 0, mats.wallBlockB, "B003 A2");
+      room(g, "stage", 14, 6.4, 9, 11, 0, mats.wallHOD, "🎭 MAIN STAGE", true);
+      room(g, "room-B004", 5.4, 5.2, 19, 11, 0, mats.wallBlockB, "B004");
+      room(g, "room-B005", 4.8, 5.2, 24.2, 11, 0, mats.wallBlockB, "B005");
+      room(g, "room-B007", 4.6, 3.4, 8, 17.2, 0, mats.wallBlockB, "B007");
+      stairs(0, 13.2, 17.2, "🪜 STAIRS (B)");
+      room(g, "entrance-stage", 6.4, 3, 8, 21.2, 0, mats.trimB, "STAGE ENTRANCE");
 
-      room(g, "auditorium", 14, 8, 20, 20, 0, mats.wallLab, "AUDITORIUM M008", true);
-      stairs(0, 29, 16, "STAIRS TO TERRACE");
-      room(g, "room-M007", 6, 5, 18, 28, 0, mats.wall, "M007");
-      room(g, "room-M006", 6, 5, 18, 34, 0, mats.wall, "M006");
-      room(g, "room-CL", 4, 3.2, 18, 39, 0, mats.wallLab, "CL");
-      room(g, "room-M001", 6.2, 3.6, 32, 20, 0, mats.wall, "M001");
-      room(g, "room-M002", 6.2, 3.8, 32, 24.2, 0, mats.wash, "M002 BW");
-      room(g, "room-M003A1", 6.2, 3.4, 32, 28.2, 0, mats.wall, "M003 A1");
-      room(g, "room-M003A4", 6.2, 3.4, 32, 32, 0, mats.wall, "M003 A4");
-      room(g, "room-M004", 4.2, 3, 21.6, 39, 0, mats.wall, "M004");
-      room(g, "room-M005", 4.2, 3, 23.8, 39, 0, mats.wall, "M005");
-      room(g, "room-M003A5", 4.2, 3, 26, 39, 0, mats.wall, "M003 A5");
-      room(g, "room-M003A7", 4.2, 3, 30.6, 39, 0, mats.wall, "M003 A7");
-      room(g, "room-M003A8", 4.2, 3, 35.2, 39, 0, mats.wall, "M003 A8");
-      room(g, "entrance-e", 6, 2.8, 40, 16, 0, mats.wall, "ENTRANCE");
+      room(g, "auditorium", 15, 9, 20, 20, 0, mats.wallLab, "🏛️ AUDITORIUM M008", true);
+      stairs(0, 29, 16, "🪜 STAIRS (M)");
+      room(g, "room-M007", 6, 5, 18, 28, 0, mats.wallBlockM, "M007");
+      room(g, "room-M006", 6, 5, 18, 34, 0, mats.wallBlockM, "M006");
+      room(g, "room-CL", 4, 3.2, 18, 39, 0, mats.wallLab, "CENTRAL LAB");
+      room(g, "room-M001", 6.2, 3.6, 32, 20, 0, mats.wallBlockM, "M001");
+      room(g, "room-M002", 6.2, 3.8, 32, 24.2, 0, mats.wash, "M002");
+      room(g, "room-M003A1", 6.2, 3.4, 32, 28.2, 0, mats.wallBlockM, "M003 A1");
+      room(g, "room-M003A4", 6.2, 3.4, 32, 32, 0, mats.wallBlockM, "M003 A4");
+      room(g, "room-M004", 4.2, 3, 21.6, 39, 0, mats.wallBlockM, "M004");
+      room(g, "room-M005", 4.2, 3, 23.8, 39, 0, mats.wallBlockM, "M005");
+      room(g, "room-M003A5", 4.2, 3, 26, 39, 0, mats.wallBlockM, "M003 A5");
+      room(g, "room-M003A7", 4.2, 3, 30.6, 39, 0, mats.wallBlockM, "M003 A7");
+      room(g, "room-M003A8", 4.2, 3, 35.2, 39, 0, mats.wallBlockM, "M003 A8");
+      room(g, "entrance-e", 6, 2.8, 40, 16, 0, mats.trimM, "BLOCK M ENTRANCE");
       room(g, "mw", 5, 4, 72, 4, 0, mats.wash, "MW");
-      room(g, "canteen-entrance", 6.6, 3.2, -84, -96, 0, mats.wall, "CANTEEN ENTRANCE");
+      room(g, "canteen-entrance", 6.6, 3.2, -84, -96, 0, mats.trimCanteen, "CANTEEN ENTRANCE");
     }
 
-    // ========== 1st FLOOR ==========
+    // ─── 1st FLOOR (Floor 1) ─────────────────────────────────────
     {
       const f = 1, g = floorGroups[1];
       working(1);
       shells(1);
-      room(g, "room-F101", 6.5, 8, -32, -28, 1, mats.wall, "F101");
-      room(g, "room-F102", 6.5, 8, -39, -28, 1, mats.wall, "F102");
+
+      room(g, "room-F101", 6.5, 8, -32, -28, 1, mats.wallBlockF, "F101");
+      room(g, "room-F102", 6.5, 8, -39, -28, 1, mats.wallBlockF, "F102");
       room(g, "room-F103A1", 8, 5, -52, -20, 1, mats.wallLab, "F103 A1 PL");
-      room(g, "room-F103", 8, 4.4, -52, -14, 1, mats.wall, "F103");
-      room(g, "room-F104", 8, 4.2, -52, 2, 1, mats.wall, "F104");
-      room(g, "room-F105", 8, 4.4, -52, 7, 1, mats.wall, "F105 CR");
-      room(g, "room-F106", 8, 4.4, -52, 12, 1, mats.wall, "F106");
+      room(g, "room-F103", 8, 4.4, -52, -14, 1, mats.wallBlockF, "F103");
+      room(g, "room-F104", 8, 4.2, -52, 2, 1, mats.wallBlockF, "F104");
+      room(g, "room-F105", 8, 4.4, -52, 7, 1, mats.wallBlockF, "F105 CR");
+      room(g, "room-F106", 8, 4.4, -52, 12, 1, mats.wallBlockF, "F106");
       room(g, "room-F107", 8, 4.2, -52, 17, 1, mats.wash, "F107 GW");
 
-      room(g, "room-B101", 6, 4.2, -20, 12, 1, mats.wall, "B101");
-      room(g, "room-B102", 6, 4.2, -12, 11, 1, mats.wall, "B102");
-      room(g, "room-B103", 10, 5.8, -2, 11, 1, mats.wallHOD, "B103 HOD", true);
-      room(g, "room-B104", 6, 4.2, 8, 11, 1, mats.wall, "B104");
-      room(g, "room-B105", 4, 6, 14, 11, 1, mats.wall, "B105");
-      stairs(1, 0.5, 16.6, "STAIRS");
-      room(g, "room-B106A1", 3.6, 4.5, 5, 16.6, 1, mats.wall, "B106 A1");
-      room(g, "room-B106A2", 3.6, 4.5, 9, 16.6, 1, mats.wall, "B106 A2");
+      room(g, "room-B101", 6, 4.2, -20, 12, 1, mats.wallBlockB, "B101");
+      room(g, "room-B102", 6, 4.2, -12, 11, 1, mats.wallBlockB, "B102");
+      room(g, "room-B103", 10, 5.8, -2, 11, 1, mats.wallHOD, "B103 HOD ELEC", true);
+      room(g, "room-B104", 6, 4.2, 8, 11, 1, mats.wallBlockB, "B104");
+      room(g, "room-B105", 4, 6, 14, 11, 1, mats.wallBlockB, "B105");
+      stairs(1, 0.5, 16.6, "🪜 STAIRS (B)");
+      room(g, "room-B106A1", 3.6, 4.5, 5, 16.6, 1, mats.wallBlockB, "B106 A1");
+      room(g, "room-B106A2", 3.6, 4.5, 9, 16.6, 1, mats.wallBlockB, "B106 A2");
 
-      room(g, "room-E101", 5, 6, -56, 20, 1, mats.wall, "E101");
-      room(g, "room-E102", 6, 3.6, -56, 26, 1, mats.wall, "E102");
-      room(g, "room-E103", 6, 3.6, -56, 30.2, 1, mats.wallHOD, "E103 HOD");
-      room(g, "room-E104", 6, 3.6, -56, 34.2, 1, mats.wall, "E104");
-      room(g, "room-E105", 6.5, 7, -48, 32, 1, mats.wall, "E105");
-      room(g, "mca-lab", 9, 8.5, -39, 30, 1, mats.wallLab, "MCA LAB", true);
-      stairs(1, -50, 20, "STAIRS");
-      room(g, "room-E107", 6.5, 3.6, -42, 20, 1, mats.wall, "E107");
+      room(g, "room-E101", 5, 6, -56, 20, 1, mats.wallBlockE, "E101");
+      room(g, "room-E102", 6, 3.6, -56, 26, 1, mats.wallBlockE, "E102");
+      room(g, "room-E103", 6, 3.6, -56, 30.2, 1, mats.wallHOD, "E103 HOD MBA", true);
+      room(g, "room-E104", 6, 3.6, -56, 34.2, 1, mats.wallBlockE, "E104");
+      room(g, "room-E105", 6.5, 7, -48, 32, 1, mats.wallBlockE, "E105");
+      room(g, "mca-lab", 9, 8.5, -39, 30, 1, mats.wallLab, "💻 MCA COMPUTER LAB", true);
+      stairs(1, -50, 20, "🪜 STAIRS (E)");
+      room(g, "room-E107", 6.5, 3.6, -42, 20, 1, mats.wallBlockE, "E107");
       room(g, "room-E-BW", 4.5, 3.2, -34, 20, 1, mats.wash, "BW");
-      room(g, "room-E111", 3.6, 5, -40, 28, 1, mats.wall, "E111");
-      room(g, "room-E108", 3.4, 3.6, -36, 28, 1, mats.wall, "E108");
-      room(g, "room-E110", 6, 3, -38, 35, 1, mats.wall, "E110");
-      room(g, "room-E109", 3.4, 5, -32, 33, 1, mats.wall, "E109");
-      room(g, "faculty-e109", 5.2, 3.4, -32, 28.4, 1, mats.wall, "FACULTY ROOM");
+      room(g, "room-E111", 3.6, 5, -40, 28, 1, mats.wallBlockE, "E111");
+      room(g, "room-E108", 3.4, 3.6, -36, 28, 1, mats.wallBlockE, "E108");
+      room(g, "room-E110", 6, 3, -38, 35, 1, mats.wallBlockE, "E110");
+      room(g, "room-E109", 3.4, 5, -32, 33, 1, mats.wallBlockE, "E109");
+      room(g, "faculty-e109", 5.2, 3.4, -32, 28.4, 1, mats.wallBlockE, "FACULTY ROOM E");
 
-      room(g, "cad-2", 8, 4, 20, 18, 1, mats.wallLab, "CAD-2", true);
-      stairs(1, 27, 18, "STAIRS");
-      room(g, "room-M114", 3.6, 8, 16, 26, 1, mats.wall, "M114");
-      room(g, "room-M113", 3.6, 5, 16, 34, 1, mats.wall, "M113");
-      room(g, "room-M101", 6.5, 3.8, 32, 18, 1, mats.wall, "M101");
+      room(g, "cad-2", 8, 4, 20, 18, 1, mats.wallLab, "🖥️ CAD LAB 2", true);
+      stairs(1, 27, 18, "🪜 STAIRS (M)");
+      room(g, "room-M114", 3.6, 8, 16, 26, 1, mats.wallBlockM, "M114");
+      room(g, "room-M113", 3.6, 5, 16, 34, 1, mats.wallBlockM, "M113");
+      room(g, "room-M101", 6.5, 3.8, 32, 18, 1, mats.wallBlockM, "M101");
       room(g, "room-M102", 6.5, 3.4, 32, 22.5, 1, mats.wash, "M102 GW");
-      room(g, "room-M103", 6.5, 3.4, 32, 26.4, 1, mats.wall, "M103");
-      room(g, "room-M104", 6.5, 3.4, 32, 30.2, 1, mats.wall, "M104");
-      room(g, "room-M105", 5.4, 3.4, 33, 34, 1, mats.wall, "M105");
+      room(g, "room-M103", 6.5, 3.4, 32, 26.4, 1, mats.wallBlockM, "M103");
+      room(g, "room-M104", 6.5, 3.4, 32, 30.2, 1, mats.wallBlockM, "M104");
+      room(g, "room-M105", 5.4, 3.4, 33, 34, 1, mats.wallBlockM, "M105");
       room(g, "room-M106", 3.6, 3.4, 27.6, 34, 1, mats.wash, "M106 FW");
-      room(g, "room-M107", 3.6, 3.4, 23.6, 34, 1, mats.wall, "M107");
-      room(g, "room-M108", 4, 3.6, 19.4, 34, 1, mats.wallHOD, "M108 HOD");
-      room(g, "room-M109", 3.6, 3.2, 19.4, 29.8, 1, mats.wall, "M109");
-      room(g, "room-M110", 3.6, 3.2, 23.4, 29.8, 1, mats.wall, "M110");
-      room(g, "room-M111", 3.6, 3.2, 27.4, 29.8, 1, mats.wall, "M111");
-      room(g, "room-M112A1", 4.5, 3, 24, 24, 1, mats.wall, "M112 A1");
-      room(g, "room-M112A2", 3.6, 3, 29, 24, 1, mats.wall, "M112 A2");
+      room(g, "room-M107", 3.6, 3.4, 23.6, 34, 1, mats.wallBlockM, "M107");
+      room(g, "room-M108", 4, 3.6, 19.4, 34, 1, mats.wallHOD, "M108 HOD CSE", true);
+      room(g, "room-M109", 3.6, 3.2, 19.4, 29.8, 1, mats.wallBlockM, "M109");
+      room(g, "room-M110", 3.6, 3.2, 23.4, 29.8, 1, mats.wallBlockM, "M110");
+      room(g, "room-M111", 3.6, 3.2, 27.4, 29.8, 1, mats.wallBlockM, "M111");
+      room(g, "room-M112A1", 4.5, 3, 24, 24, 1, mats.wallBlockM, "M112 A1");
+      room(g, "room-M112A2", 3.6, 3, 29, 24, 1, mats.wallBlockM, "M112 A2");
     }
 
-    // ========== 2nd FLOOR ==========
+    // ─── 2nd FLOOR (Floor 2) ─────────────────────────────────────
     {
       const f = 2, g = floorGroups[2];
       working(2);
       shells(2);
-      room(g, "room-F201", 6.5, 8, -32, -28, 2, mats.wall, "F201");
-      room(g, "room-F202", 6.5, 8, -39, -28, 2, mats.wall, "F202");
-      room(g, "library", 9, 9, -52, -4, 2, mats.wallLab, "CENTRAL LIBRARY F203", true);
-      room(g, "room-F205", 8, 5.2, -52, 8, 2, mats.wall, "F205");
+
+      room(g, "room-F201", 6.5, 8, -32, -28, 2, mats.wallBlockF, "F201");
+      room(g, "room-F202", 6.5, 8, -39, -28, 2, mats.wallBlockF, "F202");
+      room(g, "library", 10, 10, -52, -4, 2, mats.wallLab, "📖 CENTRAL LIBRARY F203", true);
+      stairs(2, -37, -4.2, "🪜 STAIRS (F)");
+      room(g, "room-F205", 8, 5.2, -52, 8, 2, mats.wallBlockF, "F205");
       room(g, "room-F206", 8, 4.2, -52, 15, 2, mats.wash, "F206 BW");
 
-      room(g, "room-B201", 4.5, 6.5, -10, 11, 2, mats.wall, "B201");
-      room(g, "room-B202", 4.5, 6.5, -5, 11, 2, mats.wall, "B202");
-      room(g, "room-B203", 5, 6.5, 3, 11, 2, mats.wall, "B203");
-      stairs(2, 3, 17.4, "STAIRS");
-      room(g, "room-B206A2", 3.6, 3.6, 8, 16.5, 2, mats.wall, "B206 A2");
+      room(g, "room-B201", 4.5, 6.5, -10, 11, 2, mats.wallBlockB, "B201");
+      room(g, "room-B202", 4.5, 6.5, -5, 11, 2, mats.wallBlockB, "B202");
+      room(g, "room-B203", 5, 6.5, 3, 11, 2, mats.wallBlockB, "B203");
+      stairs(2, 3, 17.4, "🪜 STAIRS (B)");
+      room(g, "room-B206A2", 3.6, 3.6, 8, 16.5, 2, mats.wallBlockB, "B206 A2");
       room(g, "room-B206FW", 3.6, 3.6, 12, 16.5, 2, mats.wash, "B206 FW");
 
-      room(g, "room-E201", 6.5, 5.2, -56, 20, 2, mats.wall, "E201");
-      room(g, "exam-center", 12, 11, -52, 30, 2, mats.wallWarm, "EXAM CENTER", true);
-      room(g, "faculty-e", 7, 3.8, -48, 20, 2, mats.wall, "FACULTY ROOM");
-      stairs(2, -40, 20, "STAIRS");
-      room(g, "room-E207", 3.6, 4.5, -34, 20, 2, mats.wall, "E207");
+      room(g, "room-E201", 6.5, 5.2, -56, 20, 2, mats.wallBlockE, "E201");
+      room(g, "exam-center", 13, 12, -52, 30, 2, mats.wallAdmin, "📝 EXAM CENTER E202", true);
+      room(g, "faculty-e", 7, 3.8, -48, 20, 2, mats.wallBlockE, "FACULTY ROOM");
+      stairs(2, -40, 20, "🪜 STAIRS (E)");
+      room(g, "room-E207", 3.6, 4.5, -34, 20, 2, mats.wallBlockE, "E207");
       room(g, "room-E-GW", 3, 3.6, -30, 20, 2, mats.wash, "GW");
-      room(g, "room-E211", 4, 6, -42, 30, 2, mats.wall, "E211");
-      room(g, "room-E208", 3.6, 5, -37, 28, 2, mats.wall, "E208");
-      room(g, "room-E210", 6, 3, -38, 36, 2, mats.wall, "E210");
-      room(g, "room-E209", 3.4, 5.5, -32, 33, 2, mats.wall, "E209");
-      room(g, "room-E206", 5, 3, -46, 36, 2, mats.wall, "E206 A1");
+      room(g, "room-E211", 4, 6, -42, 30, 2, mats.wallBlockE, "E211");
+      room(g, "room-E208", 3.6, 5, -37, 28, 2, mats.wallBlockE, "E208");
+      room(g, "room-E210", 6, 3, -38, 36, 2, mats.wallBlockE, "E210");
+      room(g, "room-E209", 3.4, 5.5, -32, 33, 2, mats.wallBlockE, "E209");
+      room(g, "room-E206", 5, 3, -46, 36, 2, mats.wallBlockE, "E206 A1");
 
-      room(g, "room-M215", 10, 3.6, 20, 18, 2, mats.wall, "M215");
-      stairs(2, 28, 18, "STAIRS");
-      room(g, "room-M214", 3.6, 8, 16, 26, 2, mats.wall, "M214");
-      room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wall, "M213");
-      room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wall, "M201");
+      room(g, "room-M215", 10, 3.6, 20, 18, 2, mats.wallBlockM, "M215");
+      stairs(2, 28, 18, "🪜 STAIRS (M)");
+      room(g, "room-M214", 3.6, 8, 16, 26, 2, mats.wallBlockM, "M214");
+      room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wallBlockM, "M213");
+      room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wallBlockM, "M201");
       room(g, "room-M202", 6.2, 3.6, 33, 22.2, 2, mats.wash, "M202 BW");
-      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wall, "FACULTY ROOM");
-      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wall, "M204");
-      room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wall, "M205");
-      room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wall, "M209");
-      room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "DEPT LIBRARY", true);
-      room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD");
-      room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wall, "M207");
-      room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wall, "M206");
-      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wall, "M203");
-      room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wall, "M211");
-      room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wall, "M212 A2");
+      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M204");
+      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "M204");
+      room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wallBlockM, "M205");
+      room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wallBlockM, "M209");
+      room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "📚 DEPT LIBRARY (CSE)", true);
+      room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD AIML", true);
+      room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wallBlockM, "M207");
+      room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wallBlockM, "M206");
+      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wallBlockM, "M203");
+      room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wallBlockM, "M211");
+      room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wallBlockM, "M212 A2");
     }
 
-    // ========== 3rd FLOOR ==========
+    // ─── 3rd FLOOR (Floor 3) ─────────────────────────────────────
     {
       const f = 3, g = floorGroups[3];
       working(3);
       shells(3);
 
-      room(g, "room-E303", 3.6, 8, -56, 30, 3, mats.wall, "E303");
-      room(g, "room-E301", 6, 3.6, -50, 26, 3, mats.wall, "E301");
-      room(g, "room-E302", 6, 3.6, -50, 30.2, 3, mats.wall, "E302");
-      room(g, "seminar-hall-etc", 10, 5, -48, 35, 3, mats.wallLab, "E305 SEMINAR HALL ETC", true);
-      stairs(3, -38, 20, "STAIRS");
+      room(g, "room-E303", 3.6, 8, -56, 30, 3, mats.wallBlockE, "E303");
+      room(g, "room-E301", 6, 3.6, -50, 26, 3, mats.wallBlockE, "E301");
+      room(g, "room-E302", 6, 3.6, -50, 30.2, 3, mats.wallBlockE, "E302");
+      room(g, "seminar-hall-etc", 11, 6, -48, 35, 3, mats.wallLab, "🎙️ SEMINAR HALL ETC", true);
+      stairs(3, -38, 20, "🪜 STAIRS (E)");
 
-      room(g, "seminar-hall", 13, 11, 24, 24, 3, mats.wallLab, "SEMINAR HALL", true);
-      room(g, "room-M309", 4.5, 6, 14, 18, 3, mats.wall, "M309");
-      room(g, "room-M308", 3.6, 5, 14, 26, 3, mats.wall, "M308");
-      room(g, "room-M307", 5.2, 3.4, 15, 34, 3, mats.wall, "M307");
-      room(g, "room-M301", 6.2, 3.4, 34, 18, 3, mats.wall, "M301");
+      room(g, "seminar-hall", 14, 12, 24, 24, 3, mats.wallLab, "🎙️ CENTRAL SEMINAR HALL", true);
+      room(g, "room-M309", 4.5, 6, 14, 18, 3, mats.wallBlockM, "M309");
+      room(g, "room-M308", 3.6, 5, 14, 26, 3, mats.wallBlockM, "M308");
+      room(g, "room-M307", 5.2, 3.4, 15, 34, 3, mats.wallBlockM, "M307");
+      room(g, "room-M301", 6.2, 3.4, 34, 18, 3, mats.wallBlockM, "M301");
       room(g, "room-M302", 6.2, 3.4, 34, 22.2, 3, mats.wash, "M302 GW");
-      room(g, "room-B201-3", 6.2, 3.4, 34, 26.4, 3, mats.wall, "B201");
-      room(g, "room-B202-3", 6.2, 3.4, 34, 30.4, 3, mats.wall, "B202");
-      room(g, "room-M304", 6.2, 3.6, 34, 34.8, 3, mats.wall, "M304");
-      room(g, "room-M305", 6.2, 3.6, 27.4, 35, 3, mats.wall, "M305");
-      stairs(3, 12, 12, "STAIRS");
-      stairs(3, 22, 16, "STAIRS");
+      room(g, "room-M303", 6.2, 3.4, 34, 26.4, 3, mats.wallBlockM, "M303 (Emerging Tech)", true);
+      room(g, "room-B202-3", 6.2, 3.4, 34, 30.4, 3, mats.wallBlockM, "M303-B");
+      room(g, "room-M304", 6.2, 3.6, 34, 34.8, 3, mats.wallBlockM, "M304");
+      room(g, "room-M305", 6.2, 3.6, 27.4, 35, 3, mats.wallBlockM, "M305");
+      stairs(3, 12, 12, "🪜 STAIRS (M-1)");
+      stairs(3, 22, 16, "🪜 STAIRS (M-2)");
     }
 
+    function deriveMeshBlock(id) {
+      if (!id) return 'GROUND';
+      const u = id.toUpperCase();
+      if (u.includes('CANTEEN') || u.includes('SNACK') || u.includes('AMUL') || u.includes('STATIONERY')) return 'CANTEEN';
+      if (u.includes('ADMIN') || u.includes('STUDENT-SECTION') || u.includes('EXAM')) return 'ADM';
+      if (u.startsWith('ROOM-F') || u.startsWith('ENTRANCE-F') || u.includes('LIBRARY') || u.includes('G004')) return 'F';
+      if (u.startsWith('ROOM-E') || u.includes('ETC') || u.includes('MCA') || u.includes('SEEK') || u.includes('FACULTY-E') || u.includes('SEMINAR-HALL-ETC')) return 'E';
+      if (u.startsWith('ROOM-B') || u.startsWith('STAGE') || u.includes('PROJECT-LAB') || u.includes('ENTRANCE-STAGE')) return 'B';
+      if (u.startsWith('ROOM-M') || u.includes('AUDITORIUM') || u.includes('CAD') || u.includes('CENTRAL-LAB') || u.includes('SEMINAR-HALL') || u.startsWith('ENTRANCE-E') || u.includes('WORKING')) return 'M';
+      return 'GROUND';
+    }
+
+    // ─── Floor Isolation & Smart Label Filtering ─────────────────
     const names = ["Ground Floor", "1st Floor", "2nd Floor", "3rd Floor"];
     const now = document.getElementById("now");
+    let activeFloorKey = "0";
 
-    // CSS2DRenderer ignores parent.visible â€” hide every child + DOM label.
-    function isolateFloor(group, on) {
-      if (on) {
-        if (!group.parent) campus.add(group);
-      } else if (group.parent) {
-        campus.remove(group);
-      }
-      group.visible = on;
-      group.traverse((obj) => {
-        obj.visible = on;
-        if (obj.isCSS2DObject && obj.element) {
-          obj.element.style.display = on ? "" : "none";
-          if (!on && obj.element.parentNode) obj.element.remove();
-        }
-      });
-    }
-
-    function showFloor(key) {
-      if (key === "all") {
-        floorGroups.forEach((g) => isolateFloor(g, true));
-        now.textContent = "Showing: All floors stacked";
-        return;
-      }
-      const n = Number(key);
-      floorGroups.forEach((g, i) => isolateFloor(g, i === n));
-      document.querySelectorAll(".map-label[data-floor]").forEach((el) => {
-        el.style.display = el.dataset.floor === String(n) ? "" : "none";
-      });
-      now.textContent = "Showing: " + names[n] + " only";
-    }
-    showFloor("0");
-
-    const views = {
-      iso: { pos: [95, 70, 95], tgt: [8, 3, 4] },
-      top: { pos: [6, 155, 10], tgt: [6, 0, 6] },
-      fl: { pos: [-90, 50, 100], tgt: [4, 4, 6] },
-      fr: { pos: [110, 48, 90], tgt: [4, 4, 6] },
-    };
-    document.querySelectorAll(".views button").forEach((b) => {
-      b.onclick = () => {
-        document.querySelectorAll(".views button").forEach((x) => x.classList.remove("active"));
-        b.classList.add("active");
-        const v = views[b.dataset.view];
-        camera.position.set(...v.pos);
-        controls.target.set(...v.tgt);
-      };
-    });
-    document.querySelectorAll(".floors button").forEach((b) => {
-      b.onclick = () => {
-        document.querySelectorAll(".floors button").forEach((x) => x.classList.remove("active"));
-        b.classList.add("active");
-        showFloor(b.dataset.floor);
-      };
-    });
-
-    const hudToggleBtn = document.getElementById("hud-toggle-btn");
-    const hudPanel = document.getElementById("hud-panel");
-    if (hudToggleBtn && hudPanel) {
-      hudToggleBtn.onclick = () => {
-        const isHidden = getComputedStyle(hudPanel).display === "none";
-        hudPanel.style.display = isHidden ? "block" : "none";
-      };
-    }
-
-    addEventListener("resize", () => {
-      camera.aspect = innerWidth / innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(innerWidth, innerHeight);
-      labelRenderer.setSize(innerWidth, innerHeight);
-    });
-
-    // ==================== 3D GREEN NAVIGATION PATH & BLOCK FOCUS SYSTEM ====================
+    // ─── 3D GREEN NAVIGATION PATH & TARGET FOCUS SYSTEM ──────────
     const pathGroup = new THREE.Group();
     pathGroup.name = "navigation-path-group";
+    pathGroup.renderOrder = 999;
     scene.add(pathGroup);
 
     const pathMat = new THREE.MeshStandardMaterial({
       color: 0x00ff88,
       emissive: 0x10b981,
-      emissiveIntensity: 1.0,
+      emissiveIntensity: 2.4,
       roughness: 0.1,
-      metalness: 0.1,
-      transparent: true,
-      opacity: 0.95
-    });
-
-    const pulseMat = new THREE.MeshStandardMaterial({
-      color: 0x34d399,
-      emissive: 0x059669,
-      emissiveIntensity: 1.0,
-      roughness: 0.1,
+      metalness: 0.2,
+      depthTest: true,
       transparent: true,
       opacity: 0.98
     });
 
-    // Check if mesh belongs to target building block
-    function isMeshInBlock(mesh, targetBlock) {
-      if (!targetBlock || targetBlock === "ALL") return true;
+    const pulseMat = new THREE.MeshStandardMaterial({
+      color: 0x6ee7b7,
+      emissive: 0x00ff88,
+      emissiveIntensity: 2.8,
+      roughness: 0.1,
+      transparent: true,
+      opacity: 1.0
+    });
 
-      const name = (mesh.name || "").toLowerCase();
-      const parentName = (mesh.parent ? mesh.parent.name || "" : "").toLowerCase();
-      const x = mesh.position.x;
-      const z = mesh.position.z;
-
-      if (targetBlock === "M") {
-        return name.includes("m") || name.includes("auditorium") || name.includes("stage") || name.includes("working") || (x > 8 && z > 8);
-      }
-      if (targetBlock === "F") {
-        return name.includes("f") || name.includes("library") || name.includes("student-section") || (x < -25 && z < 18);
-      }
-      if (targetBlock === "ADM") {
-        return name.includes("admin") || (x >= -22 && x <= 6 && z <= -20);
-      }
-      if (targetBlock === "E") {
-        return name.includes("e") || name.includes("etc") || name.includes("mca") || name.includes("exam") || (x < -20 && z > 18);
-      }
-      if (targetBlock === "B") {
-        return name.includes("b") || name.includes("project") || (x >= -24 && x <= 26 && z >= 8 && z <= 22);
-      }
-      if (targetBlock === "CANTEEN") {
-        return name.includes("canteen") || name.includes("snack") || name.includes("amul") || name.includes("stationary") || x < -55;
-      }
-      return true;
-    }
+    const startPinMat = new THREE.MeshStandardMaterial({
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 2.5,
+      roughness: 0.1,
+      metalness: 0.2
+    });
 
     let targetAuraBox = null;
+    let targetBeacon = null;
+    let startBeacon = null;
+    let targetDestinationObject = null;
+    let highlightedMeshes = [];
+    let activeCurve = null;
+    let pulseOrbs = [];
+    let isPathVisible = true;
+    let currentRouteFloor = 0;
+    let currentTargetBlock = "M";
+    let currentSourceBlock = "F";
+    let currentTargetName = null;
+    let currentCabinCode = null;
+    let currentStartLocation = "ENTRANCE_F";
 
-    // Linear piecewise curve for strict corridor and pathway navigation without curved overshooting into rooms
-    class CorridorCurve extends THREE.Curve {
-      constructor(points) {
-        super();
-        this.points = points;
+    // ─── CAMPUS NAVIGATION GRAPH (NavGraph) ──────────────────────
+    const navNodes = {
+      "MAIN_GATE": { pos: new THREE.Vector3(-2, 0.55, 60), floor: 0, block: "GROUND", name: "Main Campus Gate" },
+      "PARKING_A": { pos: new THREE.Vector3(-2, 0.55, 28), floor: 0, block: "GROUND", name: "Parking Area A" },
+      "PARKING_B": { pos: new THREE.Vector3(72, 0.55, 36), floor: 0, block: "GROUND", name: "Parking Area B" },
+      "LAWN_CENTER": { pos: new THREE.Vector3(-4, 0.55, -6), floor: 0, block: "GROUND", name: "Central Open Lawn" },
+      "CANTEEN_ENTRANCE": { pos: new THREE.Vector3(-84, 0.55, -96), floor: 0, block: "CANTEEN", name: "Canteen Entrance" },
+      "CANTEEN_ROAD_SOUTH": { pos: new THREE.Vector3(-60, 0.55, -50), floor: 0, block: "CANTEEN", name: "Canteen Pathway" },
+      "CANTEEN_ROAD_NORTH": { pos: new THREE.Vector3(-60, 0.55, -4.2), floor: 0, block: "GROUND", name: "Canteen Road Junction" },
+      "SPINE_CENTRAL": { pos: new THREE.Vector3(-2, 0.55, 17.2), floor: 0, block: "GROUND", name: "Central Courtyard Walkway" },
+      "SPINE_F_JUNCTION": { pos: new THREE.Vector3(-43, 0.55, 17.2), floor: 0, block: "GROUND", name: "Wing Connection (F-E)" },
+      "ENTRANCE_F": { pos: new THREE.Vector3(-52, 0.55, -4.2), floor: 0, block: "F", name: "Block F Main Entrance (F004-F005)" },
+      "CORRIDOR_F_0_MID": { pos: new THREE.Vector3(-43, 0.55, -4.2), floor: 0, block: "F", name: "Block F Ground Corridor" },
+      "CORRIDOR_F_0_NORTH": { pos: new THREE.Vector3(-43, 0.55, -24), floor: 0, block: "F", name: "Block F North Corridor" },
+      "CORRIDOR_F_0_TOP": { pos: new THREE.Vector3(-43, 0.55, -28), floor: 0, block: "F", name: "Block F Physics/Chem Labs" },
+      "STAIRS_F_0": { pos: new THREE.Vector3(-37, 0.55, -4.2), floor: 0, block: "F", name: "Staircase F (Ground)" },
+      "ADM_ENTRANCE": { pos: new THREE.Vector3(-6, 0.55, -24), floor: 0, block: "ADM", name: "Admin Block Main Entrance" },
+      "ADM_CORRIDOR": { pos: new THREE.Vector3(-6, 0.55, -28), floor: 0, block: "ADM", name: "Admin & Principal Office" },
+      "ENTRANCE_E": { pos: new THREE.Vector3(-54, 0.55, 19.4), floor: 0, block: "E", name: "Block E Entrance" },
+      "CORRIDOR_E_0_MID": { pos: new THREE.Vector3(-43, 0.55, 26), floor: 0, block: "E", name: "Block E Ground Corridor" },
+      "CORRIDOR_E_0_DEPT": { pos: new THREE.Vector3(-43, 0.55, 34), floor: 0, block: "E", name: "ETC Dept / Robotics Lab" },
+      "STAIRS_E_0": { pos: new THREE.Vector3(-38, 0.55, 17.5), floor: 0, block: "E", name: "Staircase E (Ground)" },
+      "ENTRANCE_B": { pos: new THREE.Vector3(8, 0.55, 21.2), floor: 0, block: "B", name: "Block B Stage Entrance" },
+      "CORRIDOR_B_0_MID": { pos: new THREE.Vector3(8, 0.55, 17.2), floor: 0, block: "B", name: "Block B Ground Corridor" },
+      "CORRIDOR_B_0_WEST": { pos: new THREE.Vector3(-12, 0.55, 17.2), floor: 0, block: "B", name: "Mech Dept Lab Walkway" },
+      "STAIRS_B_0": { pos: new THREE.Vector3(13.2, 0.55, 17.2), floor: 0, block: "B", name: "Staircase B (Ground)" },
+      "CORRIDOR_M_0_JUNCTION": { pos: new THREE.Vector3(25, 0.55, 17.2), floor: 0, block: "M", name: "Block M Wing Entrance" },
+      "ENTRANCE_M": { pos: new THREE.Vector3(40, 0.55, 16), floor: 0, block: "M", name: "Block M East Entrance" },
+      "CORRIDOR_M_0_AUDITORIUM": { pos: new THREE.Vector3(20, 0.55, 24), floor: 0, block: "M", name: "Auditorium M008 Foyer" },
+      "CORRIDOR_M_0_NORTH": { pos: new THREE.Vector3(25, 0.55, 32), floor: 0, block: "M", name: "Block M Ground Classrooms" },
+      "STAIRS_M_0": { pos: new THREE.Vector3(29, 0.55, 16), floor: 0, block: "M", name: "Staircase M (Ground)" },
+      "STAIRS_F_1": { pos: new THREE.Vector3(-37, floorY(1) + 0.35, -4.2), floor: 1, block: "F", name: "Staircase F (1st Floor)" },
+      "CORRIDOR_F_1_MID": { pos: new THREE.Vector3(-43, floorY(1) + 0.35, -4.2), floor: 1, block: "F", name: "Block F 1st Floor Corridor" },
+      "CORRIDOR_F_1_NORTH": { pos: new THREE.Vector3(-43, floorY(1) + 0.35, -28), floor: 1, block: "F", name: "Block F Classrooms (F101-F103)" },
+      "CORRIDOR_F_1_SOUTH": { pos: new THREE.Vector3(-43, floorY(1) + 0.35, 12), floor: 1, block: "F", name: "Block F Classrooms (F104-F107)" },
+      "STAIRS_E_1": { pos: new THREE.Vector3(-50, floorY(1) + 0.35, 20), floor: 1, block: "E", name: "Staircase E (1st Floor)" },
+      "CORRIDOR_E_1_MID": { pos: new THREE.Vector3(-43, floorY(1) + 0.35, 20), floor: 1, block: "E", name: "Block E 1st Floor Corridor" },
+      "CORRIDOR_E_1_NORTH": { pos: new THREE.Vector3(-43, floorY(1) + 0.35, 32), floor: 1, block: "E", name: "MCA Computer Lab / MBA Dept" },
+      "STAIRS_B_1": { pos: new THREE.Vector3(0.5, floorY(1) + 0.35, 16.6), floor: 1, block: "B", name: "Staircase B (1st Floor)" },
+      "CORRIDOR_B_1_MID": { pos: new THREE.Vector3(4, floorY(1) + 0.35, 16.6), floor: 1, block: "B", name: "Block B 1st Floor Corridor" },
+      "CORRIDOR_B_1_WEST": { pos: new THREE.Vector3(-14, floorY(1) + 0.35, 12), floor: 1, block: "B", name: "Block B Classrooms (B101-B103)" },
+      "STAIRS_M_1": { pos: new THREE.Vector3(27, floorY(1) + 0.35, 18), floor: 1, block: "M", name: "Staircase M (1st Floor)" },
+      "CORRIDOR_M_1_MID": { pos: new THREE.Vector3(25, floorY(1) + 0.35, 18), floor: 1, block: "M", name: "Block M 1st Floor Corridor" },
+      "CORRIDOR_M_1_NORTH": { pos: new THREE.Vector3(25, floorY(1) + 0.35, 30), floor: 1, block: "M", name: "HOD CSE Office / M108-M114" },
+      "STAIRS_F_2": { pos: new THREE.Vector3(-37, floorY(2) + 0.35, -4.2), floor: 2, block: "F", name: "Staircase F (2nd Floor)" },
+      "CORRIDOR_F_2_MID": { pos: new THREE.Vector3(-43, floorY(2) + 0.35, -4.2), floor: 2, block: "F", name: "Block F 2nd Floor Corridor" },
+      "LIBRARY_F203": { pos: new THREE.Vector3(-52, floorY(2) + 0.35, -4), floor: 2, block: "F", name: "Central Library (F203)" },
+      "CORRIDOR_F_2_NORTH": { pos: new THREE.Vector3(-43, floorY(2) + 0.35, -28), floor: 2, block: "F", name: "Block F Classrooms (F201-F202)" },
+      "CORRIDOR_F_2_SOUTH": { pos: new THREE.Vector3(-43, floorY(2) + 0.35, 12), floor: 2, block: "F", name: "Block F Classrooms (F205-F206)" },
+      "STAIRS_E_2": { pos: new THREE.Vector3(-40, floorY(2) + 0.35, 20), floor: 2, block: "E", name: "Staircase E (2nd Floor)" },
+      "CORRIDOR_E_2_MID": { pos: new THREE.Vector3(-43, floorY(2) + 0.35, 20), floor: 2, block: "E", name: "Block E 2nd Floor Corridor" },
+      "EXAM_CENTER_E202": { pos: new THREE.Vector3(-52, floorY(2) + 0.35, 30), floor: 2, block: "E", name: "Exam Center (E202)" },
+      "CORRIDOR_E_2_NORTH": { pos: new THREE.Vector3(-43, floorY(2) + 0.35, 32), floor: 2, block: "E", name: "Block E Faculty & Rooms" },
+      "STAIRS_B_2": { pos: new THREE.Vector3(3, floorY(2) + 0.35, 17.4), floor: 2, block: "B", name: "Staircase B (2nd Floor)" },
+      "CORRIDOR_B_2_MID": { pos: new THREE.Vector3(4, floorY(2) + 0.35, 17.4), floor: 2, block: "B", name: "Block B 2nd Floor Corridor" },
+      "CORRIDOR_B_2_WEST": { pos: new THREE.Vector3(-8, floorY(2) + 0.35, 11), floor: 2, block: "B", name: "Block B Classrooms (B201-B203)" },
+      "STAIRS_M_2": { pos: new THREE.Vector3(28, floorY(2) + 0.35, 18), floor: 2, block: "M", name: "Staircase M (2nd Floor)" },
+      "CORRIDOR_M_2_MID": { pos: new THREE.Vector3(25, floorY(2) + 0.35, 18), floor: 2, block: "M", name: "Block M 2nd Floor Corridor" },
+      "CORRIDOR_M_2_NORTH": { pos: new THREE.Vector3(25, floorY(2) + 0.35, 30), floor: 2, block: "M", name: "HOD AIML / Dept Library / M201-M215" },
+      "STAIRS_E_3": { pos: new THREE.Vector3(-38, floorY(3) + 0.35, 20), floor: 3, block: "E", name: "Staircase E (3rd Floor)" },
+      "CORRIDOR_E_3_MID": { pos: new THREE.Vector3(-43, floorY(3) + 0.35, 20), floor: 3, block: "E", name: "Block E 3rd Floor Corridor" },
+      "SEMINAR_HALL_ETC": { pos: new THREE.Vector3(-48, floorY(3) + 0.35, 35), floor: 3, block: "E", name: "Seminar Hall (ETC Dept)" },
+      "STAIRS_M_3": { pos: new THREE.Vector3(22, floorY(3) + 0.35, 16), floor: 3, block: "M", name: "Staircase M (3rd Floor)" },
+      "CORRIDOR_M_3_MID": { pos: new THREE.Vector3(25, floorY(3) + 0.35, 18), floor: 3, block: "M", name: "Block M 3rd Floor Corridor" },
+      "SEMINAR_HALL_CENTRAL": { pos: new THREE.Vector3(24, floorY(3) + 0.35, 24), floor: 3, block: "M", name: "Central Seminar Hall" },
+      "CORRIDOR_M_3_NORTH": { pos: new THREE.Vector3(25, floorY(3) + 0.35, 30), floor: 3, block: "M", name: "Emerging Tech Lab / M301-M309" }
+    };
+
+    const startLocations = {
+      ENTRANCE_F: { label: "🚩 Entrance (F004-F005)", node: "ENTRANCE_F", block: "F", floor: 0 },
+      MAIN_GATE: { label: "🚩 Main Gate", node: "MAIN_GATE", block: "GROUND", floor: 0 },
+      PARKING: { label: "🅿️ Parking Area", node: "PARKING_A", block: "GROUND", floor: 0 },
+      ADM: { label: "🏛️ Admin Block", node: "ADM_ENTRANCE", block: "ADM", floor: 0 },
+      BLOCK_E: { label: "📡 Block E Entrance", node: "ENTRANCE_E", block: "E", floor: 0 },
+      BLOCK_B: { label: "⚙️ Block B Entrance", node: "ENTRANCE_B", block: "B", floor: 0 },
+      BLOCK_M: { label: "💻 Block M Entrance", node: "ENTRANCE_M", block: "M", floor: 0 },
+      CANTEEN: { label: "🍽️ Canteen Entrance", node: "CANTEEN_ENTRANCE", block: "CANTEEN", floor: 0 }
+    };
+
+    const navEdges = [
+      ["MAIN_GATE", "PARKING_A"],
+      ["PARKING_A", "SPINE_CENTRAL"],
+      ["PARKING_A", "PARKING_B"],
+      ["PARKING_B", "ENTRANCE_M"],
+      ["SPINE_CENTRAL", "LAWN_CENTER"],
+      ["CANTEEN_ENTRANCE", "CANTEEN_ROAD_SOUTH"],
+      ["CANTEEN_ROAD_SOUTH", "CANTEEN_ROAD_NORTH"],
+      ["CANTEEN_ROAD_NORTH", "CORRIDOR_F_0_MID"],
+      ["SPINE_CENTRAL", "SPINE_F_JUNCTION"],
+      ["SPINE_CENTRAL", "CORRIDOR_B_0_MID"],
+      ["SPINE_CENTRAL", "CORRIDOR_M_0_JUNCTION"],
+      ["SPINE_F_JUNCTION", "CORRIDOR_F_0_MID"],
+      ["CORRIDOR_F_0_MID", "ENTRANCE_F"],
+      ["CORRIDOR_F_0_MID", "STAIRS_F_0"],
+      ["CORRIDOR_F_0_MID", "CORRIDOR_F_0_NORTH"],
+      ["CORRIDOR_F_0_NORTH", "CORRIDOR_F_0_TOP"],
+      ["CORRIDOR_F_0_NORTH", "ADM_ENTRANCE"],
+      ["ADM_ENTRANCE", "ADM_CORRIDOR"],
+      ["SPINE_F_JUNCTION", "ENTRANCE_E"],
+      ["SPINE_F_JUNCTION", "STAIRS_E_0"],
+      ["SPINE_F_JUNCTION", "CORRIDOR_E_0_MID"],
+      ["CORRIDOR_E_0_MID", "CORRIDOR_E_0_DEPT"],
+      ["CORRIDOR_B_0_MID", "ENTRANCE_B"],
+      ["CORRIDOR_B_0_MID", "STAIRS_B_0"],
+      ["CORRIDOR_B_0_MID", "CORRIDOR_B_0_WEST"],
+      ["CORRIDOR_B_0_MID", "CORRIDOR_M_0_JUNCTION"],
+      ["CORRIDOR_M_0_JUNCTION", "ENTRANCE_M"],
+      ["CORRIDOR_M_0_JUNCTION", "STAIRS_M_0"],
+      ["CORRIDOR_M_0_JUNCTION", "CORRIDOR_M_0_AUDITORIUM"],
+      ["CORRIDOR_M_0_JUNCTION", "CORRIDOR_M_0_NORTH"],
+      ["STAIRS_F_0", "STAIRS_F_1"],
+      ["STAIRS_F_1", "STAIRS_F_2"],
+      ["STAIRS_E_0", "STAIRS_E_1"],
+      ["STAIRS_E_1", "STAIRS_E_2"],
+      ["STAIRS_E_2", "STAIRS_E_3"],
+      ["STAIRS_B_0", "STAIRS_B_1"],
+      ["STAIRS_B_1", "STAIRS_B_2"],
+      ["STAIRS_M_0", "STAIRS_M_1"],
+      ["STAIRS_M_1", "STAIRS_M_2"],
+      ["STAIRS_M_2", "STAIRS_M_3"],
+      ["STAIRS_F_1", "CORRIDOR_F_1_MID"],
+      ["CORRIDOR_F_1_MID", "CORRIDOR_F_1_NORTH"],
+      ["CORRIDOR_F_1_MID", "CORRIDOR_F_1_SOUTH"],
+      ["STAIRS_E_1", "CORRIDOR_E_1_MID"],
+      ["CORRIDOR_E_1_MID", "CORRIDOR_E_1_NORTH"],
+      ["STAIRS_B_1", "CORRIDOR_B_1_MID"],
+      ["CORRIDOR_B_1_MID", "CORRIDOR_B_1_WEST"],
+      ["STAIRS_M_1", "CORRIDOR_M_1_MID"],
+      ["CORRIDOR_M_1_MID", "CORRIDOR_M_1_NORTH"],
+      ["STAIRS_F_2", "CORRIDOR_F_2_MID"],
+      ["CORRIDOR_F_2_MID", "LIBRARY_F203"],
+      ["CORRIDOR_F_2_MID", "CORRIDOR_F_2_NORTH"],
+      ["CORRIDOR_F_2_MID", "CORRIDOR_F_2_SOUTH"],
+      ["STAIRS_E_2", "CORRIDOR_E_2_MID"],
+      ["CORRIDOR_E_2_MID", "EXAM_CENTER_E202"],
+      ["CORRIDOR_E_2_MID", "CORRIDOR_E_2_NORTH"],
+      ["STAIRS_B_2", "CORRIDOR_B_2_MID"],
+      ["CORRIDOR_B_2_MID", "CORRIDOR_B_2_WEST"],
+      ["STAIRS_M_2", "CORRIDOR_M_2_MID"],
+      ["CORRIDOR_M_2_MID", "CORRIDOR_M_2_NORTH"],
+      ["STAIRS_E_3", "CORRIDOR_E_3_MID"],
+      ["CORRIDOR_E_3_MID", "SEMINAR_HALL_ETC"],
+      ["STAIRS_M_3", "CORRIDOR_M_3_MID"],
+      ["CORRIDOR_M_3_MID", "SEMINAR_HALL_CENTRAL"],
+      ["CORRIDOR_M_3_MID", "CORRIDOR_M_3_NORTH"],
+    ];
+
+    const navAdj = {};
+    Object.keys(navNodes).forEach((k) => (navAdj[k] = []));
+    navEdges.forEach(([u, v]) => {
+      if (navNodes[u] && navNodes[v]) {
+        const d = navNodes[u].pos.distanceTo(navNodes[v].pos);
+        navAdj[u].push({ node: v, weight: d });
+        navAdj[v].push({ node: u, weight: d });
       }
+    });
+
+    function findNavGraphRoute(startKey, targetKey) {
+      if (!navNodes[startKey] || !navNodes[targetKey]) return [];
+      if (startKey === targetKey) return [startKey];
+      const distances = {}, prev = {}, pq = [];
+      Object.keys(navNodes).forEach((k) => { distances[k] = Infinity; prev[k] = null; });
+      distances[startKey] = 0;
+      pq.push({ node: startKey, dist: 0 });
+      while (pq.length > 0) {
+        pq.sort((a, b) => a.dist - b.dist);
+        const { node: curr, dist: d } = pq.shift();
+        if (curr === targetKey) break;
+        if (d > distances[curr]) continue;
+        for (const neighbor of navAdj[curr] || []) {
+          const alt = distances[curr] + neighbor.weight;
+          if (alt < distances[neighbor.node]) {
+            distances[neighbor.node] = alt;
+            prev[neighbor.node] = curr;
+            pq.push({ node: neighbor.node, dist: alt });
+          }
+        }
+      }
+      const path = [];
+      let u = targetKey;
+      while (u) { path.unshift(u); u = prev[u]; }
+      return path.length > 0 && path[0] === startKey ? path : [];
+    }
+
+    function findNearestNode(pos, floor = 0, block = null) {
+      let bestKey = "SPINE_CENTRAL", minDist = Infinity;
+      for (const [k, n] of Object.entries(navNodes)) {
+        if (n.floor !== floor) continue;
+        const blockMatch = (!block || block === "GROUND" || n.block === block || n.block === "GROUND");
+        const bonus = blockMatch ? 0 : 30;
+        const dist = n.pos.distanceTo(pos) + bonus;
+        if (dist < minDist) { minDist = dist; bestKey = k; }
+      }
+      return bestKey;
+    }
+
+    function findRoomMesh(cabinCode) {
+      if (!cabinCode) return null;
+      let rawCabinKey = cabinCode.toLowerCase().replace(/[^a-z0-9]/g, "");
+      if (rawCabinKey.startsWith("roomno")) rawCabinKey = rawCabinKey.replace("roomno", "");
+      else if (rawCabinKey.startsWith("room")) rawCabinKey = rawCabinKey.replace("room", "");
+      const cabinKey = rawCabinKey;
+      if (cabinKey.length <= 1) return null;
+
+      let foundObj = null;
+      const checkObj = (obj) => {
+        if (obj.isMesh && obj.parent && obj.parent.name !== "navigation-path-group") {
+          const name = (obj.name || "").toLowerCase();
+          if ((name === "room-" + cabinKey || name === cabinKey) && !foundObj) {
+            foundObj = obj;
+          }
+          else if (name.includes(cabinKey) && !foundObj) {
+            foundObj = obj;
+          }
+        }
+      };
+
+      // Search all floors regardless of whether they are currently in the scene
+      floorGroups.forEach(g => {
+        if (!foundObj) g.traverse(checkObj);
+      });
+      
+      // Fallback search in campus
+      if (!foundObj) {
+        campus.traverse(checkObj);
+      }
+      
+      return foundObj;
+    }
+
+    function getMeshFloor(mesh) {
+      if (!mesh) return 0;
+      if (mesh.userData.floor !== undefined) return mesh.userData.floor;
+      let parent = mesh.parent;
+      while (parent) {
+        if (parent.name && parent.name.startsWith("floor-")) {
+          return parseInt(parent.name.replace("floor-", ""), 10) || 0;
+        }
+        parent = parent.parent;
+      }
+      return 0;
+    }
+
+    function getMeshBlock(mesh) {
+      if (!mesh) return "GROUND";
+      if (mesh.userData.block) return mesh.userData.block;
+      return deriveMeshBlock(mesh.name || "");
+    }
+
+    function getWalkableAccessPoints(mesh) {
+      if (!mesh) return null;
+      const pos = new THREE.Vector3();
+      mesh.getWorldPosition(pos);
+      const floor = getMeshFloor(mesh);
+      pos.y = floorY(floor) + 0.35;
+      
+      const block = getMeshBlock(mesh).toUpperCase();
+      const doorPos = pos.clone();
+      
+      if (block === "M") {
+        doorPos.x = 25;
+      } else if (block === "F" || block === "E") {
+        doorPos.x = -43;
+      } else if (block === "B") {
+        doorPos.z = 17.2;
+      } else if (block === "ADM") {
+        doorPos.z = -28;
+      }
+      
+      return { roomPos: pos, doorPos: doorPos, floor: floor, block: block };
+    }
+
+    function frameRoute(points) {
+      if (!points || points.length === 0) return;
+      const routeBox = new THREE.Box3();
+      points.forEach(p => routeBox.expandByPoint(p));
+      
+      const center = new THREE.Vector3();
+      routeBox.getCenter(center);
+      
+      const size = new THREE.Vector3();
+      routeBox.getSize(size);
+      
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const offsetDistance = Math.max(maxDim * 1.35, 48); 
+      
+      const cameraPos = new THREE.Vector3(
+        center.x + offsetDistance * 0.65,
+        center.y + offsetDistance * 0.65 + 16,
+        center.z + offsetDistance * 0.65
+      );
+      
+      smoothFlyCamera(cameraPos, center);
+    }
+
+    function updateLabelVisibility(isNavActive = false, activeRouteNodes = null, startMesh = null, targetMesh = null) {
+      const activeFloorNum = activeFloorKey === "all" ? null : Number(activeFloorKey);
+      const isAll = activeFloorKey === "all";
+      
+      const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
+      const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
+      
+      document.querySelectorAll(".map-label").forEach((el) => {
+        if (isNavActive) {
+          const labelText = (el.textContent || "").toLowerCase().trim();
+          const isStairs = el.dataset.stairs === "true" || el.classList.contains("stairs-label");
+          let showLabel = false;
+          
+          if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) {
+            showLabel = true;
+          }
+          if (targetRoomId && (labelText.includes(targetRoomId) || targetRoomId.includes(labelText))) {
+            showLabel = true;
+          }
+          
+          if (isStairs && activeRouteNodes) {
+            let stairsBlock = null;
+            if (labelText.includes("(m)")) stairsBlock = "M";
+            else if (labelText.includes("(f)")) stairsBlock = "F";
+            else if (labelText.includes("(e)")) stairsBlock = "E";
+            else if (labelText.includes("(b)")) stairsBlock = "B";
+            
+            if (stairsBlock) {
+              const searchKey = "STAIRS_" + stairsBlock;
+              activeRouteNodes.forEach(nodeKey => {
+                if (nodeKey.startsWith(searchKey)) {
+                  showLabel = true;
+                }
+              });
+            }
+          }
+          
+          el.style.display = showLabel ? "" : "none";
+        } else {
+          const floorAttr = el.dataset.floor;
+          const isStairs = el.dataset.stairs === "true" || el.classList.contains("stairs-label");
+          if (floorAttr !== undefined && !isAll) {
+            const floorMatches = el.dataset.floor === String(activeFloorNum);
+            if (!floorMatches) { el.style.display = "none"; return; }
+          }
+          const isMajor = el.dataset.major === "true" || el.classList.contains("major");
+          el.style.display = (isMajor || isStairs) ? "" : "none";
+        }
+      });
+
+      document.querySelectorAll(".block-badge-3d").forEach(el => {
+        el.style.display = isNavActive ? "none" : "";
+      });
+    }
+
+    function isolateFloor(group, on) {
+      if (on) { if (!group.parent) campus.add(group); } else if (group.parent) { campus.remove(group); }
+      group.visible = on;
+      group.traverse((obj) => {
+        obj.visible = on;
+        if (obj.isCSS2DObject && obj.element) obj.element.style.display = on ? "" : "none";
+      });
+    }
+
+    function showFloor(key) {
+      activeFloorKey = key;
+      if (key === "all") {
+        floorGroups.forEach((g) => isolateFloor(g, true));
+        now.innerHTML = `<span>●</span> All Floors Stacked`;
+      } else {
+        const n = Number(key);
+        floorGroups.forEach((g, i) => isolateFloor(g, i === n));
+        now.innerHTML = `<span>●</span> ${names[n]} Active`;
+      }
+      updateLabelVisibility(false);
+    }
+
+    function setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, isNavActive = true) {
+      if (isNavActive) {
+        floorGroups.forEach(g => {
+          if (!g.parent) campus.add(g);
+        });
+      }
+
+      const activeBlocks = new Set();
+      if (isNavActive) {
+        if (startMesh) activeBlocks.add(getMeshBlock(startMesh).toUpperCase());
+        if (targetMesh) activeBlocks.add(getMeshBlock(targetMesh).toUpperCase());
+        if (activeRouteNodes) {
+          activeRouteNodes.forEach(nodeKey => {
+            const node = navNodes[nodeKey];
+            if (node && node.block) activeBlocks.add(node.block.toUpperCase());
+          });
+        }
+        activeBlocks.add("GROUND");
+      }
+      
+      const activeFloors = new Set();
+      if (isNavActive && activeRouteNodes) {
+        activeRouteNodes.forEach(nodeKey => {
+          const node = navNodes[nodeKey];
+          if (node) activeFloors.add(node.floor);
+        });
+      }
+
+      blockBadgesGroup.children.forEach((badgeObj) => {
+        badgeObj.visible = !isNavActive;
+        if (badgeObj.element) {
+          badgeObj.element.style.display = isNavActive ? "none" : "";
+        }
+      });
+      
+      campus.traverse((obj) => {
+        if (obj.isCSS2DObject || (obj.userData && obj.userData.isLabel)) {
+          if (isNavActive) {
+            const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
+            const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
+            const text = (obj.userData.text || (obj.element ? obj.element.textContent : "") || "").toLowerCase().trim();
+            const isStairs = obj.userData.isStairs || (obj.element && obj.element.classList.contains("stairs-label"));
+            
+            let showLabel = false;
+            if (startRoomId && (text.includes(startRoomId) || startRoomId.includes(text))) showLabel = true;
+            if (targetRoomId && (text.includes(targetRoomId) || targetRoomId.includes(text))) showLabel = true;
+            if (isStairs && activeRouteNodes) {
+              let stairsBlock = null;
+              if (text.includes("(m)")) stairsBlock = "M";
+              else if (text.includes("(f)")) stairsBlock = "F";
+              else if (text.includes("(e)")) stairsBlock = "E";
+              else if (text.includes("(b)")) stairsBlock = "B";
+              if (stairsBlock) {
+                const searchKey = "STAIRS_" + stairsBlock;
+                let isUsedInRoute = false;
+                activeRouteNodes.forEach(nodeKey => {
+                  if (nodeKey.startsWith(searchKey)) isUsedInRoute = true;
+                });
+                
+                // Show ONLY ONE stairs label per staircase block (on active target or start floor) to avoid stacked duplicates
+                const targetFloor = targetMesh ? getMeshFloor(targetMesh) : (startMesh ? getMeshFloor(startMesh) : 0);
+                const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ? 
+                  parseInt(obj.parent.name.replace("floor-", ""), 10) : 0;
+                
+                if (isUsedInRoute && labelFloor === targetFloor) {
+                  showLabel = true;
+                }
+              }
+            }
+            obj.visible = showLabel;
+            if (obj.element) obj.element.style.display = showLabel ? "" : "none";
+          } else {
+            const isMajor = obj.userData.isMajor;
+            const isStairs = obj.userData.isStairs;
+            const floorAttr = obj.element ? obj.element.dataset.floor : undefined;
+            const isAll = (activeFloorKey === "all");
+            let showLabel = isMajor || isStairs;
+            if (floorAttr !== undefined && !isAll) {
+              showLabel = showLabel && (floorAttr === String(activeFloorKey));
+            }
+            obj.visible = showLabel;
+            if (obj.element) obj.element.style.display = showLabel ? "" : "none";
+          }
+          return;
+        }
+
+        if (obj.isMesh && obj.parent && obj.parent.name !== "navigation-path-group") {
+          const isTerrain = obj.parent.name === "ground-context";
+          const isSlab = obj.userData.isSlab;
+          const isStairs = obj.userData.isStairs || (obj.name && obj.name.includes("stairs"));
+          const isTargetMesh = (obj === targetMesh);
+          const isStartMesh = (obj === startMesh);
+          const meshBlock = (obj.userData.block || deriveMeshBlock(obj.name || "")).toUpperCase();
+          const meshFloor = getMeshFloor(obj);
+          
+          if (!isNavActive) {
+            obj.visible = true;
+            // Restore original slab material if it was ghosted
+            if (obj.userData._origSlabMat) {
+              obj.material = obj.userData._origSlabMat;
+              delete obj.userData._origSlabMat;
+            }
+          } else {
+            const belongsToActiveBlock = activeBlocks.has(meshBlock);
+            
+            if (obj.userData.isRoom && !isStairs) {
+              obj.visible = isStartMesh || isTargetMesh;
+            } else if (isStairs) {
+              const isStairsUsed = belongsToActiveBlock && activeFloors.has(meshFloor);
+              obj.visible = isStairsUsed;
+            } else if (isSlab && belongsToActiveBlock) {
+              // Show slabs as ghost transparent outlines for spatial context
+              obj.visible = true;
+              if (!obj.userData._origSlabMat) obj.userData._origSlabMat = obj.material;
+              obj.material = mats.slabGhost;
+            } else if (isSlab) {
+              obj.visible = false;
+            } else {
+              obj.visible = isTerrain;
+            }
+          }
+        }
+      });
+      
+      ground.traverse((obj) => {
+        if (obj.name === "tree" || (obj.parent && obj.parent.name === "tree")) {
+          obj.visible = !isNavActive;
+        }
+        if (obj.isMesh && (obj.name && (obj.name.startsWith("parking") || obj.name.includes("shop") || obj.name === "canteen"))) {
+          if (isNavActive) {
+            const isStartOrTarget = (startMesh && startMesh.name === obj.name) || (targetMesh && targetMesh.name === obj.name);
+            obj.visible = isStartOrTarget;
+          } else {
+            obj.visible = true;
+          }
+        }
+      });
+      
+      updateLabelVisibility(isNavActive, activeRouteNodes, startMesh, targetMesh);
+    }
+
+    function setRoomHighlights(startKey, targetBlock, targetCabin) {
+      highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
+      highlightedMeshes = [];
+      targetDestinationObject = null;
+      
+      let targetMesh = findRoomMesh(targetCabin || targetBlock);
+      if (targetMesh) {
+        targetDestinationObject = targetMesh;
+        if (!targetMesh.userData.origMaterial) targetMesh.userData.origMaterial = targetMesh.material;
+        if (!targetMesh.userData.highlightMaterial) {
+          targetMesh.userData.highlightMaterial = targetMesh.userData.origMaterial.clone();
+          targetMesh.userData.highlightMaterial.emissive = new THREE.Color(0x00ff88);
+          targetMesh.userData.highlightMaterial.emissiveIntensity = 1.6;
+        }
+        targetMesh.material = targetMesh.userData.highlightMaterial;
+        highlightedMeshes.push(targetMesh);
+      }
+      
+      let startMesh = findRoomMesh(startKey);
+      if (!startMesh && typeof startKey === "string") {
+        startMesh = findRoomMesh(startKey.replace(/^room-/i, ""));
+      }
+      if (startMesh) {
+        if (!startMesh.userData.origMaterial) startMesh.userData.origMaterial = startMesh.material;
+        if (!startMesh.userData.startHighlightMaterial) {
+          startMesh.userData.startHighlightMaterial = startMesh.userData.origMaterial.clone();
+          startMesh.userData.startHighlightMaterial.emissive = new THREE.Color(0x38bdf8); // Cyan start
+          startMesh.userData.startHighlightMaterial.emissiveIntensity = 1.6;
+        }
+        startMesh.material = startMesh.userData.startHighlightMaterial;
+        highlightedMeshes.push(startMesh);
+      }
+      
+      return { startMesh, targetMesh };
+    }
+
+    class CorridorCurve extends THREE.Curve {
+      constructor(points) { super(); this.points = points; }
       getPoint(t, optionalTarget = new THREE.Vector3()) {
         if (!this.points || this.points.length < 2) return optionalTarget.set(0, 0, 0);
         if (t <= 0) return optionalTarget.copy(this.points[0]);
         if (t >= 1) return optionalTarget.copy(this.points[this.points.length - 1]);
-
-        let totalDist = 0;
-        const dists = [];
+        let totalDist = 0, dists = [];
         for (let i = 0; i < this.points.length - 1; i++) {
           const d = this.points[i].distanceTo(this.points[i + 1]);
-          dists.push(d);
-          totalDist += d;
+          dists.push(d); totalDist += d;
         }
         const targetDist = t * totalDist;
         let accum = 0;
@@ -799,325 +1857,6 @@
       }
     }
 
-    let targetDestinationObject = null;
-
-    // Highlight exact target destination room and fade out every other room & label
-    function setRoomFocus(targetBlock, targetCabin, targetFloor) {
-      if (targetAuraBox) {
-        scene.remove(targetAuraBox);
-        targetAuraBox = null;
-      }
-
-      targetDestinationObject = null;
-
-      let rawCabinKey = (targetCabin || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-      if (rawCabinKey.startsWith("roomno")) rawCabinKey = rawCabinKey.replace("roomno", "");
-      else if (rawCabinKey.startsWith("room")) rawCabinKey = rawCabinKey.replace("room", "");
-      const cabinKey = rawCabinKey;
-      const hasSpecificCabin = cabinKey && cabinKey.length > 1 && cabinKey !== (targetBlock || "").toLowerCase();
-
-      scene.traverse((obj) => {
-        if (obj.isMesh) {
-          const isBaseTerrain = obj.parent && obj.parent.name === "ground-context" && 
-            (obj.material === mats.grass || obj.material === mats.road || obj.material === mats.pad || obj.material === mats.court || obj.material === mats.park);
-          if (isBaseTerrain) return;
-
-          if (obj.parent && obj.parent.name === "navigation-path-group") return;
-
-          if (!obj.userData.origMaterial) {
-            obj.userData.origMaterial = obj.material;
-          }
-
-          const name = (obj.name || "").toLowerCase();
-          let isDestinationRoom = false;
-
-          if (hasSpecificCabin) {
-            if ((name === "room-" + cabinKey || name === cabinKey) && !targetDestinationObject) {
-              isDestinationRoom = true;
-            } else if (name.includes(cabinKey) && !targetDestinationObject) {
-              isDestinationRoom = true;
-            } else if (cabinKey.includes("adm") && name.includes("admin") && !targetDestinationObject) {
-              isDestinationRoom = true;
-            } else if (cabinKey.includes("library") && name.includes("library") && !targetDestinationObject) {
-              isDestinationRoom = true;
-            } else if (cabinKey.includes("canteen") && name.includes("canteen") && !targetDestinationObject) {
-              isDestinationRoom = true;
-            }
-          } else if (targetBlock) {
-            const primaryRoomMap = {
-              "M": "auditorium",
-              "F": "room-f001",
-              "ADM": "admin-block",
-              "E": "etc",
-              "B": "stage",
-              "CANTEEN": "canteen-entrance"
-            };
-            const primaryName = primaryRoomMap[targetBlock.toUpperCase()] || "auditorium";
-            if ((name === primaryName || name.includes(primaryName)) && !targetDestinationObject) {
-              isDestinationRoom = true;
-            }
-          }
-
-          if (isDestinationRoom) {
-            targetDestinationObject = obj;
-            if (!obj.userData.targetMaterial) {
-              obj.userData.targetMaterial = obj.userData.origMaterial.clone();
-              obj.userData.targetMaterial.emissive = new THREE.Color(0x10b981);
-              obj.userData.targetMaterial.emissiveIntensity = 0.65;
-            }
-            obj.material = obj.userData.targetMaterial;
-            obj.material.transparent = false;
-            obj.material.opacity = 1.0;
-          } else {
-            if (!obj.userData.dimMaterial) {
-              obj.userData.dimMaterial = obj.userData.origMaterial.clone();
-            }
-            obj.userData.dimMaterial.transparent = true;
-            obj.userData.dimMaterial.opacity = 0.04;
-            obj.material = obj.userData.dimMaterial;
-          }
-        }
-      });
-
-      document.querySelectorAll(".map-label").forEach((el) => {
-        const text = (el.textContent || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        let isTargetLabel = false;
-
-        if (hasSpecificCabin) {
-          if (text === cabinKey || text.includes(cabinKey)) {
-            isTargetLabel = true;
-          }
-        } else if (targetBlock) {
-          const blockLower = targetBlock.toLowerCase();
-          if (blockLower === "m" && text.includes("auditorium")) isTargetLabel = true;
-          else if (blockLower === "f" && text.includes("f001")) isTargetLabel = true;
-          else if (blockLower === "adm" && text.includes("admin")) isTargetLabel = true;
-          else if (blockLower === "e" && text.includes("etc")) isTargetLabel = true;
-          else if (blockLower === "b" && text.includes("stage")) isTargetLabel = true;
-          else if (blockLower === "canteen" && text.includes("canteen")) isTargetLabel = true;
-        }
-
-        el.style.display = isTargetLabel ? "" : "none";
-        el.style.opacity = isTargetLabel ? "1.0" : "0";
-      });
-    }
-
-    let currentStartLocation = "ENTRANCE_F";
-
-    const startLocations = {
-      ENTRANCE_F: { label: "🚩 ENTRANCE (F004-F005)", pos: new THREE.Vector3(-52, 0.45, -4.2) },
-      MAIN_GATE: { label: "🚩 MAIN GATE", pos: new THREE.Vector3(-2, 0.45, 60) },
-      PARKING: { label: "🚩 PARKING AREA", pos: new THREE.Vector3(-2, 0.45, 28) },
-      ADM: { label: "🚩 ADMIN BLOCK", pos: new THREE.Vector3(-6, 0.45, -24) },
-      BLOCK_E: { label: "🚩 BLOCK E ENTRANCE", pos: new THREE.Vector3(-54, 0.45, 19.4) },
-      BLOCK_B: { label: "🚩 BLOCK B ENTRANCE", pos: new THREE.Vector3(8, 0.45, 17.2) },
-      BLOCK_M: { label: "🚩 BLOCK M ENTRANCE", pos: new THREE.Vector3(25, 0.45, 16) },
-      CANTEEN: { label: "🚩 CANTEEN ENTRANCE", pos: new THREE.Vector3(-84, 0.45, -96) }
-    };
-
-    // Precise corridor, doorway, staircase, and floor hallway waypoint router
-    function getRoutePoints(targetBlock, floorLevel = 0, startKey = currentStartLocation) {
-      const pts = [];
-      const fY = floorY(floorLevel) + 0.15;
-
-      const startObj = startLocations[startKey] || startLocations.ENTRANCE_F;
-      const startPos = startObj.pos.clone();
-      pts.push(startPos);
-
-      // Transition from chosen start point into the main corridor network
-      if (startKey === "MAIN_GATE") {
-        pts.push(new THREE.Vector3(-2, 0.45, 28));
-        pts.push(new THREE.Vector3(-2, 0.45, 17.2));
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-      } else if (startKey === "PARKING") {
-        pts.push(new THREE.Vector3(-2, 0.45, 17.2));
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-      } else if (startKey === "ADM") {
-        pts.push(new THREE.Vector3(-6, 0.45, -22));
-        pts.push(new THREE.Vector3(-43, 0.45, -22));
-        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
-      } else if (startKey === "BLOCK_E") {
-        pts.push(new THREE.Vector3(-43, 0.45, 19.4));
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-      } else if (startKey === "BLOCK_B") {
-        pts.push(new THREE.Vector3(8, 0.45, 17.2));
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-      } else if (startKey === "BLOCK_M") {
-        pts.push(new THREE.Vector3(25, 0.45, 16));
-        pts.push(new THREE.Vector3(25, 0.45, 17.2));
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-      } else if (startKey === "CANTEEN") {
-        pts.push(new THREE.Vector3(-60, 0.45, -50));
-        pts.push(new THREE.Vector3(-60, 0.45, -4.2));
-        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
-      } else {
-        // ENTRANCE_F (Default)
-        pts.push(new THREE.Vector3(-43, 0.45, -4.2));
-      }
-
-      let finalTargetPos = null;
-      if (targetDestinationObject) {
-        finalTargetPos = new THREE.Vector3();
-        targetDestinationObject.getWorldPosition(finalTargetPos);
-        finalTargetPos.y = fY;
-      }
-
-      const blockUpper = (targetBlock || "M").toUpperCase();
-
-      if (blockUpper === "M") {
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-        pts.push(new THREE.Vector3(25, 0.45, 17.2));
-        pts.push(new THREE.Vector3(25, 0.45, 16));
-
-        if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(29, 0.45, 16));
-          for (let i = 1; i <= 6; i++) {
-            const ratio = i / 6;
-            pts.push(new THREE.Vector3(
-              29 + (i % 2 === 1 ? -1 : 1),
-              0.45 + (fY - 0.45) * ratio,
-              16 + ratio * 1.5
-            ));
-          }
-          pts.push(new THREE.Vector3(29, fY, 16));
-          pts.push(new THREE.Vector3(26, fY, 16));
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(26, fY, finalTargetPos.z));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(26, fY, 28));
-          }
-        } else {
-          if (finalTargetPos) {
-            if (finalTargetPos.x > 25) {
-              pts.push(new THREE.Vector3(32, 0.45, 16));
-              pts.push(new THREE.Vector3(32, 0.45, finalTargetPos.z));
-            } else {
-              pts.push(new THREE.Vector3(18, 0.45, 16));
-              pts.push(new THREE.Vector3(18, 0.45, finalTargetPos.z));
-            }
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(25, 0.45, 20));
-          }
-        }
-      } else if (blockUpper === "F") {
-        if (finalTargetPos && finalTargetPos.z <= -20) {
-          pts.push(new THREE.Vector3(-43, 0.45, -22));
-          pts.push(new THREE.Vector3(finalTargetPos.x, 0.45, -22));
-          pts.push(finalTargetPos);
-        } else if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(-37, 0.45, -4.2));
-          for (let i = 1; i <= 6; i++) {
-            const ratio = i / 6;
-            pts.push(new THREE.Vector3(
-              -37 + (i % 2 === 1 ? 1 : -1),
-              0.45 + (fY - 0.45) * ratio,
-              -4.2
-            ));
-          }
-          pts.push(new THREE.Vector3(-37, fY, -4.2));
-          pts.push(new THREE.Vector3(-43, fY, -4.2));
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(-43, fY, finalTargetPos.z));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-52, fY, -16));
-          }
-        } else {
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(-43, 0.45, finalTargetPos.z));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-52, 0.45, -16));
-          }
-        }
-      } else if (blockUpper === "ADM") {
-        pts.push(new THREE.Vector3(-43, 0.45, -22));
-        pts.push(new THREE.Vector3(-6, 0.45, -22));
-        pts.push(new THREE.Vector3(-6, 0.45, -24));
-        if (finalTargetPos) {
-          pts.push(finalTargetPos);
-        } else {
-          pts.push(new THREE.Vector3(-6, 0.45, -28));
-        }
-      } else if (blockUpper === "E") {
-        pts.push(new THREE.Vector3(-43, 0.45, 19.4));
-        pts.push(new THREE.Vector3(-54, 0.45, 19.4));
-        if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(-38, 0.45, 20));
-          for (let i = 1; i <= 6; i++) {
-            const ratio = i / 6;
-            pts.push(new THREE.Vector3(
-              -38 + (i % 2 === 1 ? -1 : 1),
-              0.45 + (fY - 0.45) * ratio,
-              20
-            ));
-          }
-          pts.push(new THREE.Vector3(-38, fY, 20));
-          pts.push(new THREE.Vector3(-43, fY, 26));
-          if (finalTargetPos) {
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-48, fY, 30));
-          }
-        } else {
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(-43, 0.45, finalTargetPos.z));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-44, 0.45, 34));
-          }
-        }
-      } else if (blockUpper === "B") {
-        pts.push(new THREE.Vector3(-43, 0.45, 17.2));
-        pts.push(new THREE.Vector3(8, 0.45, 17.2));
-        if (floorLevel > 0) {
-          pts.push(new THREE.Vector3(13.2, 0.45, 17.2));
-          for (let i = 1; i <= 6; i++) {
-            const ratio = i / 6;
-            pts.push(new THREE.Vector3(
-              13.2,
-              0.45 + (fY - 0.45) * ratio,
-              17.2 + (i % 2 === 1 ? -1 : 1)
-            ));
-          }
-          pts.push(new THREE.Vector3(13.2, fY, 17.2));
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(finalTargetPos.x, fY, 17.2));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-2, fY, 11));
-          }
-        } else {
-          if (finalTargetPos) {
-            pts.push(new THREE.Vector3(finalTargetPos.x, 0.45, 17.2));
-            pts.push(finalTargetPos);
-          } else {
-            pts.push(new THREE.Vector3(-1.5, 0.45, 11));
-          }
-        }
-      } else if (blockUpper === "CANTEEN") {
-        pts.push(new THREE.Vector3(-60, 0.45, -4.2));
-        pts.push(new THREE.Vector3(-60, 0.45, -50));
-        pts.push(new THREE.Vector3(-84, 0.45, -96));
-      }
-
-      return pts;
-    }
-
-    let activeCurve = null;
-    let pulseOrbs = [];
-    let pathMesh = null;
-    let pathCoreLine = null;
-    let startBeacon = null;
-    let targetBeacon = null;
-    let isPathVisible = true;
-    let currentRouteFloor = 0;
-    let currentTargetBlock = "M";
-    let currentTargetName = null;
-    let currentCabinCode = null;
-
     function createCustomLabel(text, className, pos) {
       const el = document.createElement("div");
       el.className = className;
@@ -1128,83 +1867,335 @@
       return obj;
     }
 
-    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null) {
-      if (startKey) currentStartLocation = startKey;
-      currentTargetBlock = targetBlock;
-      currentRouteFloor = floorLevel;
-      currentTargetName = customTargetName;
-      currentCabinCode = cabinCode;
+    function getExactRoutePoints(startKeyOrInfo, targetBlock, floorLevel = 0, customTargetName = null, cabinCode = null) {
+      const pts = [];
+      
+      let startPos = null;
+      let startDoorPos = null;
+      let startFloor = 0;
+      let startBlock = "F";
+      let startNodeKey = "ENTRANCE_F";
+      
+      let startMesh = findRoomMesh(startKeyOrInfo);
+      if (!startMesh && typeof startKeyOrInfo === "string") {
+        var cleanedCode = startKeyOrInfo.replace(/^room-/i, "");
+        startMesh = findRoomMesh(cleanedCode);
+      }
+      
+      if (startMesh) {
+        const access = getWalkableAccessPoints(startMesh);
+        startPos = access.roomPos;
+        startDoorPos = access.doorPos;
+        startFloor = access.floor;
+        startBlock = access.block;
+        startNodeKey = findNearestNode(startDoorPos, startFloor, startBlock);
+      } else {
+        if (typeof startKeyOrInfo === "string" && startLocations[startKeyOrInfo]) {
+          startNodeKey = startLocations[startKeyOrInfo].node;
+          startBlock = startLocations[startKeyOrInfo].block;
+          startFloor = startLocations[startKeyOrInfo].floor || 0;
+          startPos = navNodes[startNodeKey].pos.clone();
+          startDoorPos = startPos.clone();
+        } else if (typeof startKeyOrInfo === "string" && navNodes[startKeyOrInfo]) {
+          startNodeKey = startKeyOrInfo;
+          startBlock = navNodes[startKeyOrInfo].block;
+          startFloor = navNodes[startKeyOrInfo].floor || 0;
+          startPos = navNodes[startKeyOrInfo].pos.clone();
+          startDoorPos = startPos.clone();
+        } else {
+          startPos = navNodes["ENTRANCE_F"].pos.clone();
+          startDoorPos = startPos.clone();
+          startNodeKey = "ENTRANCE_F";
+          startBlock = "F";
+          startFloor = 0;
+        }
+      }
+      
+      let finalTargetPos = null;
+      let targetDoorPos = null;
+      let targetFloor = floorLevel;
+      let targetNodeKey = "ENTRANCE_M";
+      
+      let targetMesh = findRoomMesh(cabinCode || customTargetName || targetBlock);
+      if (!targetMesh && customTargetName) {
+        targetMesh = findRoomMesh(customTargetName);
+      }
+      
+      if (targetMesh) {
+        const access = getWalkableAccessPoints(targetMesh);
+        finalTargetPos = access.roomPos;
+        targetDoorPos = access.doorPos;
+        targetFloor = access.floor;
+        targetNodeKey = findNearestNode(targetDoorPos, targetFloor, targetBlock);
+      } else {
+        const fY = floorY(floorLevel) + 0.35;
+        const blockDefaultTargets = { 
+          M: new THREE.Vector3(25, fY, 28), 
+          F: new THREE.Vector3(-48, fY, -10), 
+          ADM: new THREE.Vector3(-12, fY, -28), 
+          E: new THREE.Vector3(-46, fY, 30), 
+          B: new THREE.Vector3(2, fY, 12), 
+          CANTEEN: new THREE.Vector3(-84, fY, -96) 
+        };
+        finalTargetPos = blockDefaultTargets[targetBlock] || new THREE.Vector3(25, fY, 28);
+        targetDoorPos = finalTargetPos.clone();
+        targetNodeKey = findNearestNode(targetDoorPos, floorLevel, targetBlock);
+      }
+      
+      const nodePath = findNavGraphRoute(startNodeKey, targetNodeKey);
+      
+      pts.push(startPos.clone());
+      if (startDoorPos.distanceTo(startPos) > 0.1) {
+        pts.push(startDoorPos.clone());
+      }
+      
+      for (let i = 0; i < nodePath.length; i++) {
+        const currNode = navNodes[nodePath[i]];
+        const currPos = currNode.pos.clone();
+        
+        if (i > 0) {
+          const prevNode = navNodes[nodePath[i - 1]];
+          if (prevNode.floor !== currNode.floor) {
+            const stepsCount = Math.abs(currNode.floor - prevNode.floor) * 5;
+            for (let s = 1; s <= stepsCount; s++) {
+              const r = s / (stepsCount + 1);
+              pts.push(new THREE.Vector3(
+                prevNode.pos.x + (s % 2 === 1 ? -0.7 : 0.7), 
+                prevNode.pos.y + (currNode.pos.y - prevNode.pos.y) * r, 
+                prevNode.pos.z + (s % 2 === 1 ? 0.7 : -0.7)
+              ));
+            }
+          }
+        }
+        if (pts[pts.length - 1].distanceTo(currPos) > 0.4) {
+          pts.push(currPos);
+        }
+      }
+      
+      if (targetDoorPos.distanceTo(pts[pts.length - 1]) > 0.4) {
+        pts.push(targetDoorPos.clone());
+      }
+      if (finalTargetPos.distanceTo(pts[pts.length - 1]) > 0.1) {
+        pts.push(finalTargetPos.clone());
+      }
+      
+      let totalDistUnits = 0;
+      for (let i = 0; i < pts.length - 1; i++) {
+        totalDistUnits += pts[i].distanceTo(pts[i + 1]);
+      }
+      
+      return { 
+        points: pts, 
+        nodePath, 
+        startPos, 
+        targetPos: finalTargetPos, 
+        distanceMeters: Math.round(totalDistUnits * 1.5), 
+        estimatedMinutes: Math.max(1, Math.round(totalDistUnits * 1.5 / 65)), 
+        startBlock 
+      };
+    }
 
+    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null, sourceBlock = null, startName = null) {
+      if (startKey) currentStartLocation = startKey;
+      currentTargetBlock = targetBlock; currentRouteFloor = floorLevel; currentTargetName = customTargetName; currentCabinCode = cabinCode;
+      currentSourceBlock = sourceBlock || (startLocations[currentStartLocation]?.block || "F");
+      
       while (pathGroup.children.length > 0) {
         const child = pathGroup.children[0];
-        if (child.isCSS2DObject && child.element && child.element.parentNode) {
-          child.element.remove();
-        }
+        if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
         pathGroup.remove(child);
       }
       pulseOrbs = [];
 
-      const cabin = cabinCode || customTargetName || targetBlock;
-
-      setRoomFocus(targetBlock, cabin, floorLevel);
+      // Highlight rooms and get meshes
+      const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
 
       if (!isPathVisible) return;
+      
+      const routeResult = getExactRoutePoints(currentStartLocation, targetBlock, floorLevel, customTargetName, cabinCode || customTargetName || targetBlock);
+      
+      // Update visibility dynamically
+      const activeRouteNodes = new Set(routeResult.nodePath);
+      setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, true);
 
-      const points = getRoutePoints(targetBlock, floorLevel, currentStartLocation);
-      if (points.length < 2) return;
-
-      activeCurve = new CorridorCurve(points);
-
-      const tubeGeo = new THREE.TubeGeometry(activeCurve, 120, 0.42, 12, false);
-      pathMesh = new THREE.Mesh(tubeGeo, pathMat);
-      pathMesh.castShadow = true;
-      pathGroup.add(pathMesh);
-
-      const curvePts = activeCurve.getPoints(140);
+      if (routeResult.points.length < 2) return;
+      
+      activeCurve = new CorridorCurve(routeResult.points);
+      const tubeGeo = new THREE.TubeGeometry(activeCurve, 160, 0.45, 14, false);
+      const pathMesh = new THREE.Mesh(tubeGeo, pathMat); pathMesh.renderOrder = 999; pathGroup.add(pathMesh);
+      
+      const curvePts = activeCurve.getPoints(180);
       const coreGeo = new THREE.BufferGeometry().setFromPoints(curvePts);
-      const coreMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
-      pathCoreLine = new THREE.Line(coreGeo, coreMat);
-      pathGroup.add(pathCoreLine);
-
-      for (let i = 0; i < 6; i++) {
-        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 16), pulseMat);
-        orb.userData = { progress: i * 0.16 };
-        pathGroup.add(orb);
-        pulseOrbs.push(orb);
+      const coreMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 4 });
+      const pathCoreLine = new THREE.Line(coreGeo, coreMat); pathCoreLine.renderOrder = 1000; pathGroup.add(pathCoreLine);
+      
+      for (let i = 0; i < 7; i++) {
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 16), pulseMat);
+        orb.userData = { progress: i * 0.14 }; orb.renderOrder = 1001; pathGroup.add(orb); pulseOrbs.push(orb);
       }
 
-      const startPos = points[0];
-      startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), pathMat);
-      startBeacon.position.copy(startPos).add(new THREE.Vector3(0, 1.25, 0));
-      pathGroup.add(startBeacon);
+      // ── Directional Arrow Cones along the path ──
+      const arrowMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.2 });
+      const totalPathLen = activeCurve.getLength ? activeCurve.getLength() : 50;
+      const arrowSpacing = Math.max(4, totalPathLen / 12);
+      const numArrows = Math.min(20, Math.max(3, Math.floor(totalPathLen / arrowSpacing)));
+      for (let i = 1; i < numArrows; i++) {
+        const t = i / numArrows;
+        const pt = activeCurve.getPointAt(t);
+        const ptAhead = activeCurve.getPointAt(Math.min(1.0, t + 0.02));
+        if (!pt || !ptAhead) continue;
+        const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.4, 8), arrowMat);
+        arrow.position.copy(pt).add(new THREE.Vector3(0, 0.3, 0));
+        // Rotate cone to point in direction of travel
+        const dir = new THREE.Vector3().subVectors(ptAhead, pt).normalize();
+        const axis = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion();
+        // Cone default points up (+Y), we want it pointing in dir
+        const rotAxis = new THREE.Vector3().crossVectors(axis, dir).normalize();
+        const angle = Math.acos(Math.min(1, Math.max(-1, axis.dot(dir))));
+        if (rotAxis.length() > 0.001) {
+          quaternion.setFromAxisAngle(rotAxis, angle);
+          arrow.quaternion.copy(quaternion);
+        }
+        arrow.renderOrder = 998;
+        pathGroup.add(arrow);
+      }
 
-      const startObj = startLocations[currentStartLocation] || startLocations.ENTRANCE_F;
-      createCustomLabel(startObj.label, "pin-label-start", startPos.clone().add(new THREE.Vector3(0, 3.2, 0)));
+      // ── Floor Transition Labels at staircase waypoints ──
+      if (routeResult.nodePath && routeResult.nodePath.length > 1) {
+        for (let i = 1; i < routeResult.nodePath.length; i++) {
+          const prevKey = routeResult.nodePath[i - 1];
+          const currKey = routeResult.nodePath[i];
+          const prevNode = navNodes[prevKey];
+          const currNode = navNodes[currKey];
+          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
+            const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
+            const goingUp = currNode.floor > prevNode.floor;
+            const transLabel = (goingUp ? '⬆️ Going Up to ' : '⬇️ Going Down to ') + (floorNames[currNode.floor] || ('Floor ' + currNode.floor));
+            createCustomLabel(transLabel, 'floor-transition-' + i, 
+              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 2.8, currNode.pos.z)
+            );
+          }
+        }
+      }
+      
+      // Start location pin and label
+      startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), startPinMat);
+      startBeacon.position.copy(routeResult.startPos).add(new THREE.Vector3(0, 1.25, 0)); pathGroup.add(startBeacon);
+      
+      let finalStartLabel = "Start Location";
+      if (startName) finalStartLabel = startName;
+      else if (startLocations[currentStartLocation]) finalStartLabel = startLocations[currentStartLocation].label;
+      else if (startMesh) finalStartLabel = startMesh.name || ("Classroom " + startKey);
+      
+      createCustomLabel("📍 " + finalStartLabel, "pin-label-start", routeResult.startPos.clone().add(new THREE.Vector3(0, 3.6, 0)));
+      
+      // Target location pin and label
+      targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.8, 16), pulseMat);
+      targetBeacon.rotation.x = Math.PI; targetBeacon.position.copy(routeResult.targetPos).add(new THREE.Vector3(0, 3.0, 0)); pathGroup.add(targetBeacon);
+      
+      const auraGeo = new THREE.BoxGeometry(5.2, 5.2, 5.2), auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.9 });
+      targetAuraBox = new THREE.Mesh(auraGeo, auraMat); targetAuraBox.position.copy(routeResult.targetPos); pathGroup.add(targetAuraBox);
+      
+      let finalTargetLabel = "Destination";
+      if (customTargetName) finalTargetLabel = customTargetName;
+      else if (targetMesh) finalTargetLabel = targetMesh.name || ("Classroom " + targetBlock);
+      
+      createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
+      
+    function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
+      const steps = [];
+      const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
+      const startFlStr = floorNames[startFloor] || `Floor ${startFloor}`;
+      const targetFlStr = floorNames[targetFloor] || `Floor ${targetFloor}`;
 
-      const targetPos = points[points.length - 1];
-      targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.2, 16), pulseMat);
-      targetBeacon.rotation.x = Math.PI;
-      targetBeacon.position.copy(targetPos).add(new THREE.Vector3(0, 2.5, 0));
-      pathGroup.add(targetBeacon);
+      steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
 
-      const auraGeo = new THREE.BoxGeometry(4.5, 4.5, 4.5);
-      const auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.8 });
-      targetAuraBox = new THREE.Mesh(auraGeo, auraMat);
-      targetAuraBox.position.copy(targetPos);
-      pathGroup.add(targetAuraBox);
+      let usedStairs = [];
+      if (nodePath) {
+        for (let i = 1; i < nodePath.length; i++) {
+          const prevKey = nodePath[i - 1];
+          const currKey = nodePath[i];
+          const prevNode = navNodes[prevKey];
+          const currNode = navNodes[currKey];
+          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
+            const goingUp = currNode.floor > prevNode.floor;
+            const destFl = floorNames[currNode.floor] || `Floor ${currNode.floor}`;
+            const stairsName = currNode.block ? `Stairs (Block ${currNode.block})` : 'the stairs';
+            usedStairs.push({ goingUp, destFl, stairsName });
+          }
+        }
+      }
 
-      const blockNames = {
-        M: "Block M (CSE / AIML)",
-        F: "Block F (First Year)",
-        ADM: "Admin Block",
-        E: "Block E (ETC / MCA)",
-        B: "Block B (Mechanical)",
-        CANTEEN: "Canteen"
-      };
-      const targetTitle = customTargetName || blockNames[targetBlock] || targetBlock;
-      const floorTag = floorLevel > 0 ? ` [${floorLevel}th Floor]` : "";
-      createCustomLabel(`📍 TARGET: ${targetTitle}${floorTag}`, "pin-label-target", targetPos.clone().add(new THREE.Vector3(0, 4.5, 0)));
+      if (usedStairs.length > 0) {
+        usedStairs.forEach(s => {
+          steps.push(`${s.goingUp ? '⬆️ Take' : '⬇️ Take'} ${s.stairsName} to ${s.destFl}`);
+        });
+      }
+
+      if (startBlock !== targetBlock) {
+        steps.push(`Follow the walking corridor/pathway from Block ${startBlock} to Block ${targetBlock}`);
+      } else {
+        steps.push(`Continue straight along the corridor`);
+      }
+
+      steps.push(`Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
+      return steps;
     }
+
+      if (window.parent && window.parent !== window) {
+        const steps = generateTurnByTurnSteps(
+          routeResult.nodePath, 
+          finalStartLabel, 
+          finalTargetLabel, 
+          startFloor, 
+          targetFloor, 
+          routeResult.startBlock || 'F', 
+          targetBlock || 'M'
+        );
+        window.parent.postMessage({ 
+          type: 'ROUTE_CALCULATED', 
+          from: finalStartLabel, 
+          to: finalTargetLabel, 
+          distanceMeters: routeResult.distanceMeters, 
+          estimatedMinutes: routeResult.estimatedMinutes,
+          steps: steps
+        }, '*');
+      }
+
+      // Automatically frame route in viewport
+      frameRoute(routeResult.points);
+    }
+
+    const views = { iso: { pos: [95, 75, 95], tgt: [6, 4, 6] }, top: { pos: [6, 175, 10], tgt: [6, 0, 6] }, fl: { pos: [-95, 55, 105], tgt: [4, 4, 6] }, fr: { pos: [115, 52, 95], tgt: [4, 4, 6] } };
+
+    document.querySelectorAll(".views button").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".views button").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        const v = views[b.dataset.view];
+        smoothFlyCamera(new THREE.Vector3(...v.pos), new THREE.Vector3(...v.tgt));
+      };
+    });
+
+    document.querySelectorAll(".floors button").forEach((b) => {
+      b.onclick = () => {
+        document.querySelectorAll(".floors button").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        showFloor(b.dataset.floor);
+        render3DGreenPath(currentTargetBlock, b.dataset.floor === 'all' ? 0 : Number(b.dataset.floor), currentTargetName, currentCabinCode);
+      };
+    });
+
+    const hudToggleBtn = document.getElementById("hud-toggle-btn");
+    const hudPanel = document.getElementById("hud-panel");
+    if (hudToggleBtn && hudPanel) {
+      hudToggleBtn.onclick = () => { hudPanel.style.display = getComputedStyle(hudPanel).display === "none" ? "block" : "none"; };
+    }
+
+    addEventListener("resize", () => {
+      camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); labelRenderer.setSize(innerWidth, innerHeight);
+    });
 
     const togglePathBtn = document.getElementById("toggle-path-btn");
     const routeSelect = document.getElementById("route-select");
@@ -1212,39 +2203,57 @@
     if (togglePathBtn) {
       togglePathBtn.onclick = () => {
         isPathVisible = !isPathVisible;
-        if (isPathVisible) {
-          togglePathBtn.textContent = "Path: ON";
-          togglePathBtn.classList.remove("off");
-          render3DGreenPath(currentTargetBlock, currentRouteFloor, currentTargetName, currentCabinCode);
-        } else {
-          togglePathBtn.textContent = "Path: OFF";
-          togglePathBtn.classList.add("off");
-          render3DGreenPath(currentTargetBlock, currentRouteFloor, currentTargetName, currentCabinCode);
-        }
+        togglePathBtn.textContent = isPathVisible ? "Path: ON" : "Path: OFF";
+        togglePathBtn.classList.toggle("off", !isPathVisible);
+        render3DGreenPath(currentTargetBlock, currentRouteFloor, currentTargetName, currentCabinCode);
       };
     }
 
     if (routeSelect) {
-      routeSelect.onchange = () => {
-        render3DGreenPath(routeSelect.value, 0);
-      };
+      routeSelect.onchange = () => { flyToBlock(routeSelect.value); render3DGreenPath(routeSelect.value, 0); };
     }
 
     window.addEventListener('message', function (e) {
       if (!e.data) return;
-      if (e.data.type === 'SHOW_FLOOR') {
+
+      if (e.data.type === 'SET_THEME') {
+        const isDark = e.data.isDark !== undefined ? e.data.isDark : (e.data.theme === 'dark');
+        applyTheme(isDark);
+      } else if (e.data.type === 'SHOW_FLOOR') {
         var f = e.data.floor;
         document.querySelectorAll('.floors button').forEach(function (b) {
           b.classList.remove('active');
           if (b.dataset.floor === String(f)) b.classList.add('active');
         });
         showFloor(String(f));
-      } else if (e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
-        var block = e.data.block || 'M';
-        var floor = e.data.floor !== undefined ? Number(e.data.floor) : 0;
-        var cabin = e.data.cabin || '';
-        var name = e.data.name || cabin || block;
-        var startLoc = e.data.startLocation || e.data.start || currentStartLocation;
+      } else if (e.data.type === 'RESET_VIEW') {
+        // Clear path, restore all blocks, no navigation
+        while (pathGroup.children.length > 0) {
+          const child = pathGroup.children[0];
+          if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+          pathGroup.remove(child);
+        }
+        pulseOrbs = [];
+        activeCurve = null;
+        targetBeacon = null;
+        startBeacon = null;
+        targetAuraBox = null;
+        targetDestinationObject = null;
+        highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
+        highlightedMeshes = [];
+        isPathVisible = false;
+        setSelectiveBlockVisibility(null, null, null, false);
+        showFloor("0");
+        // Fly to default isometric overview
+        smoothFlyCamera(new THREE.Vector3(95, 75, 95), new THREE.Vector3(6, 4, 6));
+      } else if (e.data.type === 'NAVIGATE_ROUTE' || e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
+        var block = e.data.block || (e.data.to && e.data.to.block) || 'M';
+        var floor = e.data.floor !== undefined ? Number(e.data.floor) : ((e.data.to && e.data.to.floor !== undefined) ? Number(e.data.to.floor) : 0);
+        var cabin = e.data.cabin || (e.data.to && (e.data.to.cabin || e.data.to.name)) || '';
+        var name = e.data.name || (e.data.to && e.data.to.name) || cabin || block;
+        var startLoc = e.data.startLocation || (e.data.from && (e.data.from.key || e.data.from.node)) || e.data.start || currentStartLocation;
+        var srcBlock = (e.data.from && e.data.from.block) || e.data.sourceBlock || 'F';
+        var startName = (e.data.from && e.data.from.name) || e.data.startName || startLoc;
 
         document.querySelectorAll('.floors button').forEach(function (b) {
           b.classList.remove('active');
@@ -1258,30 +2267,54 @@
           togglePathBtn.textContent = "Path: ON";
           togglePathBtn.classList.remove("off");
         }
-        render3DGreenPath(block, floor, name, cabin, startLoc);
+
+        render3DGreenPath(block, floor, name, cabin, startLoc, srcBlock, startName);
       }
     });
 
-    render3DGreenPath("M", 0);
+    // Check URL params for theme
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has("theme")) {
+      applyTheme(urlParams.get("theme") === "dark");
+    }
 
+    // Initial display — show complete campus with ALL blocks visible, no route
+    showFloor("0");
+    // No default route — user must manually select From and Where
+
+    // ─── Render Loop ─────────────────────────────────────────────
     (function tick() {
       requestAnimationFrame(tick);
+
+      if (isCameraAnimating) {
+        animProgress += 0.04;
+        const t = Math.min(1.0, animProgress);
+        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+        camera.position.lerpVectors(cameraStartPos, cameraTargetPos, ease);
+        controls.target.lerpVectors(controlsStartTgt, controlsTargetTgt, ease);
+
+        if (t >= 1.0) {
+          isCameraAnimating = false;
+        }
+      }
+
       controls.update();
 
       if (isPathVisible && activeCurve && pulseOrbs.length > 0) {
         pulseOrbs.forEach((orb) => {
-          orb.userData.progress = (orb.userData.progress + 0.005) % 1.0;
+          orb.userData.progress = (orb.userData.progress + 0.006) % 1.0;
           const pt = activeCurve.getPointAt(orb.userData.progress);
           if (pt) orb.position.copy(pt);
         });
       }
 
       if (targetBeacon) {
-        targetBeacon.rotation.y += 0.03;
+        targetBeacon.rotation.y += 0.04;
       }
       if (targetAuraBox) {
-        targetAuraBox.rotation.y += 0.015;
-        targetAuraBox.rotation.x += 0.01;
+        targetAuraBox.rotation.y += 0.02;
+        targetAuraBox.rotation.x += 0.015;
       }
 
       renderer.render(scene, camera);
