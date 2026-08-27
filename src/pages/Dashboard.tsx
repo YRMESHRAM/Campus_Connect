@@ -138,7 +138,7 @@ const Dashboard: React.FC = () => {
             <img src="/images/campus.jpg" alt="Campus Map" className="w-full h-56 md:h-72 object-cover" />
             <div className={`absolute inset-0 ${isDark ? 'bg-gray-900/40' : 'bg-black/10'}`} />
 
-            {/* Map Markers */}
+            {/* Map Markers
             {[
               { x: '20%', y: '40%', label: 'Block A', delay: 0 },
               { x: '45%', y: '30%', label: 'Block B', delay: 0.3 },
@@ -162,7 +162,7 @@ const Dashboard: React.FC = () => {
                   </span>
                 </div>
               </motion.div>
-            ))}
+            ))} */}
 
             {/* Center CTA */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -256,7 +256,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="space-y-2">
                 {[
-                  { icon: TrendingUp, label: '8 Departments' },
+                  { icon: TrendingUp, label: '10+ Departments' },
                   { icon: Users, label: '80+ Faculty' },
                   { icon: BookOpen, label: '100+ Classrooms' },
                 ].map(({ icon: Icon, label }) => (

@@ -18,8 +18,8 @@ const Home: React.FC = () => {
   const stats = [
     { label: 'Rooms & Labs', value: '100+' },
     { label: 'Faculty Members', value: '80+' },
-    { label: 'Departments', value: '8' },
-    { label: 'Campus Area', value: '25 Acres' },
+    { label: 'Departments', value: '10+' },
+    { label: 'Campus Area', value: '13 Acres' },
   ];
 
   return (
