@@ -186,7 +186,9 @@ const standardPlaces: PlaceItem[] = [
   { id: 'room-B002', name: 'HOD Mech Office (B002)', type: 'classroom', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '👨‍💼', subtitle: 'Mechanical Engineering Head Office', cabin: 'B002' },
   { id: 'room-B103', name: 'HOD Electrical Office (B103)', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '👨‍💼', subtitle: 'Electrical Engineering Head Office', cabin: 'B103' },
 
-  // Popular Classrooms
+  // Popular Classrooms & Faculty Rooms
+  { id: 'room-M203', name: 'Faculty Room M203', type: 'faculty', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '👤', subtitle: 'CSE & AIML Faculty Room (Between M202 & M204)', cabin: 'M203' },
+  { id: 'room-M202', name: 'Classroom M202', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML 2nd Floor', cabin: 'M202' },
   { id: 'room-M001', name: 'Classroom M001', type: 'classroom', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'CSE Ground Floor Lab', cabin: 'M001' },
   { id: 'room-M213', name: 'Classroom M213', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML Lecture Hall', cabin: 'M213' },
   { id: 'room-F004', name: 'Classroom F004', type: 'classroom', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'First Year Section A', cabin: 'F004' },
@@ -199,6 +201,148 @@ const standardPlaces: PlaceItem[] = [
   { id: 'room-B101', name: 'Classroom B101', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'Mechanical Dept Lecture Hall', cabin: 'B101' },
 ];
 
+function generateFallbackSteps(from: PlaceItem, to: PlaceItem): string[] {
+  const fromFl = from.floorLabel || `${from.floor}th Floor`;
+  const toFl = to.floorLabel || `${to.floor}th Floor`;
+  const fromKey = `${from.block}${from.floor}`;
+  const toKey = `${to.block}${to.floor}`;
+  const routeKey = `${fromKey}_${toKey}`;
+  const toUpper = (to.cabin || to.name || '').toUpperCase();
+
+  type RouteSteps = string[];
+  const knownRoutes: Record<string, RouteSteps> = {
+    // F Ground → M 2nd Floor (Entrance -> Block M 2nd Floor / Faculty / Classrooms)
+    'F0_M2': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway into Block M`,
+      `⬆️ Then go through stairs UP to 2nd Floor (Block M)`,
+      `↪️ Go Right / Turn Right into the 2nd Floor hallway`,
+      `🚶 Walk along the hallway past M201 & M202`,
+    ],
+    // F Ground → M 1st Floor
+    'F0_M1': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway into Block M`,
+      `⬆️ Then go through stairs UP to 1st Floor (Block M)`,
+      `↪️ Go Right / Turn Right into the 1st Floor hallway`,
+    ],
+    // F Ground → M Ground
+    'F0_M0': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway straight into Block M Ground Floor`,
+    ],
+    // F Ground → E Ground
+    'F0_E0': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↪️ Take first Right turn at the junction towards Block E`,
+      `🚶 Walk along the connecting pathway into Block E`,
+    ],
+    // F Ground → E 1st Floor
+    'F0_E1': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↪️ Take first Right turn at the junction towards Block E`,
+      `🚶 Walk along the connecting pathway into Block E`,
+      `⬆️ Then go through stairs UP to 1st Floor (Block E)`,
+      `↩️ Take Left turn into the 1st Floor corridor`,
+    ],
+    // M 2nd → same block
+    'M2_M2': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk along the 2nd Floor Block M corridor`,
+    ],
+    // M 1st → M 2nd
+    'M1_M2': [
+      `Start at ${from.name} (1st Floor, Block M)`,
+      `🚶 Walk along the 1st Floor corridor to the staircase`,
+      `⬆️ Then go through stairs UP to 2nd Floor`,
+      `↪️ Go Right into the 2nd Floor hallway`,
+    ],
+    // M Ground → M 2nd
+    'M0_M2': [
+      `Start at ${from.name} (Ground Floor, Block M)`,
+      `🚶 Walk through the Ground Floor Block M corridor to the staircase`,
+      `⬆️ Then go through stairs UP to 2nd Floor`,
+      `↪️ Go Right into the 2nd Floor hallway`,
+      `🚶 Walk along the 2nd Floor corridor`,
+    ],
+    // M 2nd → M Ground
+    'M2_M0': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk along the 2nd Floor corridor to the staircase`,
+      `⬇️ Then go through stairs DOWN to Ground Floor`,
+      `↪️ Go Right into the Ground Floor corridor`,
+    ],
+    // M 2nd → F Ground
+    'M2_F0': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk to the Block M staircase`,
+      `⬇️ Then go through stairs DOWN to Ground Floor`,
+      `🚶 Walk through the Ground Floor corridor`,
+      `↪️ Take Right turn towards Block F`,
+      `🚶 Walk along the connecting walkway into Block F`,
+    ],
+  };
+
+  const steps: string[] = knownRoutes[routeKey]
+    ? [...knownRoutes[routeKey]]
+    : (() => {
+        const s: string[] = [];
+        s.push(`Start at ${from.name} (${fromFl}, Block ${from.block})`);
+        if (from.block === 'F' && from.floor === 0) {
+          s.push(`🚶 Walk forward from entrance along the hallway`);
+          if (to.block === 'M') {
+            s.push(`↩️ Take first Left turn at the junction towards Block M`);
+            s.push(`🚶 Walk across the courtyard walkway into Block M`);
+          } else if (to.block === 'E') {
+            s.push(`↪️ Take first Right turn at the junction towards Block E`);
+          }
+        } else if (from.block === to.block) {
+          s.push(`🚶 Walk along the ${fromFl} corridor`);
+        } else {
+          s.push(`🚶 Walk along the ${fromFl} corridor towards the connecting walkway`);
+          s.push(`🚶 Follow the connecting path to Block ${to.block}`);
+        }
+        if (from.floor < to.floor) {
+          s.push(`⬆️ Then go through stairs UP to ${toFl} (Block ${to.block})`);
+          s.push(`↪️ Go Right / Turn into the ${toFl} corridor`);
+        } else if (from.floor > to.floor) {
+          s.push(`⬇️ Then go through stairs DOWN to ${toFl} (Block ${to.block})`);
+          s.push(`↩️ Go Left / Turn into the ${toFl} corridor`);
+        }
+        return s;
+      })();
+
+  // Room-specific final approach
+  if (toUpper.includes('M203') || toUpper.includes('FACULTY M203') || toUpper.includes('SWATI')) {
+    steps.push(`🚶 Faculty Room M203 is on your right between M202 & M204`);
+  } else if (toUpper.includes('M202')) {
+    steps.push(`🚶 M202 is on your right after M201`);
+  } else if (toUpper.includes('M201')) {
+    steps.push(`🚶 M201 is the first room on your right in the 2nd Floor hallway`);
+  } else if (toUpper.includes('M204')) {
+    steps.push(`🚶 Walk past M201, M202, M203 — Faculty M204 is on your right`);
+  } else if (toUpper.includes('M208') || toUpper.includes('HOD AIML')) {
+    steps.push(`🚶 Walk to the far end of the 2nd Floor corridor — HOD Office M208 is on the left`);
+  } else if (toUpper.includes('LIBRARY') || toUpper.includes('DEPT LIBRARY')) {
+    steps.push(`🚶 Walk straight along the 2nd Floor corridor — CSE Dept Library is on your left`);
+  } else if (toUpper.includes('M213')) {
+    steps.push(`🚶 Walk to the end of the left-side corridor — M213 is at the far end`);
+  } else if (toUpper.includes('EXAM') || toUpper.includes('EXAM CENTER')) {
+    steps.push(`🚶 Walk to the far end of Block E — the Exam Center is at the end of the ground floor`);
+  }
+
+  steps.push(`🎯 Arrive at ${to.name} (${toFl}, Block ${to.block})`);
+  return steps;
+}
+
 // ─── Main Component ─────────────────────────────────────
 const CampusMap: React.FC = () => {
   const { isDark } = useTheme();
@@ -206,8 +350,9 @@ const CampusMap: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── BOTH start null — user must manually pick From AND Where ──
-  const [fromPlace, setFromPlace] = useState<PlaceItem | null>(null);
+  // ── Default starting point is Entrance F (standardPlaces[0]) until user changes it ──
+  const defaultStartPlace = standardPlaces[0];
+  const [fromPlace, setFromPlace] = useState<PlaceItem | null>(defaultStartPlace);
   const [toPlace, setToPlace] = useState<PlaceItem | null>(null);
 
   const [fromQuery, setFromQuery] = useState('');
@@ -301,11 +446,11 @@ const CampusMap: React.FC = () => {
         setRouteStats({
           distanceMeters: e.data.distanceMeters || 100,
           estimatedMinutes: e.data.estimatedMinutes || 1,
-          steps: e.data.steps && e.data.steps.length > 0 ? e.data.steps : [
+          steps: e.data.steps && e.data.steps.length > 0 ? e.data.steps : (fromPlace && toPlace ? generateFallbackSteps(fromPlace, toPlace) : [
             `Walk from ${fromPlace?.name || 'Start'}`,
             `Follow the glowing green corridor pathway`,
             `Arrive at destination: ${toPlace?.name || 'Destination'}`
-          ]
+          ])
         });
       }
     };
@@ -445,9 +590,9 @@ const CampusMap: React.FC = () => {
     setToPlace(temp);
   };
 
-  // ─── Reset View — clear both, show full campus ──────
+  // ─── Reset View — reset to default starting point (Entrance F) ──────
   const handleReset = () => {
-    setFromPlace(null);
+    setFromPlace(defaultStartPlace);
     setToPlace(null);
     setFromQuery('');
     setToQuery('');
@@ -872,11 +1017,10 @@ const CampusMap: React.FC = () => {
                   {/* Steps */}
                   <div className="mt-3.5 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
                     <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Directions:</p>
-                    {(routeStats?.steps && routeStats.steps.length > 0 ? routeStats.steps : [
-                      `Start at ${fromPlace.name} (${fromPlace.floorLabel})`,
-                      `Follow the glowing green corridor pathway`,
-                      `Arrive at destination: ${toPlace.name} (${toPlace.floorLabel})`
-                    ]).map((step, idx, arr) => (
+                    {((routeStats?.steps && routeStats.steps.length > 0)
+                      ? routeStats.steps
+                      : generateFallbackSteps(fromPlace, toPlace)
+                    ).map((step, idx, arr) => (
                       <div key={idx} className="flex items-start gap-2 text-xs">
                         <div className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold mt-0.5 ${
                           idx === 0
@@ -908,6 +1052,44 @@ const CampusMap: React.FC = () => {
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     Starting from <strong>{fromPlace.name}</strong>. Enter or select your destination in the <strong>Where</strong> box above.
                   </p>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+                    <button
+                      onClick={() => {
+                        const m203 = allPlaces.find(p => p.cabin === 'M203' || p.id === 'room-M203');
+                        if (m203) setToPlace(m203);
+                      }}
+                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      👤 Faculty M203
+                    </button>
+                    <button
+                      onClick={() => {
+                        const m213 = allPlaces.find(p => p.cabin === 'M213' || p.id === 'room-M213');
+                        if (m213) setToPlace(m213);
+                      }}
+                      className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      🎯 M213
+                    </button>
+                    <button
+                      onClick={() => {
+                        const lib = allPlaces.find(p => p.id === 'library' || p.cabin === 'F203');
+                        if (lib) setToPlace(lib);
+                      }}
+                      className="px-2.5 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      📖 Library
+                    </button>
+                    <button
+                      onClick={() => {
+                        const exam = allPlaces.find(p => p.id === 'exam-center' || p.cabin === 'E202');
+                        if (exam) setToPlace(exam);
+                      }}
+                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      📝 Exam Center
+                    </button>
+                  </div>
                 </div>
               ) : toPlace ? (
                 /* Prompt to select start */

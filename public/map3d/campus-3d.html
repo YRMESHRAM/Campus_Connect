@@ -1179,16 +1179,16 @@
       room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wallBlockM, "M213");
       room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wallBlockM, "M201");
       room(g, "room-M202", 6.2, 3.6, 33, 22.2, 2, mats.wash, "M202 BW");
-      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M204");
-      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "M204");
+      room(g, "room-M203", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M203");
+      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "FACULTY M204");
       room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wallBlockM, "M205");
       room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wallBlockM, "M209");
+      room(g, "room-M211", 3.8, 3.4, 21.6, 26.6, 2, mats.wallBlockM, "M211");
+
       room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "📚 DEPT LIBRARY (CSE)", true);
       room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD AIML", true);
       room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wallBlockM, "M207");
       room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wallBlockM, "M206");
-      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wallBlockM, "M203");
-      room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wallBlockM, "M211");
       room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wallBlockM, "M212 A2");
     }
 
@@ -1248,15 +1248,11 @@
       roughness: 0.1,
       metalness: 0.2,
       depthTest: true,
-      transparent: true,
-      opacity: 0.98
+      transparent: false
     });
 
-    const pulseMat = new THREE.MeshStandardMaterial({
-      color: 0x6ee7b7,
-      emissive: 0x00ff88,
-      emissiveIntensity: 2.8,
-      roughness: 0.1,
+    const pulseMat = new THREE.MeshBasicMaterial({
+      color: 0x00ffff,
       transparent: true,
       opacity: 1.0
     });
@@ -1501,12 +1497,10 @@
         }
       };
 
-      // Search all floors regardless of whether they are currently in the scene
       floorGroups.forEach(g => {
         if (!foundObj) g.traverse(checkObj);
       });
       
-      // Fallback search in campus
       if (!foundObj) {
         campus.traverse(checkObj);
       }
@@ -1560,22 +1554,17 @@
       if (!points || points.length === 0) return;
       const routeBox = new THREE.Box3();
       points.forEach(p => routeBox.expandByPoint(p));
-      
       const center = new THREE.Vector3();
       routeBox.getCenter(center);
-      
       const size = new THREE.Vector3();
       routeBox.getSize(size);
-      
       const maxDim = Math.max(size.x, size.y, size.z);
       const offsetDistance = Math.max(maxDim * 1.35, 48); 
-      
       const cameraPos = new THREE.Vector3(
         center.x + offsetDistance * 0.65,
         center.y + offsetDistance * 0.65 + 16,
         center.z + offsetDistance * 0.65
       );
-      
       smoothFlyCamera(cameraPos, center);
     }
 
@@ -1583,39 +1572,39 @@
       const activeFloorNum = activeFloorKey === "all" ? null : Number(activeFloorKey);
       const isAll = activeFloorKey === "all";
       
+      const activeFloorSet = new Set();
+      if (activeRouteNodes) {
+        activeRouteNodes.forEach(nodeKey => {
+          const node = navNodes[nodeKey];
+          if (node) activeFloorSet.add(String(node.floor));
+        });
+      }
+      if (targetMesh) activeFloorSet.add(String(getMeshFloor(targetMesh)));
+      if (startMesh) activeFloorSet.add(String(getMeshFloor(startMesh)));
+
       const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
       const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
-      
+
       document.querySelectorAll(".map-label").forEach((el) => {
         if (isNavActive) {
           const labelText = (el.textContent || "").toLowerCase().trim();
           const isStairs = el.dataset.stairs === "true" || el.classList.contains("stairs-label");
           let showLabel = false;
-          
-          if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) {
-            showLabel = true;
-          }
-          if (targetRoomId && (labelText.includes(targetRoomId) || targetRoomId.includes(labelText))) {
-            showLabel = true;
-          }
-          
+          // Only show start and target room labels
+          if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) showLabel = true;
+          if (targetRoomId && (labelText.includes(targetRoomId) || targetRoomId.includes(labelText))) showLabel = true;
+          // Show stairs labels only if that staircase is actually used in the route
           if (isStairs && activeRouteNodes) {
             let stairsBlock = null;
             if (labelText.includes("(m)")) stairsBlock = "M";
             else if (labelText.includes("(f)")) stairsBlock = "F";
             else if (labelText.includes("(e)")) stairsBlock = "E";
             else if (labelText.includes("(b)")) stairsBlock = "B";
-            
             if (stairsBlock) {
               const searchKey = "STAIRS_" + stairsBlock;
-              activeRouteNodes.forEach(nodeKey => {
-                if (nodeKey.startsWith(searchKey)) {
-                  showLabel = true;
-                }
-              });
+              activeRouteNodes.forEach(nodeKey => { if (nodeKey.startsWith(searchKey)) showLabel = true; });
             }
           }
-          
           el.style.display = showLabel ? "" : "none";
         } else {
           const floorAttr = el.dataset.floor;
@@ -1627,10 +1616,6 @@
           const isMajor = el.dataset.major === "true" || el.classList.contains("major");
           el.style.display = (isMajor || isStairs) ? "" : "none";
         }
-      });
-
-      document.querySelectorAll(".block-badge-3d").forEach(el => {
-        el.style.display = isNavActive ? "none" : "";
       });
     }
 
@@ -1683,6 +1668,8 @@
           if (node) activeFloors.add(node.floor);
         });
       }
+      if (targetMesh) activeFloors.add(getMeshFloor(targetMesh));
+      if (startMesh) activeFloors.add(getMeshFloor(startMesh));
 
       blockBadgesGroup.children.forEach((badgeObj) => {
         badgeObj.visible = !isNavActive;
@@ -1694,14 +1681,17 @@
       campus.traverse((obj) => {
         if (obj.isCSS2DObject || (obj.userData && obj.userData.isLabel)) {
           if (isNavActive) {
-            const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
-            const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
+            const startRoomId2 = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
+            const targetRoomId2 = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
             const text = (obj.userData.text || (obj.element ? obj.element.textContent : "") || "").toLowerCase().trim();
             const isStairs = obj.userData.isStairs || (obj.element && obj.element.classList.contains("stairs-label"));
-            
+            const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ?
+              parseInt(obj.parent.name.replace("floor-", ""), 10) : (obj.element && obj.element.dataset.floor !== undefined ? parseInt(obj.element.dataset.floor, 10) : null);
+
+            // Only show start and target labels, plus relevant stairs
             let showLabel = false;
-            if (startRoomId && (text.includes(startRoomId) || startRoomId.includes(text))) showLabel = true;
-            if (targetRoomId && (text.includes(targetRoomId) || targetRoomId.includes(text))) showLabel = true;
+            if (startRoomId2 && (text.includes(startRoomId2) || startRoomId2.includes(text))) showLabel = true;
+            if (targetRoomId2 && (text.includes(targetRoomId2) || targetRoomId2.includes(text))) showLabel = true;
             if (isStairs && activeRouteNodes) {
               let stairsBlock = null;
               if (text.includes("(m)")) stairsBlock = "M";
@@ -1711,18 +1701,9 @@
               if (stairsBlock) {
                 const searchKey = "STAIRS_" + stairsBlock;
                 let isUsedInRoute = false;
-                activeRouteNodes.forEach(nodeKey => {
-                  if (nodeKey.startsWith(searchKey)) isUsedInRoute = true;
-                });
-                
-                // Show ONLY ONE stairs label per staircase block (on active target or start floor) to avoid stacked duplicates
+                activeRouteNodes.forEach(nodeKey => { if (nodeKey.startsWith(searchKey)) isUsedInRoute = true; });
                 const targetFloor = targetMesh ? getMeshFloor(targetMesh) : (startMesh ? getMeshFloor(startMesh) : 0);
-                const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ? 
-                  parseInt(obj.parent.name.replace("floor-", ""), 10) : 0;
-                
-                if (isUsedInRoute && labelFloor === targetFloor) {
-                  showLabel = true;
-                }
+                if (isUsedInRoute && (labelFloor === targetFloor || labelFloor === 0)) showLabel = true;
               }
             }
             obj.visible = showLabel;
@@ -1746,28 +1727,29 @@
           const isTerrain = obj.parent.name === "ground-context";
           const isSlab = obj.userData.isSlab;
           const isStairs = obj.userData.isStairs || (obj.name && obj.name.includes("stairs"));
-          const isTargetMesh = (obj === targetMesh);
-          const isStartMesh = (obj === startMesh);
           const meshBlock = (obj.userData.block || deriveMeshBlock(obj.name || "")).toUpperCase();
           const meshFloor = getMeshFloor(obj);
           
           if (!isNavActive) {
             obj.visible = true;
-            // Restore original slab material if it was ghosted
             if (obj.userData._origSlabMat) {
               obj.material = obj.userData._origSlabMat;
               delete obj.userData._origSlabMat;
             }
           } else {
             const belongsToActiveBlock = activeBlocks.has(meshBlock);
-            
+            const isOnActiveFloor = activeFloors.has(meshFloor) || activeFloors.size === 0;
+            const isTargetMesh = (obj === targetMesh);
+            const isStartMesh = (obj === startMesh);
+
             if (obj.userData.isRoom && !isStairs) {
+              // Only show start and target room, hide everything else to keep map clean
               obj.visible = isStartMesh || isTargetMesh;
             } else if (isStairs) {
-              const isStairsUsed = belongsToActiveBlock && activeFloors.has(meshFloor);
+              // Only show stairs that are part of the route
+              const isStairsUsed = belongsToActiveBlock && isOnActiveFloor;
               obj.visible = isStairsUsed;
             } else if (isSlab && belongsToActiveBlock) {
-              // Show slabs as ghost transparent outlines for spatial context
               obj.visible = true;
               if (!obj.userData._origSlabMat) obj.userData._origSlabMat = obj.material;
               obj.material = mats.slabGhost;
@@ -2103,43 +2085,157 @@
       
       createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
       
-    function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
-      const steps = [];
+    function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock, cabinCode) {
       const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
       const startFlStr = floorNames[startFloor] || `Floor ${startFloor}`;
       const targetFlStr = floorNames[targetFloor] || `Floor ${targetFloor}`;
 
-      steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
+      // ─── Campus-specific hardcoded route lookup ───────────────────────
+      const fromBlockFloor = `${startBlock}${startFloor}`;
+      const toBlockFloor = `${targetBlock}${targetFloor}`;
+      const routeKey = `${fromBlockFloor}_${toBlockFloor}`;
+      const targetUp = (cabinCode || targetLabel || '').toUpperCase();
 
-      let usedStairs = [];
-      if (nodePath) {
-        for (let i = 1; i < nodePath.length; i++) {
-          const prevKey = nodePath[i - 1];
-          const currKey = nodePath[i];
-          const prevNode = navNodes[prevKey];
-          const currNode = navNodes[currKey];
-          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
-            const goingUp = currNode.floor > prevNode.floor;
-            const destFl = floorNames[currNode.floor] || `Floor ${currNode.floor}`;
-            const stairsName = currNode.block ? `Stairs (Block ${currNode.block})` : 'the stairs';
-            usedStairs.push({ goingUp, destFl, stairsName });
+      const knownRoutes = {
+        // F Ground → M 2nd Floor (Entrance -> Block M 2nd Floor / Faculty / Classrooms)
+        'F0_M2': [
+          `Start at ${startLabel} (${startFlStr}, Block F)`,
+          `🚶 Walk forward from entrance along the main corridor`,
+          `↩️ Take first Left turn at the junction towards Block M`,
+          `🚶 Walk across the courtyard walkway into Block M`,
+          `⬆️ Then go through stairs UP to 2nd Floor (Block M)`,
+          `↪️ Go Right / Turn Right into the 2nd Floor hallway`,
+          `🚶 Walk along the hallway past M201 & M202`,
+        ],
+        // F Ground → M 1st Floor
+        'F0_M1': [
+          `Start at ${startLabel} (${startFlStr}, Block F)`,
+          `🚶 Walk forward from entrance along the main corridor`,
+          `↩️ Take first Left turn at the junction towards Block M`,
+          `🚶 Walk across the courtyard walkway into Block M`,
+          `⬆️ Then go through stairs UP to 1st Floor (Block M)`,
+          `↪️ Go Right / Turn Right into the 1st Floor hallway`,
+        ],
+        // F Ground → M Ground
+        'F0_M0': [
+          `Start at ${startLabel} (${startFlStr}, Block F)`,
+          `🚶 Walk forward from entrance along the main corridor`,
+          `↩️ Take first Left turn at the junction towards Block M`,
+          `🚶 Walk across the courtyard walkway straight into Block M Ground Floor`,
+        ],
+        // F Ground → E Ground
+        'F0_E0': [
+          `Start at ${startLabel} (${startFlStr}, Block F)`,
+          `🚶 Walk forward from entrance along the main corridor`,
+          `↪️ Take first Right turn at the junction towards Block E`,
+          `🚶 Walk along the connecting pathway into Block E`,
+        ],
+        // F Ground → E 1st Floor
+        'F0_E1': [
+          `Start at ${startLabel} (${startFlStr}, Block F)`,
+          `🚶 Walk forward from entrance along the main corridor`,
+          `↪️ Take first Right turn at the junction towards Block E`,
+          `🚶 Walk along the connecting pathway into Block E`,
+          `⬆️ Then go through stairs UP to 1st Floor (Block E)`,
+          `↩️ Take Left turn into the 1st Floor corridor`,
+        ],
+        // M 2nd → same block
+        'M2_M2': [
+          `Start at ${startLabel} (2nd Floor, Block M)`,
+          `🚶 Walk along the 2nd Floor Block M corridor`,
+        ],
+        // M 1st → M 2nd
+        'M1_M2': [
+          `Start at ${startLabel} (1st Floor, Block M)`,
+          `🚶 Walk along the 1st Floor corridor to the staircase`,
+          `⬆️ Then go through stairs UP to 2nd Floor`,
+          `↪️ Go Right into the 2nd Floor hallway`,
+        ],
+        // M Ground → M 2nd
+        'M0_M2': [
+          `Start at ${startLabel} (Ground Floor, Block M)`,
+          `🚶 Walk through the Ground Floor Block M corridor to the staircase`,
+          `⬆️ Then go through stairs UP to 2nd Floor`,
+          `↪️ Go Right into the 2nd Floor hallway`,
+          `🚶 Walk along the 2nd Floor corridor`,
+        ],
+        // M 2nd → M Ground
+        'M2_M0': [
+          `Start at ${startLabel} (2nd Floor, Block M)`,
+          `🚶 Walk along the 2nd Floor corridor to the staircase`,
+          `⬇️ Then go through stairs DOWN to Ground Floor`,
+          `↪️ Go Right into the Ground Floor corridor`,
+        ],
+        // M 2nd → F Ground
+        'M2_F0': [
+          `Start at ${startLabel} (2nd Floor, Block M)`,
+          `🚶 Walk to the Block M staircase`,
+          `⬇️ Then go through stairs DOWN to Ground Floor`,
+          `🚶 Walk through the Ground Floor corridor`,
+          `↪️ Take Right turn towards Block F`,
+          `🚶 Walk along the connecting walkway into Block F`,
+        ],
+      };
+
+      // Build steps from known route if available
+      let steps = knownRoutes[routeKey] ? [...knownRoutes[routeKey]] : null;
+
+      if (!steps) {
+        // Smart generic fallback based on block/floor data
+        steps = [];
+        steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
+
+        if (startBlock === 'F' && startFloor === 0) {
+          steps.push(`🚶 Walk forward from entrance along the hallway`);
+          if (targetBlock === 'M') {
+            steps.push(`↩️ Take first Left turn at the junction towards Block M`);
+            steps.push(`🚶 Walk across the courtyard walkway into Block M`);
+          } else if (targetBlock === 'E') {
+            steps.push(`↪️ Take first Right turn at the junction towards Block E`);
+          } else if (targetBlock === 'B') {
+            steps.push(`🚶 Walk straight towards Block B via the main campus spine`);
           }
+        } else if (startBlock === targetBlock) {
+          steps.push(`🚶 Walk along the ${startFlStr} corridor`);
+        } else {
+          steps.push(`🚶 Walk along the ${startFlStr} corridor towards the connecting walkway`);
+          steps.push(`🚶 Follow the connecting path to Block ${targetBlock}`);
+        }
+
+        if (startFloor < targetFloor) {
+          steps.push(`⬆️ Then go through stairs UP to ${targetFlStr} (Block ${targetBlock})`);
+          steps.push(`↪️ Go Right / Turn into the ${targetFlStr} corridor`);
+        } else if (startFloor > targetFloor) {
+          steps.push(`⬇️ Then go through stairs DOWN to ${targetFlStr} (Block ${targetBlock})`);
+          steps.push(`↩️ Go Left / Turn into the ${targetFlStr} corridor`);
         }
       }
 
-      if (usedStairs.length > 0) {
-        usedStairs.forEach(s => {
-          steps.push(`${s.goingUp ? '⬆️ Take' : '⬇️ Take'} ${s.stairsName} to ${s.destFl}`);
-        });
+      // Room-specific final approach
+      if (targetUp.includes('M203') || targetUp.includes('FACULTY M203') || targetUp.includes('SWATI')) {
+        steps.push(`🚶 Faculty Room M203 is on your right between M202 & M204`);
+      } else if (targetUp.includes('M202') || targetUp.includes('M202 BW')) {
+        steps.push(`🚶 M202 is on your right after M201`);
+      } else if (targetUp.includes('M201')) {
+        steps.push(`🚶 M201 is the first room on your right as you enter the 2nd Floor hallway`);
+      } else if (targetUp.includes('M204')) {
+        steps.push(`🚶 Walk past M201, M202, M203 — Faculty M204 is on your right`);
+      } else if (targetUp.includes('M208') || targetUp.includes('HOD AIML')) {
+        steps.push(`🚶 Walk to the far end of the 2nd Floor corridor — HOD Office M208 is on the left`);
+      } else if (targetUp.includes('LIBRARY') || targetUp.includes('DEPT LIBRARY')) {
+        steps.push(`🚶 Walk straight along the 2nd Floor corridor — the CSE Dept Library is on your left`);
+      } else if (targetUp.includes('M213')) {
+        steps.push(`🚶 Walk to the end of the left-side corridor — M213 is at the far end`);
+      } else if (targetUp.includes('M215')) {
+        steps.push(`🚶 M215 is the large hall at the top of Block M 2nd Floor (straight ahead)`);
+      } else if (targetUp.includes('EXAM') || targetUp.includes('EXAM CENTER')) {
+        steps.push(`🚶 Walk to the far end of Block E — the Exam Center is at the end of the ground floor`);
+      } else if (targetUp.includes('HOD CSE') || targetUp.includes('M108')) {
+        steps.push(`🚶 M108 HOD CSE Office is at the far right end of the 1st Floor Block M corridor`);
       }
 
-      if (startBlock !== targetBlock) {
-        steps.push(`Follow the walking corridor/pathway from Block ${startBlock} to Block ${targetBlock}`);
-      } else {
-        steps.push(`Continue straight along the corridor`);
-      }
-
-      steps.push(`Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
+      // Final arrival
+      steps.push(`🎯 Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
       return steps;
     }
 
@@ -2151,7 +2247,8 @@
           startFloor, 
           targetFloor, 
           routeResult.startBlock || 'F', 
-          targetBlock || 'M'
+          targetBlock || 'M',
+          cabinCode || currentCabinCode || customTargetName
         );
         window.parent.postMessage({ 
           type: 'ROUTE_CALCULATED', 
