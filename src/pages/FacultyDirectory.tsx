@@ -226,16 +226,30 @@ const FacultyDirectory: React.FC = () => {
                   {/* Card Header */}
                   <div className={`p-5 border-b ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
                     <div className="flex items-start gap-4">
-                      <div className="relative">
-                        <img
-                          src={photoUrl}
-                          alt={teacherName}
-                          className="w-16 h-16 rounded-2xl object-cover shadow-md"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/images/blank.jpg';
-                          }}
-                        />
-                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.dot} rounded-full border-2 border-white`} />
+                      <div className="relative flex-shrink-0">
+                        {faculty.photo && faculty.photo !== '/images/blank.jpg' ? (
+                          <img
+                            src={faculty.photo}
+                            alt={teacherName}
+                            className="w-14 h-14 rounded-2xl object-cover shadow-md border border-purple-500/20"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${
+                            department.toLowerCase().includes('cse') || department.toLowerCase().includes('ai')
+                              ? 'from-purple-600 via-indigo-600 to-violet-700'
+                              : department.toLowerCase().includes('etc') || department.toLowerCase().includes('telecom')
+                              ? 'from-blue-600 via-cyan-600 to-teal-700'
+                              : department.toLowerCase().includes('mech')
+                              ? 'from-amber-500 via-orange-600 to-red-600'
+                              : 'from-emerald-500 via-teal-600 to-green-700'
+                          } flex items-center justify-center text-white font-extrabold text-base tracking-wider shadow-lg shadow-purple-950/20 border border-white/20`}>
+                            {teacherName.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s+/i, '').trim().split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || 'FA'}
+                          </div>
+                        )}
+                        <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${status.dot} rounded-full border-2 border-white shadow-sm`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">

@@ -125,10 +125,24 @@ const Emergency: React.FC = () => {
                       <Phone size={14} /> Call Now
                     </a>
                     <button
-                      onClick={() => navigate('/campus-map')}
+                      onClick={() => {
+                        let mapUrl = '/campus-map';
+                        if (contact.type === 'security') {
+                          mapUrl = '/campus-map?to=MAIN_GATE&name=Security+Office+(Main+Gate)&block=GROUND&floor=0';
+                        } else if (contact.type === 'reception') {
+                          mapUrl = '/campus-map?to=ADM&name=Reception+%2F+Helpdesk&block=ADM&floor=0';
+                        } else if (contact.type === 'medical') {
+                          mapUrl = '/campus-map?to=F004&name=Medical+Room+(Block+F)&block=F&floor=0';
+                        } else if (contact.type === 'fire') {
+                          mapUrl = '/campus-map?to=MAIN_GATE&name=Fire+Safety+HQ&block=GROUND&floor=0';
+                        } else if (contact.type === 'admin') {
+                          mapUrl = '/campus-map?to=ADM&name=Administration+Office&block=ADM&floor=1';
+                        }
+                        navigate(mapUrl);
+                      }}
                       className={`flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'}`}
                     >
-                      <Navigation size={14} /> Location
+                      <Navigation size={14} /> Navigate 3D
                     </button>
                   </div>
 

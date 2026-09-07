@@ -417,6 +417,78 @@
       pointer-events: none;
     }
 
+    /* ─── 3D In-World Navigation Signboards & Walker ─── */
+    .nav-sign-board {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)) !important;
+      padding: 5px 12px !important;
+      border-radius: 9999px !important;
+      white-space: nowrap;
+      border: 1.5px solid #38bdf8 !important;
+      box-shadow: 0 4px 18px rgba(14, 165, 233, 0.5), 0 0 10px rgba(56, 189, 248, 0.4) !important;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
+      animation: floatSign 3s infinite ease-in-out;
+    }
+    .nav-sign-board.stairs {
+      border-color: #f59e0b !important;
+      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.6), 0 0 10px rgba(245, 158, 11, 0.4) !important;
+      background: linear-gradient(135deg, rgba(30, 27, 20, 0.95), rgba(60, 40, 15, 0.95)) !important;
+    }
+    .nav-sign-board.turn {
+      border-color: #10b981 !important;
+      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.6), 0 0 10px rgba(16, 185, 129, 0.4) !important;
+      background: linear-gradient(135deg, rgba(15, 35, 25, 0.95), rgba(20, 55, 35, 0.95)) !important;
+    }
+    .nav-sign-board.target {
+      border-color: #ec4899 !important;
+      box-shadow: 0 4px 18px rgba(236, 72, 153, 0.6), 0 0 10px rgba(236, 72, 153, 0.4) !important;
+      background: linear-gradient(135deg, rgba(40, 15, 30, 0.95), rgba(65, 20, 45, 0.95)) !important;
+    }
+    .entrance-welcome-badge {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #10b981, #059669) !important;
+      padding: 5px 12px !important;
+      border-radius: 9999px !important;
+      white-space: nowrap;
+      border: 1.5px solid #6ee7b7 !important;
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6), 0 0 12px rgba(110, 231, 183, 0.4) !important;
+      transform: translate(-50%, -100%);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      animation: floatSign 2.5s infinite ease-in-out;
+    }
+    @keyframes floatSign {
+      0%, 100% { transform: translate(-50%, -100%); }
+      50% { transform: translate(-50%, -112%); }
+    }
+    .nav-walker-label {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      color: #ffffff !important;
+      background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+      padding: 3px 9px !important;
+      border-radius: 9999px !important;
+      white-space: nowrap;
+      border: 1.5px solid #ffffff !important;
+      box-shadow: 0 2px 12px rgba(2, 132, 199, 0.7) !important;
+      transform: translate(-50%, -120%);
+      pointer-events: none;
+    }
+
     /* Mobile responsive optimizations */
     @media (max-width: 640px) {
       .hud {
@@ -1280,6 +1352,18 @@
     let currentCabinCode = null;
     let currentStartLocation = "ENTRANCE_F";
 
+    // ─── Real-Time Live Navigation Walker State ───
+    let liveWalkerGroup = null;
+    let liveWalkerRadar = null;
+    let isLiveNavigating = false;
+    let liveNavProgress = 0.0;
+    let liveNavSpeed = 0.0016;
+    let liveNavSpeedMultiplier = 1.0;
+    let followCamera = true;
+    let currentLiveStepIndex = 0;
+    let cachedSteps = [];
+    let cachedDistance = 100;
+
     // ─── CAMPUS NAVIGATION GRAPH (NavGraph) ──────────────────────
     const navNodes = {
       "MAIN_GATE": { pos: new THREE.Vector3(-2, 0.55, 60), floor: 0, block: "GROUND", name: "Main Campus Gate" },
@@ -1358,6 +1442,41 @@
       BLOCK_M: { label: "💻 Block M Entrance", node: "ENTRANCE_M", block: "M", floor: 0 },
       CANTEEN: { label: "🍽️ Canteen Entrance", node: "CANTEEN_ENTRANCE", block: "CANTEEN", floor: 0 }
     };
+
+    // ─── Initial Entrance "You Are Here" Marker & Greeting ──────────────
+    const entranceGreetingGroup = new THREE.Group();
+    scene.add(entranceGreetingGroup);
+
+    function showEntranceGreeting() {
+      while (entranceGreetingGroup.children.length > 0) {
+        const child = entranceGreetingGroup.children[0];
+        if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+        entranceGreetingGroup.remove(child);
+      }
+      const entNode = navNodes["ENTRANCE_F"];
+      if (!entNode) return;
+
+      const ringGeo = new THREE.RingGeometry(0.9, 1.6, 32);
+      ringGeo.rotateX(-Math.PI / 2);
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
+      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+      ringMesh.position.set(entNode.pos.x, entNode.pos.y + 0.12, entNode.pos.z);
+      entranceGreetingGroup.add(ringMesh);
+
+      const el = document.createElement("div");
+      el.className = "entrance-welcome-badge";
+      el.innerHTML = `<span>🚩</span> <span>Main Entrance (You Are Here)</span>`;
+      const labelObj = new CSS2DObject(el);
+      labelObj.position.set(entNode.pos.x, entNode.pos.y + 2.8, entNode.pos.z);
+      entranceGreetingGroup.add(labelObj);
+      entranceGreetingGroup.visible = true;
+    }
+
+    function hideEntranceGreeting() {
+      entranceGreetingGroup.visible = false;
+    }
+
+    showEntranceGreeting();
 
     const navEdges = [
       ["MAIN_GATE", "PARKING_A"],
@@ -1988,6 +2107,7 @@
         pathGroup.remove(child);
       }
       pulseOrbs = [];
+      hideEntranceGreeting();
 
       // Highlight rooms and get meshes
       const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
@@ -2043,19 +2163,30 @@
         pathGroup.add(arrow);
       }
 
-      // ── Floor Transition Labels at staircase waypoints ──
+      // ── 3D In-World Navigation Signs along the path ──
       if (routeResult.nodePath && routeResult.nodePath.length > 1) {
         for (let i = 1; i < routeResult.nodePath.length; i++) {
           const prevKey = routeResult.nodePath[i - 1];
           const currKey = routeResult.nodePath[i];
           const prevNode = navNodes[prevKey];
           const currNode = navNodes[currKey];
-          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
+          if (!prevNode || !currNode) continue;
+
+          // 1. Staircase Waypoint Signboards
+          if (prevNode.floor !== currNode.floor) {
             const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
             const goingUp = currNode.floor > prevNode.floor;
-            const transLabel = (goingUp ? '⬆️ Going Up to ' : '⬇️ Going Down to ') + (floorNames[currNode.floor] || ('Floor ' + currNode.floor));
-            createCustomLabel(transLabel, 'floor-transition-' + i, 
-              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 2.8, currNode.pos.z)
+            const transLabel = (goingUp ? '🪜 Stairs UP ⬆️ to ' : '🪜 Stairs DOWN ⬇️ to ') + (floorNames[currNode.floor] || ('Floor ' + currNode.floor));
+            createCustomLabel(transLabel, 'nav-sign-board stairs', 
+              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 3.2, currNode.pos.z)
+            );
+          } 
+          // 2. Block Entrance / Transition Signboards
+          else if (prevNode.block !== currNode.block && currNode.block !== "GROUND" && prevNode.block !== "CANTEEN") {
+            const blockNames = { M: "Block M (CSE/AIML)", F: "Block F (1st Yr)", E: "Block E (ETC/MCA)", B: "Block B (Mech)", ADM: "Admin Block", CANTEEN: "Canteen" };
+            const signText = "➡️ Turn into " + (blockNames[currNode.block] || ("Block " + currNode.block));
+            createCustomLabel(signText, 'nav-sign-board turn',
+              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 3.0, currNode.pos.z)
             );
           }
         }
@@ -2084,6 +2215,48 @@
       else if (targetMesh) finalTargetLabel = targetMesh.name || ("Classroom " + targetBlock);
       
       createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
+      createCustomLabel("🎯 " + finalTargetLabel, "nav-sign-board target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 3.4, 0)));
+
+      // ─── Live Navigation Walker ───
+      if (liveWalkerGroup) {
+        if (liveWalkerGroup.parent) liveWalkerGroup.parent.remove(liveWalkerGroup);
+        liveWalkerGroup = null;
+      }
+      liveWalkerGroup = new THREE.Group();
+
+      const walkerBaseMesh = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.85, 0.85, 0.35, 24),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.95, roughness: 0.2 })
+      );
+      walkerBaseMesh.position.y = 0.2;
+      liveWalkerGroup.add(walkerBaseMesh);
+
+      const walkerArrowMesh = new THREE.Mesh(
+        new THREE.ConeGeometry(0.45, 1.2, 12),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x22d3ee, emissiveIntensity: 1.0 })
+      );
+      walkerArrowMesh.rotation.x = Math.PI / 2;
+      walkerArrowMesh.position.set(0, 0.35, 0.7);
+      liveWalkerGroup.add(walkerArrowMesh);
+
+      liveWalkerRadar = new THREE.Mesh(
+        new THREE.RingGeometry(0.8, 1.6, 24),
+        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
+      );
+      liveWalkerRadar.rotation.x = -Math.PI / 2;
+      liveWalkerRadar.position.y = 0.1;
+      liveWalkerGroup.add(liveWalkerRadar);
+
+      const walkerSign = createCustomLabel("🚶 You", "nav-walker-label", new THREE.Vector3(0, 2.5, 0));
+      liveWalkerGroup.add(walkerSign);
+
+      const startPtOnCurve = activeCurve.getPointAt(0);
+      liveWalkerGroup.position.copy(startPtOnCurve);
+      pathGroup.add(liveWalkerGroup);
+
+      isLiveNavigating = false;
+      liveNavProgress = 0.0;
+      currentLiveStepIndex = 0;
       
     function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock, cabinCode) {
       const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
@@ -2250,6 +2423,8 @@
           targetBlock || 'M',
           cabinCode || currentCabinCode || customTargetName
         );
+        cachedSteps = steps;
+        cachedDistance = routeResult.distanceMeters || 100;
         window.parent.postMessage({ 
           type: 'ROUTE_CALCULATED', 
           from: finalStartLabel, 
@@ -2336,13 +2511,45 @@
         startBeacon = null;
         targetAuraBox = null;
         targetDestinationObject = null;
+        liveWalkerGroup = null;
+        liveWalkerRadar = null;
+        isLiveNavigating = false;
+        liveNavProgress = 0.0;
         highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
         highlightedMeshes = [];
         isPathVisible = false;
         setSelectiveBlockVisibility(null, null, null, false);
         showFloor("0");
-        // Fly to default isometric overview
+        showEntranceGreeting();
         smoothFlyCamera(new THREE.Vector3(95, 75, 95), new THREE.Vector3(6, 4, 6));
+      } else if (e.data.type === 'START_LIVE_NAV') {
+        isLiveNavigating = true;
+        isAnimatingToTarget = false;
+        targetNavProgress = null;
+        if (liveNavProgress >= 0.98) {
+          liveNavProgress = 0.0;
+        }
+        if (e.data.speed) liveNavSpeedMultiplier = Number(e.data.speed);
+        if (e.data.follow !== undefined) followCamera = Boolean(e.data.follow);
+      } else if (e.data.type === 'PAUSE_LIVE_NAV') {
+        isLiveNavigating = false;
+        isAnimatingToTarget = false;
+      } else if (e.data.type === 'GO_TO_STEP' || e.data.type === 'SEEK_LIVE_NAV') {
+        const prog = Math.max(0, Math.min(1.0, Number(e.data.progress !== undefined ? e.data.progress : 0)));
+        if (e.data.smooth !== false) {
+          targetNavProgress = prog;
+          isAnimatingToTarget = true;
+          isLiveNavigating = false;
+        } else {
+          liveNavProgress = prog;
+          isAnimatingToTarget = false;
+          targetNavProgress = null;
+          updateWalkerAtProgress(liveNavProgress, false);
+        }
+      } else if (e.data.type === 'SET_NAV_SPEED') {
+        liveNavSpeedMultiplier = Number(e.data.speed || 1.0);
+      } else if (e.data.type === 'SET_FOLLOW_CAM') {
+        followCamera = Boolean(e.data.follow);
       } else if (e.data.type === 'NAVIGATE_ROUTE' || e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
         var block = e.data.block || (e.data.to && e.data.to.block) || 'M';
         var floor = e.data.floor !== undefined ? Number(e.data.floor) : ((e.data.to && e.data.to.floor !== undefined) ? Number(e.data.to.floor) : 0);
@@ -2369,15 +2576,38 @@
       }
     });
 
-    // Check URL params for theme
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has("theme")) {
       applyTheme(urlParams.get("theme") === "dark");
     }
 
-    // Initial display — show complete campus with ALL blocks visible, no route
     showFloor("0");
-    // No default route — user must manually select From and Where
+
+    let targetNavProgress = null;
+    let isAnimatingToTarget = false;
+
+    function updateWalkerAtProgress(prog, smoothCam = true) {
+      if (!activeCurve || !liveWalkerGroup) return;
+      const currPt = activeCurve.getPointAt(prog);
+      if (currPt) {
+        liveWalkerGroup.position.copy(currPt);
+
+        const nextT = Math.min(1.0, prog + 0.015);
+        const nextPt = activeCurve.getPointAt(nextT);
+        if (nextPt) {
+          const dir = new THREE.Vector3().subVectors(nextPt, currPt).normalize();
+          if (dir.length() > 0.001) {
+            liveWalkerGroup.rotation.y = Math.atan2(dir.x, dir.z);
+          }
+
+          if (followCamera) {
+            controls.target.lerp(currPt, smoothCam ? 0.08 : 0.25);
+            const camFollow = currPt.clone().sub(new THREE.Vector3(dir.x * 24, -18, dir.z * 24));
+            camera.position.lerp(camFollow, smoothCam ? 0.05 : 0.18);
+          }
+        }
+      }
+    }
 
     // ─── Render Loop ─────────────────────────────────────────────
     (function tick() {
@@ -2404,6 +2634,78 @@
           const pt = activeCurve.getPointAt(orb.userData.progress);
           if (pt) orb.position.copy(pt);
         });
+      }
+
+      // ─── Real-Time Live Walker Animation ───
+      if (activeCurve && liveWalkerGroup) {
+        if (liveWalkerRadar) {
+          const radarTime = (Date.now() % 1400) / 1400;
+          const rScale = 1.0 + radarTime * 2.2;
+          liveWalkerRadar.scale.set(rScale, rScale, rScale);
+          liveWalkerRadar.material.opacity = Math.max(0, 0.9 * (1.0 - radarTime));
+        }
+
+        // Smooth transition when user clicks Next or Prev step
+        if (isAnimatingToTarget && targetNavProgress !== null) {
+          const diff = targetNavProgress - liveNavProgress;
+          const stepSpeed = 0.025;
+          if (Math.abs(diff) <= stepSpeed) {
+            liveNavProgress = targetNavProgress;
+            isAnimatingToTarget = false;
+            targetNavProgress = null;
+          } else {
+            liveNavProgress += Math.sign(diff) * stepSpeed;
+          }
+          updateWalkerAtProgress(liveNavProgress, true);
+
+          if (cachedSteps.length > 0) {
+            const stepIdx = Math.min(cachedSteps.length - 1, Math.round(liveNavProgress * (cachedSteps.length - 1)));
+            if (stepIdx !== currentLiveStepIndex) {
+              currentLiveStepIndex = stepIdx;
+            }
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: 'LIVE_NAV_UPDATE',
+                progress: liveNavProgress,
+                currentStepIndex: currentLiveStepIndex,
+                distanceRemainingMeters: Math.max(0, Math.round(cachedDistance * (1.0 - liveNavProgress))),
+                isFinished: liveNavProgress >= 0.999
+              }, '*');
+            }
+          }
+        } else if (isLiveNavigating) {
+          liveNavProgress += liveNavSpeed * liveNavSpeedMultiplier;
+          if (liveNavProgress >= 1.0) {
+            liveNavProgress = 1.0;
+            isLiveNavigating = false;
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: 'LIVE_NAV_UPDATE',
+                progress: 1.0,
+                currentStepIndex: Math.max(0, cachedSteps.length - 1),
+                distanceRemainingMeters: 0,
+                isFinished: true
+              }, '*');
+            }
+          }
+          updateWalkerAtProgress(liveNavProgress, true);
+
+          if (cachedSteps.length > 0) {
+            const stepIdx = Math.min(cachedSteps.length - 1, Math.floor(liveNavProgress * cachedSteps.length));
+            if (stepIdx !== currentLiveStepIndex) {
+              currentLiveStepIndex = stepIdx;
+            }
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({
+                type: 'LIVE_NAV_UPDATE',
+                progress: liveNavProgress,
+                currentStepIndex: currentLiveStepIndex,
+                distanceRemainingMeters: Math.max(0, Math.round(cachedDistance * (1.0 - liveNavProgress))),
+                isFinished: liveNavProgress >= 1.0
+              }, '*');
+            }
+          }
+        }
       }
 
       if (targetBeacon) {
