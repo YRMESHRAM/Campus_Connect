@@ -5,18 +5,31 @@ import { MapPin, BookOpen, Users, Phone, Navigation, MessageSquare, Bell, Trendi
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { fetchFacultyFromSupabase, getCachedFacultyData, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
+import { getAnnouncements, subscribeAnnouncements } from '../utils/announcementStore';
 
 const Dashboard: React.FC = () => {
   const { isDark } = useTheme();
 
   const [availableFacultyCount, setAvailableFacultyCount] = useState<number>(0);
 
-  const [recentActivities, setRecentActivities] = useState<Array<{ text: string; time: string; dot: string }>>([
+  // Static fallback activities shown when no faculty announcements exist
+  const defaultActivities = [
     { text: 'Computer Lab 1 is now available', time: '5 min ago', dot: 'bg-green-500' },
     { text: 'Faculty Portal synchronized with real-time status', time: '12 min ago', dot: 'bg-blue-500' },
     { text: 'Fire drill scheduled for tomorrow 11 AM', time: '1 hr ago', dot: 'bg-red-500' },
     { text: 'TechVista 2025 registrations now open', time: '3 hrs ago', dot: 'bg-purple-500' },
-  ]);
+  ];
+
+  const buildActivityList = () => {
+    const stored = getAnnouncements().map((a) => ({ text: a.text, time: a.time, dot: a.dot }));
+    // Faculty announcements go first, then static defaults fill up to 5 items
+    const combined = [...stored, ...defaultActivities];
+    return combined.slice(0, 5);
+  };
+
+  const [recentActivities, setRecentActivities] = useState<Array<{ text: string; time: string; dot: string }>>(
+    buildActivityList
+  );
 
   useEffect(() => {
     const updateCountFromList = (list: any[]) => {
@@ -43,9 +56,15 @@ const Dashboard: React.FC = () => {
       }
     });
 
+    // Subscribe to faculty-posted announcements
+    const unsubscribeAnn = subscribeAnnouncements(() => {
+      setRecentActivities(buildActivityList());
+    });
+
     return () => {
       stopPolling();
       unsubscribe();
+      unsubscribeAnn();
     };
   }, []);
 
@@ -137,6 +156,32 @@ const Dashboard: React.FC = () => {
           <div className="relative">
             <img src="/images/campus.jpg" alt="Campus Map" className="w-full h-56 md:h-72 object-cover" />
             <div className={`absolute inset-0 ${isDark ? 'bg-gray-900/40' : 'bg-black/10'}`} />
+
+            {/* Map Markers
+            {[
+              { x: '20%', y: '40%', label: 'Block A', delay: 0 },
+              { x: '45%', y: '30%', label: 'Block B', delay: 0.3 },
+              { x: '70%', y: '50%', label: 'Block C', delay: 0.6 },
+              { x: '60%', y: '70%', label: 'Admin', delay: 0.9 },
+            ].map(({ x, y, label, delay }) => (
+              <motion.div
+                key={label}
+                style={{ left: x, top: y }}
+                className="absolute"
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: delay + 0.5 }}
+              >
+                <div className="relative flex flex-col items-center">
+                  <div className="pin-bounce">
+                    <MapPin size={24} className="text-green-500 drop-shadow-lg" fill="#16a34a" />
+                  </div>
+                  <span className="mt-1 bg-white/90 dark:bg-gray-900/90 text-gray-900 dark:text-white text-xs font-bold px-2 py-0.5 rounded-full shadow whitespace-nowrap">
+                    {label}
+                  </span>
+                </div>
+              </motion.div>
+            ))} */}
 
             {/* Center CTA */}
             <div className="absolute inset-0 flex items-center justify-center">

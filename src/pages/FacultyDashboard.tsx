@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { MessageSquare, Bell, Phone, Users, Calendar, Edit3, Mail } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MessageSquare, Bell, Phone, Users, Calendar, Edit3, Mail, Send, Trash2, Megaphone, CheckCircle } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
 import { getFacultyAvailability, updateFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
+import {
+  getAnnouncements,
+  addAnnouncement,
+  deleteAnnouncement,
+  subscribeAnnouncements,
+  TYPE_DOT,
+  TYPE_LABEL,
+  type AnnouncementType,
+  type Announcement,
+} from '../utils/announcementStore';
 
 type AvailabilityStatus = 'auto' | 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
@@ -51,6 +61,15 @@ const FacultyDashboard: React.FC = () => {
     return getFacultyAvailability(facultyName, 'auto');
   });
 
+  // ── Announcement state ──────────────────────────────────────────────────
+  const [annText, setAnnText] = useState('');
+  const [annType, setAnnType] = useState<AnnouncementType>('info');
+  const [annPosting, setAnnPosting] = useState(false);
+  const [annSuccess, setAnnSuccess] = useState(false);
+  const [myAnnouncements, setMyAnnouncements] = useState<Announcement[]>(() =>
+    getAnnouncements().filter((a) => a.author === (localStorage.getItem('facultyName') || 'Dr. Rajesh Sharma'))
+  );
+
   useEffect(() => {
     // Synchronize initial status from facultyStore
     setAvailability(getFacultyAvailability(facultyName, 'auto'));
@@ -88,10 +107,33 @@ const FacultyDashboard: React.FC = () => {
       setAvailability(currentAvail);
     });
 
+    // Subscribe to announcement changes so "My Announcements" stays fresh
+    const unsubscribeAnn = subscribeAnnouncements((all) => {
+      setMyAnnouncements(all.filter((a) => a.author === facultyName));
+    });
+
     return () => {
       unsubscribe();
+      unsubscribeAnn();
     };
   }, [facultyName]);
+
+  const handlePostAnnouncement = () => {
+    if (!annText.trim()) return;
+    setAnnPosting(true);
+    addAnnouncement(annText.trim(), annType, facultyName);
+    setMyAnnouncements(getAnnouncements().filter((a) => a.author === facultyName));
+    setAnnText('');
+    setAnnType('info');
+    setAnnPosting(false);
+    setAnnSuccess(true);
+    setTimeout(() => setAnnSuccess(false), 2500);
+  };
+
+  const handleDeleteAnnouncement = (id: string) => {
+    deleteAnnouncement(id);
+    setMyAnnouncements(getAnnouncements().filter((a) => a.author === facultyName));
+  };
 
   const handleAvailabilityChange = async (newStatus: AvailabilityStatus) => {
     // 1. Update local state & store
@@ -266,6 +308,128 @@ const FacultyDashboard: React.FC = () => {
               ))}
             </div>
           </motion.div>
+
+          {/* ── Post Announcement ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className={`lg:col-span-3 rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
+          >
+            <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              <Megaphone size={16} className="text-green-500" /> Post Campus Announcement
+              <span className={`ml-auto text-xs font-normal px-2 py-0.5 rounded-full ${isDark ? 'bg-green-900/40 text-green-400' : 'bg-green-50 text-green-600'}`}>
+                Visible to all students
+              </span>
+            </h3>
+
+            {/* Type Selector */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {(Object.keys(TYPE_LABEL) as AnnouncementType[]).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setAnnType(t)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${
+                    annType === t
+                      ? 'border-green-500 bg-green-50 text-green-700 scale-105 shadow'
+                      : isDark ? 'border-gray-700 text-gray-400 hover:border-gray-500' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${TYPE_DOT[t]}`} />
+                  {TYPE_LABEL[t]}
+                </button>
+              ))}
+            </div>
+
+            {/* Message Input */}
+            <div className="flex gap-2">
+              <textarea
+                rows={2}
+                value={annText}
+                onChange={(e) => setAnnText(e.target.value)}
+                placeholder="Write your announcement… (e.g. 'Assignment deadline extended to Friday 6 PM')"
+                className={`flex-1 px-4 py-3 rounded-xl border text-sm outline-none resize-none transition-all ${
+                  isDark
+                    ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500 focus:border-green-500'
+                    : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-green-500 focus:bg-white'
+                }`}
+              />
+              <button
+                onClick={handlePostAnnouncement}
+                disabled={!annText.trim() || annPosting}
+                className={`flex-shrink-0 px-5 rounded-xl font-bold text-white flex flex-col items-center justify-center gap-1 transition-all text-xs ${
+                  !annText.trim() || annPosting
+                    ? 'bg-gray-300 cursor-not-allowed'
+                    : 'bg-gradient-to-br from-green-500 to-green-700 hover:from-green-600 hover:to-green-800 hover:shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5'
+                }`}
+              >
+                <Send size={16} />
+                Post
+              </button>
+            </div>
+
+            {/* Success Toast */}
+            <AnimatePresence>
+              {annSuccess && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-3 flex items-center gap-2 text-green-600 text-sm font-medium"
+                >
+                  <CheckCircle size={16} /> Announcement posted! Students can see it now.
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* ── My Announcements ── */}
+          {myAnnouncements.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className={`lg:col-span-3 rounded-2xl border p-5 ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}
+            >
+              <h3 className={`font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                <Bell size={16} className="text-orange-500" /> My Announcements
+                <span className={`ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                  isDark ? 'bg-orange-900/40 text-orange-400' : 'bg-orange-100 text-orange-600'
+                }`}>{myAnnouncements.length}</span>
+              </h3>
+              <div className="space-y-2">
+                {myAnnouncements.map((ann) => (
+                  <motion.div
+                    key={ann.id}
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className={`flex items-start gap-3 p-3 rounded-xl group ${
+                      isDark ? 'bg-gray-900/50 hover:bg-gray-900' : 'bg-gray-50 hover:bg-gray-100'
+                    } transition-colors`}
+                  >
+                    <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${ann.dot}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{ann.text}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{ann.time} • <span className={`font-medium ${
+                        isDark ? 'text-gray-400' : 'text-gray-500'
+                      }`}>{TYPE_LABEL[ann.type]}</span></p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteAnnouncement(ann.id)}
+                      title="Delete announcement"
+                      className={`flex-shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                        isDark ? 'text-red-400 hover:bg-red-900/30' : 'text-red-500 hover:bg-red-50'
+                      }`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Student Queries */}
           <motion.div

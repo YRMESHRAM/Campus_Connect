@@ -424,78 +424,6 @@
       pointer-events: none;
     }
 
-    /* ─── 3D In-World Navigation Signboards & Walker ─── */
-    .nav-sign-board {
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 11px;
-      font-weight: 800;
-      color: #ffffff !important;
-      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95)) !important;
-      padding: 5px 12px !important;
-      border-radius: 9999px !important;
-      white-space: nowrap;
-      border: 1.5px solid #38bdf8 !important;
-      box-shadow: 0 4px 18px rgba(14, 165, 233, 0.5), 0 0 10px rgba(56, 189, 248, 0.4) !important;
-      transform: translate(-50%, -100%);
-      pointer-events: none;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      letter-spacing: 0.3px;
-      animation: floatSign 3s infinite ease-in-out;
-    }
-    .nav-sign-board.stairs {
-      border-color: #f59e0b !important;
-      box-shadow: 0 4px 18px rgba(245, 158, 11, 0.6), 0 0 10px rgba(245, 158, 11, 0.4) !important;
-      background: linear-gradient(135deg, rgba(30, 27, 20, 0.95), rgba(60, 40, 15, 0.95)) !important;
-    }
-    .nav-sign-board.turn {
-      border-color: #10b981 !important;
-      box-shadow: 0 4px 18px rgba(16, 185, 129, 0.6), 0 0 10px rgba(16, 185, 129, 0.4) !important;
-      background: linear-gradient(135deg, rgba(15, 35, 25, 0.95), rgba(20, 55, 35, 0.95)) !important;
-    }
-    .nav-sign-board.target {
-      border-color: #ec4899 !important;
-      box-shadow: 0 4px 18px rgba(236, 72, 153, 0.6), 0 0 10px rgba(236, 72, 153, 0.4) !important;
-      background: linear-gradient(135deg, rgba(40, 15, 30, 0.95), rgba(65, 20, 45, 0.95)) !important;
-    }
-    .entrance-welcome-badge {
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 11px;
-      font-weight: 800;
-      color: #ffffff !important;
-      background: linear-gradient(135deg, #10b981, #059669) !important;
-      padding: 5px 12px !important;
-      border-radius: 9999px !important;
-      white-space: nowrap;
-      border: 1.5px solid #6ee7b7 !important;
-      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.6), 0 0 12px rgba(110, 231, 183, 0.4) !important;
-      transform: translate(-50%, -100%);
-      pointer-events: none;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      animation: floatSign 2.5s infinite ease-in-out;
-    }
-    @keyframes floatSign {
-      0%, 100% { transform: translate(-50%, -100%); }
-      50% { transform: translate(-50%, -112%); }
-    }
-    .nav-walker-label {
-      font-family: system-ui, -apple-system, sans-serif;
-      font-size: 10px;
-      font-weight: 900;
-      color: #ffffff !important;
-      background: linear-gradient(135deg, #0284c7, #0369a1) !important;
-      padding: 3px 9px !important;
-      border-radius: 9999px !important;
-      white-space: nowrap;
-      border: 1.5px solid #ffffff !important;
-      box-shadow: 0 2px 12px rgba(2, 132, 199, 0.7) !important;
-      transform: translate(-50%, -120%);
-      pointer-events: none;
-    }
-
     /* Mobile responsive optimizations */
     @media (max-width: 640px) {
       .hud {
@@ -1395,16 +1323,16 @@
       room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wallBlockM, "M213");
       room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wallBlockM, "M201");
       room(g, "room-M202", 6.2, 3.6, 33, 22.2, 2, mats.wash, "M202 BW");
-      room(g, "room-M203", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M203");
-      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "FACULTY M204");
+      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M204");
+      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "M204");
       room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wallBlockM, "M205");
       room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wallBlockM, "M209");
-      room(g, "room-M211", 3.8, 3.4, 21.6, 26.6, 2, mats.wallBlockM, "M211");
-
       room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "📚 DEPT LIBRARY (CSE)", true);
       room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD AIML", true);
       room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wallBlockM, "M207");
       room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wallBlockM, "M206");
+      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wallBlockM, "M203");
+      room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wallBlockM, "M211");
       room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wallBlockM, "M212 A2");
     }
 
@@ -1481,11 +1409,15 @@
       roughness: 0.1,
       metalness: 0.2,
       depthTest: true,
-      transparent: false
+      transparent: true,
+      opacity: 0.98
     });
 
-    const pulseMat = new THREE.MeshBasicMaterial({
-      color: 0x00ffff,
+    const pulseMat = new THREE.MeshStandardMaterial({
+      color: 0x6ee7b7,
+      emissive: 0x00ff88,
+      emissiveIntensity: 2.8,
+      roughness: 0.1,
       transparent: true,
       opacity: 1.0
     });
@@ -1512,18 +1444,6 @@
     let currentTargetName = null;
     let currentCabinCode = null;
     let currentStartLocation = "ENTRANCE_F";
-
-    // ─── Real-Time Live Navigation Walker State ───
-    let liveWalkerGroup = null;
-    let liveWalkerRadar = null;
-    let isLiveNavigating = false;
-    let liveNavProgress = 0.0;
-    let liveNavSpeed = 0.0016;
-    let liveNavSpeedMultiplier = 1.0;
-    let followCamera = true;
-    let currentLiveStepIndex = 0;
-    let cachedSteps = [];
-    let cachedDistance = 100;
 
     // ─── CAMPUS NAVIGATION GRAPH (NavGraph) ──────────────────────
     const navNodes = {
@@ -1603,41 +1523,6 @@
       BLOCK_M: { label: "💻 Block M Entrance", node: "ENTRANCE_M", block: "M", floor: 0 },
       CANTEEN: { label: "🍽️ Canteen Entrance", node: "CANTEEN_ENTRANCE", block: "CANTEEN", floor: 0 }
     };
-
-    // ─── Initial Entrance "You Are Here" Marker & Greeting ──────────────
-    const entranceGreetingGroup = new THREE.Group();
-    scene.add(entranceGreetingGroup);
-
-    function showEntranceGreeting() {
-      while (entranceGreetingGroup.children.length > 0) {
-        const child = entranceGreetingGroup.children[0];
-        if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
-        entranceGreetingGroup.remove(child);
-      }
-      const entNode = navNodes["ENTRANCE_F"];
-      if (!entNode) return;
-
-      const ringGeo = new THREE.RingGeometry(0.9, 1.6, 32);
-      ringGeo.rotateX(-Math.PI / 2);
-      const ringMat = new THREE.MeshBasicMaterial({ color: 0x10b981, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
-      const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-      ringMesh.position.set(entNode.pos.x, entNode.pos.y + 0.12, entNode.pos.z);
-      entranceGreetingGroup.add(ringMesh);
-
-      const el = document.createElement("div");
-      el.className = "entrance-welcome-badge";
-      el.innerHTML = `<span>🚩</span> <span>Main Entrance (You Are Here)</span>`;
-      const labelObj = new CSS2DObject(el);
-      labelObj.position.set(entNode.pos.x, entNode.pos.y + 2.8, entNode.pos.z);
-      entranceGreetingGroup.add(labelObj);
-      entranceGreetingGroup.visible = true;
-    }
-
-    function hideEntranceGreeting() {
-      entranceGreetingGroup.visible = false;
-    }
-
-    showEntranceGreeting();
 
     const navEdges = [
       ["MAIN_GATE", "PARKING_A"],
@@ -1777,15 +1662,12 @@
         }
       };
 
+      // Search all floors regardless of whether they are currently in the scene
       floorGroups.forEach(g => {
         if (!foundObj) g.traverse(checkObj);
       });
-<<<<<<< HEAD
 
       // Fallback search in campus
-=======
-      
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
       if (!foundObj) {
         campus.traverse(checkObj);
       }
@@ -1839,7 +1721,6 @@
       if (!points || points.length === 0) return;
       const routeBox = new THREE.Box3();
       points.forEach(p => routeBox.expandByPoint(p));
-<<<<<<< HEAD
 
       const center = new THREE.Vector3();
       routeBox.getCenter(center);
@@ -1850,42 +1731,18 @@
       const maxDim = Math.max(size.x, size.y, size.z);
       const offsetDistance = Math.max(maxDim * 1.35, 48);
 
-=======
-      const center = new THREE.Vector3();
-      routeBox.getCenter(center);
-      const size = new THREE.Vector3();
-      routeBox.getSize(size);
-      const maxDim = Math.max(size.x, size.y, size.z);
-      const offsetDistance = Math.max(maxDim * 1.35, 48); 
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
       const cameraPos = new THREE.Vector3(
         center.x + offsetDistance * 0.65,
         center.y + offsetDistance * 0.65 + 16,
         center.z + offsetDistance * 0.65
       );
-<<<<<<< HEAD
 
-=======
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
       smoothFlyCamera(cameraPos, center);
     }
 
     function updateLabelVisibility(isNavActive = false, activeRouteNodes = null, startMesh = null, targetMesh = null) {
       const activeFloorNum = activeFloorKey === "all" ? null : Number(activeFloorKey);
       const isAll = activeFloorKey === "all";
-<<<<<<< HEAD
-=======
-      
-      const activeFloorSet = new Set();
-      if (activeRouteNodes) {
-        activeRouteNodes.forEach(nodeKey => {
-          const node = navNodes[nodeKey];
-          if (node) activeFloorSet.add(String(node.floor));
-        });
-      }
-      if (targetMesh) activeFloorSet.add(String(getMeshFloor(targetMesh)));
-      if (startMesh) activeFloorSet.add(String(getMeshFloor(startMesh)));
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
 
       const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
       const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
@@ -1895,7 +1752,6 @@
           const labelText = (el.textContent || "").toLowerCase().trim();
           const isStairs = el.dataset.stairs === "true" || el.classList.contains("stairs-label");
           let showLabel = false;
-<<<<<<< HEAD
 
           if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) {
             showLabel = true;
@@ -1904,31 +1760,23 @@
             showLabel = true;
           }
 
-=======
-          // Only show start and target room labels
-          if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) showLabel = true;
-          if (targetRoomId && (labelText.includes(targetRoomId) || targetRoomId.includes(labelText))) showLabel = true;
-          // Show stairs labels only if that staircase is actually used in the route
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
           if (isStairs && activeRouteNodes) {
             let stairsBlock = null;
             if (labelText.includes("(m)")) stairsBlock = "M";
             else if (labelText.includes("(f)")) stairsBlock = "F";
             else if (labelText.includes("(e)")) stairsBlock = "E";
             else if (labelText.includes("(b)")) stairsBlock = "B";
-<<<<<<< HEAD
 
-=======
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
             if (stairsBlock) {
               const searchKey = "STAIRS_" + stairsBlock;
-              activeRouteNodes.forEach(nodeKey => { if (nodeKey.startsWith(searchKey)) showLabel = true; });
+              activeRouteNodes.forEach(nodeKey => {
+                if (nodeKey.startsWith(searchKey)) {
+                  showLabel = true;
+                }
+              });
             }
           }
-<<<<<<< HEAD
 
-=======
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
           el.style.display = showLabel ? "" : "none";
         } else {
           const floorAttr = el.dataset.floor;
@@ -1942,6 +1790,10 @@
           const isRoomCode = /^[FMEBG]\d/i.test(text) || /^ROOM/i.test(text);
           el.style.display = ((isMajor || isStairs) && !isRoomCode) ? "" : "none";
         }
+      });
+
+      document.querySelectorAll(".block-badge-3d").forEach(el => {
+        el.style.display = isNavActive ? "none" : "";
       });
     }
 
@@ -1996,8 +1848,6 @@
           if (node) activeFloors.add(node.floor);
         });
       }
-      if (targetMesh) activeFloors.add(getMeshFloor(targetMesh));
-      if (startMesh) activeFloors.add(getMeshFloor(startMesh));
 
       blockBadgesGroup.children.forEach((badgeObj) => {
         badgeObj.visible = !isNavActive;
@@ -2009,21 +1859,14 @@
       campus.traverse((obj) => {
         if (obj.isCSS2DObject || (obj.userData && obj.userData.isLabel)) {
           if (isNavActive) {
-            const startRoomId2 = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
-            const targetRoomId2 = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
+            const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
+            const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
             const text = (obj.userData.text || (obj.element ? obj.element.textContent : "") || "").toLowerCase().trim();
             const isStairs = obj.userData.isStairs || (obj.element && obj.element.classList.contains("stairs-label"));
-<<<<<<< HEAD
 
-=======
-            const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ?
-              parseInt(obj.parent.name.replace("floor-", ""), 10) : (obj.element && obj.element.dataset.floor !== undefined ? parseInt(obj.element.dataset.floor, 10) : null);
-
-            // Only show start and target labels, plus relevant stairs
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
             let showLabel = false;
-            if (startRoomId2 && (text.includes(startRoomId2) || startRoomId2.includes(text))) showLabel = true;
-            if (targetRoomId2 && (text.includes(targetRoomId2) || targetRoomId2.includes(text))) showLabel = true;
+            if (startRoomId && (text.includes(startRoomId) || startRoomId.includes(text))) showLabel = true;
+            if (targetRoomId && (text.includes(targetRoomId) || targetRoomId.includes(text))) showLabel = true;
             if (isStairs && activeRouteNodes) {
               let stairsBlock = null;
               if (text.includes("(m)")) stairsBlock = "M";
@@ -2033,7 +1876,6 @@
               if (stairsBlock) {
                 const searchKey = "STAIRS_" + stairsBlock;
                 let isUsedInRoute = false;
-<<<<<<< HEAD
                 activeRouteNodes.forEach(nodeKey => {
                   if (nodeKey.startsWith(searchKey)) isUsedInRoute = true;
                 });
@@ -2046,11 +1888,6 @@
                 if (isUsedInRoute && labelFloor === targetFloor) {
                   showLabel = true;
                 }
-=======
-                activeRouteNodes.forEach(nodeKey => { if (nodeKey.startsWith(searchKey)) isUsedInRoute = true; });
-                const targetFloor = targetMesh ? getMeshFloor(targetMesh) : (startMesh ? getMeshFloor(startMesh) : 0);
-                if (isUsedInRoute && (labelFloor === targetFloor || labelFloor === 0)) showLabel = true;
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
               }
             }
             obj.visible = showLabel;
@@ -2076,32 +1913,28 @@
           const isTerrain = obj.parent.name === "ground-context";
           const isSlab = obj.userData.isSlab;
           const isStairs = obj.userData.isStairs || (obj.name && obj.name.includes("stairs"));
+          const isTargetMesh = (obj === targetMesh);
+          const isStartMesh = (obj === startMesh);
           const meshBlock = (obj.userData.block || deriveMeshBlock(obj.name || "")).toUpperCase();
           const meshFloor = getMeshFloor(obj);
 
           if (!isNavActive) {
             obj.visible = true;
+            // Restore original slab material if it was ghosted
             if (obj.userData._origSlabMat) {
               obj.material = obj.userData._origSlabMat;
               delete obj.userData._origSlabMat;
             }
           } else {
             const belongsToActiveBlock = activeBlocks.has(meshBlock);
-<<<<<<< HEAD
-=======
-            const isOnActiveFloor = activeFloors.has(meshFloor) || activeFloors.size === 0;
-            const isTargetMesh = (obj === targetMesh);
-            const isStartMesh = (obj === startMesh);
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
 
             if (obj.userData.isRoom && !isStairs) {
-              // Only show start and target room, hide everything else to keep map clean
               obj.visible = isStartMesh || isTargetMesh;
             } else if (isStairs) {
-              // Only show stairs that are part of the route
-              const isStairsUsed = belongsToActiveBlock && isOnActiveFloor;
+              const isStairsUsed = belongsToActiveBlock && activeFloors.has(meshFloor);
               obj.visible = isStairsUsed;
             } else if (isSlab && belongsToActiveBlock) {
+              // Show slabs as ghost transparent outlines for spatial context
               obj.visible = true;
               if (!obj.userData._origSlabMat) obj.userData._origSlabMat = obj.material;
               obj.material = mats.slabGhost;
@@ -2350,7 +2183,6 @@
         pathGroup.remove(child);
       }
       pulseOrbs = [];
-      hideEntranceGreeting();
 
       // Highlight rooms and get meshes
       const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
@@ -2405,7 +2237,6 @@
         pathGroup.add(arrow);
       }
 
-<<<<<<< HEAD
       // Start location pin and label (only if not using custom live start position)
       if (!customStartPos) {
         startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), startPinMat);
@@ -2417,35 +2248,6 @@
         else if (startMesh) finalStartLabel = startMesh.name || ("Classroom " + startKey);
 
         createCustomLabel("📍 " + finalStartLabel, "pin-label-start", routeResult.startPos.clone().add(new THREE.Vector3(0, 3.6, 0)));
-=======
-      // ── 3D In-World Navigation Signs along the path ──
-      if (routeResult.nodePath && routeResult.nodePath.length > 1) {
-        for (let i = 1; i < routeResult.nodePath.length; i++) {
-          const prevKey = routeResult.nodePath[i - 1];
-          const currKey = routeResult.nodePath[i];
-          const prevNode = navNodes[prevKey];
-          const currNode = navNodes[currKey];
-          if (!prevNode || !currNode) continue;
-
-          // 1. Staircase Waypoint Signboards
-          if (prevNode.floor !== currNode.floor) {
-            const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
-            const goingUp = currNode.floor > prevNode.floor;
-            const transLabel = (goingUp ? '🪜 Stairs UP ⬆️ to ' : '🪜 Stairs DOWN ⬇️ to ') + (floorNames[currNode.floor] || ('Floor ' + currNode.floor));
-            createCustomLabel(transLabel, 'nav-sign-board stairs', 
-              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 3.2, currNode.pos.z)
-            );
-          } 
-          // 2. Block Entrance / Transition Signboards
-          else if (prevNode.block !== currNode.block && currNode.block !== "GROUND" && prevNode.block !== "CANTEEN") {
-            const blockNames = { M: "Block M (CSE/AIML)", F: "Block F (1st Yr)", E: "Block E (ETC/MCA)", B: "Block B (Mech)", ADM: "Admin Block", CANTEEN: "Canteen" };
-            const signText = "➡️ Turn into " + (blockNames[currNode.block] || ("Block " + currNode.block));
-            createCustomLabel(signText, 'nav-sign-board turn',
-              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 3.0, currNode.pos.z)
-            );
-          }
-        }
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
       }
 
       // Target location pin and label
@@ -2460,7 +2262,6 @@
       else if (targetMesh) finalTargetLabel = targetMesh.name || ("Classroom " + targetBlock);
 
       createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
-<<<<<<< HEAD
 
       function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
         const steps = [];
@@ -2483,174 +2284,7 @@
               const stairsName = currNode.block ? `Stairs (Block ${currNode.block})` : 'the stairs';
               usedStairs.push({ goingUp, destFl, stairsName });
             }
-=======
-      createCustomLabel("🎯 " + finalTargetLabel, "nav-sign-board target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 3.4, 0)));
-
-      // ─── Live Navigation Walker ───
-      if (liveWalkerGroup) {
-        if (liveWalkerGroup.parent) liveWalkerGroup.parent.remove(liveWalkerGroup);
-        liveWalkerGroup = null;
-      }
-      liveWalkerGroup = new THREE.Group();
-
-      const walkerBaseMesh = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.85, 0.85, 0.35, 24),
-        new THREE.MeshStandardMaterial({ color: 0x06b6d4, emissive: 0x06b6d4, emissiveIntensity: 0.95, roughness: 0.2 })
-      );
-      walkerBaseMesh.position.y = 0.2;
-      liveWalkerGroup.add(walkerBaseMesh);
-
-      const walkerArrowMesh = new THREE.Mesh(
-        new THREE.ConeGeometry(0.45, 1.2, 12),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x22d3ee, emissiveIntensity: 1.0 })
-      );
-      walkerArrowMesh.rotation.x = Math.PI / 2;
-      walkerArrowMesh.position.set(0, 0.35, 0.7);
-      liveWalkerGroup.add(walkerArrowMesh);
-
-      liveWalkerRadar = new THREE.Mesh(
-        new THREE.RingGeometry(0.8, 1.6, 24),
-        new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85, side: THREE.DoubleSide })
-      );
-      liveWalkerRadar.rotation.x = -Math.PI / 2;
-      liveWalkerRadar.position.y = 0.1;
-      liveWalkerGroup.add(liveWalkerRadar);
-
-      const walkerSign = createCustomLabel("🚶 You", "nav-walker-label", new THREE.Vector3(0, 2.5, 0));
-      liveWalkerGroup.add(walkerSign);
-
-      const startPtOnCurve = activeCurve.getPointAt(0);
-      liveWalkerGroup.position.copy(startPtOnCurve);
-      pathGroup.add(liveWalkerGroup);
-
-      isLiveNavigating = false;
-      liveNavProgress = 0.0;
-      currentLiveStepIndex = 0;
-      
-    function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock, cabinCode) {
-      const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
-      const startFlStr = floorNames[startFloor] || `Floor ${startFloor}`;
-      const targetFlStr = floorNames[targetFloor] || `Floor ${targetFloor}`;
-
-      // ─── Campus-specific hardcoded route lookup ───────────────────────
-      const fromBlockFloor = `${startBlock}${startFloor}`;
-      const toBlockFloor = `${targetBlock}${targetFloor}`;
-      const routeKey = `${fromBlockFloor}_${toBlockFloor}`;
-      const targetUp = (cabinCode || targetLabel || '').toUpperCase();
-
-      const knownRoutes = {
-        // F Ground → M 2nd Floor (Entrance -> Block M 2nd Floor / Faculty / Classrooms)
-        'F0_M2': [
-          `Start at ${startLabel} (${startFlStr}, Block F)`,
-          `🚶 Walk forward from entrance along the main corridor`,
-          `↩️ Take first Left turn at the junction towards Block M`,
-          `🚶 Walk across the courtyard walkway into Block M`,
-          `⬆️ Then go through stairs UP to 2nd Floor (Block M)`,
-          `↪️ Go Right / Turn Right into the 2nd Floor hallway`,
-          `🚶 Walk along the hallway past M201 & M202`,
-        ],
-        // F Ground → M 1st Floor
-        'F0_M1': [
-          `Start at ${startLabel} (${startFlStr}, Block F)`,
-          `🚶 Walk forward from entrance along the main corridor`,
-          `↩️ Take first Left turn at the junction towards Block M`,
-          `🚶 Walk across the courtyard walkway into Block M`,
-          `⬆️ Then go through stairs UP to 1st Floor (Block M)`,
-          `↪️ Go Right / Turn Right into the 1st Floor hallway`,
-        ],
-        // F Ground → M Ground
-        'F0_M0': [
-          `Start at ${startLabel} (${startFlStr}, Block F)`,
-          `🚶 Walk forward from entrance along the main corridor`,
-          `↩️ Take first Left turn at the junction towards Block M`,
-          `🚶 Walk across the courtyard walkway straight into Block M Ground Floor`,
-        ],
-        // F Ground → E Ground
-        'F0_E0': [
-          `Start at ${startLabel} (${startFlStr}, Block F)`,
-          `🚶 Walk forward from entrance along the main corridor`,
-          `↪️ Take first Right turn at the junction towards Block E`,
-          `🚶 Walk along the connecting pathway into Block E`,
-        ],
-        // F Ground → E 1st Floor
-        'F0_E1': [
-          `Start at ${startLabel} (${startFlStr}, Block F)`,
-          `🚶 Walk forward from entrance along the main corridor`,
-          `↪️ Take first Right turn at the junction towards Block E`,
-          `🚶 Walk along the connecting pathway into Block E`,
-          `⬆️ Then go through stairs UP to 1st Floor (Block E)`,
-          `↩️ Take Left turn into the 1st Floor corridor`,
-        ],
-        // M 2nd → same block
-        'M2_M2': [
-          `Start at ${startLabel} (2nd Floor, Block M)`,
-          `🚶 Walk along the 2nd Floor Block M corridor`,
-        ],
-        // M 1st → M 2nd
-        'M1_M2': [
-          `Start at ${startLabel} (1st Floor, Block M)`,
-          `🚶 Walk along the 1st Floor corridor to the staircase`,
-          `⬆️ Then go through stairs UP to 2nd Floor`,
-          `↪️ Go Right into the 2nd Floor hallway`,
-        ],
-        // M Ground → M 2nd
-        'M0_M2': [
-          `Start at ${startLabel} (Ground Floor, Block M)`,
-          `🚶 Walk through the Ground Floor Block M corridor to the staircase`,
-          `⬆️ Then go through stairs UP to 2nd Floor`,
-          `↪️ Go Right into the 2nd Floor hallway`,
-          `🚶 Walk along the 2nd Floor corridor`,
-        ],
-        // M 2nd → M Ground
-        'M2_M0': [
-          `Start at ${startLabel} (2nd Floor, Block M)`,
-          `🚶 Walk along the 2nd Floor corridor to the staircase`,
-          `⬇️ Then go through stairs DOWN to Ground Floor`,
-          `↪️ Go Right into the Ground Floor corridor`,
-        ],
-        // M 2nd → F Ground
-        'M2_F0': [
-          `Start at ${startLabel} (2nd Floor, Block M)`,
-          `🚶 Walk to the Block M staircase`,
-          `⬇️ Then go through stairs DOWN to Ground Floor`,
-          `🚶 Walk through the Ground Floor corridor`,
-          `↪️ Take Right turn towards Block F`,
-          `🚶 Walk along the connecting walkway into Block F`,
-        ],
-      };
-
-      // Build steps from known route if available
-      let steps = knownRoutes[routeKey] ? [...knownRoutes[routeKey]] : null;
-
-      if (!steps) {
-        // Smart generic fallback based on block/floor data
-        steps = [];
-        steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
-
-        if (startBlock === 'F' && startFloor === 0) {
-          steps.push(`🚶 Walk forward from entrance along the hallway`);
-          if (targetBlock === 'M') {
-            steps.push(`↩️ Take first Left turn at the junction towards Block M`);
-            steps.push(`🚶 Walk across the courtyard walkway into Block M`);
-          } else if (targetBlock === 'E') {
-            steps.push(`↪️ Take first Right turn at the junction towards Block E`);
-          } else if (targetBlock === 'B') {
-            steps.push(`🚶 Walk straight towards Block B via the main campus spine`);
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
           }
-        } else if (startBlock === targetBlock) {
-          steps.push(`🚶 Walk along the ${startFlStr} corridor`);
-        } else {
-          steps.push(`🚶 Walk along the ${startFlStr} corridor towards the connecting walkway`);
-          steps.push(`🚶 Follow the connecting path to Block ${targetBlock}`);
-        }
-
-        if (startFloor < targetFloor) {
-          steps.push(`⬆️ Then go through stairs UP to ${targetFlStr} (Block ${targetBlock})`);
-          steps.push(`↪️ Go Right / Turn into the ${targetFlStr} corridor`);
-        } else if (startFloor > targetFloor) {
-          steps.push(`⬇️ Then go through stairs DOWN to ${targetFlStr} (Block ${targetBlock})`);
-          steps.push(`↩️ Go Left / Turn into the ${targetFlStr} corridor`);
         }
 
         if (usedStairs.length > 0) {
@@ -2669,7 +2303,6 @@
         return steps;
       }
 
-<<<<<<< HEAD
       const displayStartLabel = customStartPos ? "🔵 Live Location" : (startName || "Start Location");
 
       if (window.parent && window.parent !== window) {
@@ -2687,54 +2320,6 @@
           from: displayStartLabel,
           to: finalTargetLabel,
           distanceMeters: routeResult.distanceMeters,
-=======
-      // Room-specific final approach
-      if (targetUp.includes('M203') || targetUp.includes('FACULTY M203') || targetUp.includes('SWATI')) {
-        steps.push(`🚶 Faculty Room M203 is on your right between M202 & M204`);
-      } else if (targetUp.includes('M202') || targetUp.includes('M202 BW')) {
-        steps.push(`🚶 M202 is on your right after M201`);
-      } else if (targetUp.includes('M201')) {
-        steps.push(`🚶 M201 is the first room on your right as you enter the 2nd Floor hallway`);
-      } else if (targetUp.includes('M204')) {
-        steps.push(`🚶 Walk past M201, M202, M203 — Faculty M204 is on your right`);
-      } else if (targetUp.includes('M208') || targetUp.includes('HOD AIML')) {
-        steps.push(`🚶 Walk to the far end of the 2nd Floor corridor — HOD Office M208 is on the left`);
-      } else if (targetUp.includes('LIBRARY') || targetUp.includes('DEPT LIBRARY')) {
-        steps.push(`🚶 Walk straight along the 2nd Floor corridor — the CSE Dept Library is on your left`);
-      } else if (targetUp.includes('M213')) {
-        steps.push(`🚶 Walk to the end of the left-side corridor — M213 is at the far end`);
-      } else if (targetUp.includes('M215')) {
-        steps.push(`🚶 M215 is the large hall at the top of Block M 2nd Floor (straight ahead)`);
-      } else if (targetUp.includes('EXAM') || targetUp.includes('EXAM CENTER')) {
-        steps.push(`🚶 Walk to the far end of Block E — the Exam Center is at the end of the ground floor`);
-      } else if (targetUp.includes('HOD CSE') || targetUp.includes('M108')) {
-        steps.push(`🚶 M108 HOD CSE Office is at the far right end of the 1st Floor Block M corridor`);
-      }
-
-      // Final arrival
-      steps.push(`🎯 Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
-      return steps;
-    }
-
-      if (window.parent && window.parent !== window) {
-        const steps = generateTurnByTurnSteps(
-          routeResult.nodePath, 
-          finalStartLabel, 
-          finalTargetLabel, 
-          startFloor, 
-          targetFloor, 
-          routeResult.startBlock || 'F', 
-          targetBlock || 'M',
-          cabinCode || currentCabinCode || customTargetName
-        );
-        cachedSteps = steps;
-        cachedDistance = routeResult.distanceMeters || 100;
-        window.parent.postMessage({ 
-          type: 'ROUTE_CALCULATED', 
-          from: finalStartLabel, 
-          to: finalTargetLabel, 
-          distanceMeters: routeResult.distanceMeters, 
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
           estimatedMinutes: routeResult.estimatedMinutes,
           steps: steps,
           isLiveGps: !!customStartPos
@@ -2827,45 +2412,13 @@
         startBeacon = null;
         targetAuraBox = null;
         targetDestinationObject = null;
-        liveWalkerGroup = null;
-        liveWalkerRadar = null;
-        isLiveNavigating = false;
-        liveNavProgress = 0.0;
         highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
         highlightedMeshes = [];
         isPathVisible = false;
         setSelectiveBlockVisibility(null, null, null, false);
         showFloor("0");
-        showEntranceGreeting();
+        // Fly to default isometric overview
         smoothFlyCamera(new THREE.Vector3(95, 75, 95), new THREE.Vector3(6, 4, 6));
-      } else if (e.data.type === 'START_LIVE_NAV') {
-        isLiveNavigating = true;
-        isAnimatingToTarget = false;
-        targetNavProgress = null;
-        if (liveNavProgress >= 0.98) {
-          liveNavProgress = 0.0;
-        }
-        if (e.data.speed) liveNavSpeedMultiplier = Number(e.data.speed);
-        if (e.data.follow !== undefined) followCamera = Boolean(e.data.follow);
-      } else if (e.data.type === 'PAUSE_LIVE_NAV') {
-        isLiveNavigating = false;
-        isAnimatingToTarget = false;
-      } else if (e.data.type === 'GO_TO_STEP' || e.data.type === 'SEEK_LIVE_NAV') {
-        const prog = Math.max(0, Math.min(1.0, Number(e.data.progress !== undefined ? e.data.progress : 0)));
-        if (e.data.smooth !== false) {
-          targetNavProgress = prog;
-          isAnimatingToTarget = true;
-          isLiveNavigating = false;
-        } else {
-          liveNavProgress = prog;
-          isAnimatingToTarget = false;
-          targetNavProgress = null;
-          updateWalkerAtProgress(liveNavProgress, false);
-        }
-      } else if (e.data.type === 'SET_NAV_SPEED') {
-        liveNavSpeedMultiplier = Number(e.data.speed || 1.0);
-      } else if (e.data.type === 'SET_FOLLOW_CAM') {
-        followCamera = Boolean(e.data.follow);
       } else if (e.data.type === 'NAVIGATE_ROUTE' || e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
         var block = e.data.block || (e.data.to && e.data.to.block) || 'M';
         var floor = e.data.floor !== undefined ? Number(e.data.floor) : ((e.data.to && e.data.to.floor !== undefined) ? Number(e.data.to.floor) : 0);
@@ -2900,7 +2453,6 @@
       }
     });
 
-<<<<<<< HEAD
     let gpsMarkerGroup = null;
     let gpsPulseRing = null;
     let gpsLabelObj = null;
@@ -2985,40 +2537,14 @@
     }
 
     // Check URL params for theme
-=======
->>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has("theme")) {
       applyTheme(urlParams.get("theme") === "dark");
     }
 
+    // Initial display — show complete campus with ALL blocks visible, no route
     showFloor("0");
-
-    let targetNavProgress = null;
-    let isAnimatingToTarget = false;
-
-    function updateWalkerAtProgress(prog, smoothCam = true) {
-      if (!activeCurve || !liveWalkerGroup) return;
-      const currPt = activeCurve.getPointAt(prog);
-      if (currPt) {
-        liveWalkerGroup.position.copy(currPt);
-
-        const nextT = Math.min(1.0, prog + 0.015);
-        const nextPt = activeCurve.getPointAt(nextT);
-        if (nextPt) {
-          const dir = new THREE.Vector3().subVectors(nextPt, currPt).normalize();
-          if (dir.length() > 0.001) {
-            liveWalkerGroup.rotation.y = Math.atan2(dir.x, dir.z);
-          }
-
-          if (followCamera) {
-            controls.target.lerp(currPt, smoothCam ? 0.08 : 0.25);
-            const camFollow = currPt.clone().sub(new THREE.Vector3(dir.x * 24, -18, dir.z * 24));
-            camera.position.lerp(camFollow, smoothCam ? 0.05 : 0.18);
-          }
-        }
-      }
-    }
+    // No default route — user must manually select From and Where
 
     // ─── Render Loop ─────────────────────────────────────────────
     (function tick() {
@@ -3045,78 +2571,6 @@
           const pt = activeCurve.getPointAt(orb.userData.progress);
           if (pt) orb.position.copy(pt);
         });
-      }
-
-      // ─── Real-Time Live Walker Animation ───
-      if (activeCurve && liveWalkerGroup) {
-        if (liveWalkerRadar) {
-          const radarTime = (Date.now() % 1400) / 1400;
-          const rScale = 1.0 + radarTime * 2.2;
-          liveWalkerRadar.scale.set(rScale, rScale, rScale);
-          liveWalkerRadar.material.opacity = Math.max(0, 0.9 * (1.0 - radarTime));
-        }
-
-        // Smooth transition when user clicks Next or Prev step
-        if (isAnimatingToTarget && targetNavProgress !== null) {
-          const diff = targetNavProgress - liveNavProgress;
-          const stepSpeed = 0.025;
-          if (Math.abs(diff) <= stepSpeed) {
-            liveNavProgress = targetNavProgress;
-            isAnimatingToTarget = false;
-            targetNavProgress = null;
-          } else {
-            liveNavProgress += Math.sign(diff) * stepSpeed;
-          }
-          updateWalkerAtProgress(liveNavProgress, true);
-
-          if (cachedSteps.length > 0) {
-            const stepIdx = Math.min(cachedSteps.length - 1, Math.round(liveNavProgress * (cachedSteps.length - 1)));
-            if (stepIdx !== currentLiveStepIndex) {
-              currentLiveStepIndex = stepIdx;
-            }
-            if (window.parent && window.parent !== window) {
-              window.parent.postMessage({
-                type: 'LIVE_NAV_UPDATE',
-                progress: liveNavProgress,
-                currentStepIndex: currentLiveStepIndex,
-                distanceRemainingMeters: Math.max(0, Math.round(cachedDistance * (1.0 - liveNavProgress))),
-                isFinished: liveNavProgress >= 0.999
-              }, '*');
-            }
-          }
-        } else if (isLiveNavigating) {
-          liveNavProgress += liveNavSpeed * liveNavSpeedMultiplier;
-          if (liveNavProgress >= 1.0) {
-            liveNavProgress = 1.0;
-            isLiveNavigating = false;
-            if (window.parent && window.parent !== window) {
-              window.parent.postMessage({
-                type: 'LIVE_NAV_UPDATE',
-                progress: 1.0,
-                currentStepIndex: Math.max(0, cachedSteps.length - 1),
-                distanceRemainingMeters: 0,
-                isFinished: true
-              }, '*');
-            }
-          }
-          updateWalkerAtProgress(liveNavProgress, true);
-
-          if (cachedSteps.length > 0) {
-            const stepIdx = Math.min(cachedSteps.length - 1, Math.floor(liveNavProgress * cachedSteps.length));
-            if (stepIdx !== currentLiveStepIndex) {
-              currentLiveStepIndex = stepIdx;
-            }
-            if (window.parent && window.parent !== window) {
-              window.parent.postMessage({
-                type: 'LIVE_NAV_UPDATE',
-                progress: liveNavProgress,
-                currentStepIndex: currentLiveStepIndex,
-                distanceRemainingMeters: Math.max(0, Math.round(cachedDistance * (1.0 - liveNavProgress))),
-                isFinished: liveNavProgress >= 1.0
-              }, '*');
-            }
-          }
-        }
       }
 
       if (targetBeacon) {
