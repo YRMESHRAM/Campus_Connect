@@ -397,8 +397,15 @@
     }
 
     @keyframes bounce {
-      0%, 100% { transform: translate(-50%, -100%); }
-      50% { transform: translate(-50%, -115%); }
+
+      0%,
+      100% {
+        transform: translate(-50%, -100%);
+      }
+
+      50% {
+        transform: translate(-50%, -115%);
+      }
     }
 
     .custom-pin-label {
@@ -426,24 +433,30 @@
         max-width: 300px;
         padding: 12px;
       }
+
       .hud-toggle-btn {
         left: 8px;
         top: 8px;
         padding: 5px 10px;
         font-size: 11px;
       }
+
       .block-badge-3d {
         font-size: 9.5px;
         padding: 3px 8px;
       }
+
       .map-label {
         font-size: 8px;
         padding: 2px 5px;
       }
-      .pin-label-start, .pin-label-target {
+
+      .pin-label-start,
+      .pin-label-target {
         font-size: 10px !important;
         padding: 3px 8px !important;
       }
+
       .hint {
         display: none;
       }
@@ -490,7 +503,8 @@
     <div class="path-controls">
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <span style="font-weight:800; font-size:11px; color:#34d399; display:flex; align-items:center; gap:5px;">
-          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
+          <span
+            style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981; box-shadow: 0 0 8px #10b981;"></span>
           3D Green Path:
         </span>
         <button id="toggle-path-btn" class="path-btn">Path: ON</button>
@@ -630,77 +644,99 @@
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
     scene.add(ambientLight);
 
-    const sun = new THREE.DirectionalLight(0xfff5e6, 1.25);
-    sun.position.set(75, 110, 55);
+    const sun = new THREE.DirectionalLight(0xfff5e6, 1.35);
+    sun.position.set(85, 120, 65);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(4096, 4096);
     sun.shadow.camera.near = 10;
-    sun.shadow.camera.far = 400;
-    sun.shadow.camera.left = -140;
-    sun.shadow.camera.right = 140;
-    sun.shadow.camera.top = 140;
-    sun.shadow.camera.bottom = -140;
-    sun.shadow.bias = -0.0005;
+    sun.shadow.camera.far = 450;
+    sun.shadow.camera.left = -160;
+    sun.shadow.camera.right = 160;
+    sun.shadow.camera.top = 160;
+    sun.shadow.camera.bottom = -160;
+    sun.shadow.bias = -0.0003;
     scene.add(sun);
 
-    const fillLight = new THREE.DirectionalLight(0x7dd3fc, 0.45);
-    fillLight.position.set(-60, 50, -60);
+    const fillLight = new THREE.DirectionalLight(0x7dd3fc, 0.5);
+    fillLight.position.set(-70, 60, -70);
     scene.add(fillLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.4);
+    const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x0f172a, 0.45);
     scene.add(hemiLight);
 
-    // ─── Architectural Materials Palette ────────────────────────
+    // ─── Architectural & Environmental Materials Palette ──────────────
     const mats = {
-      grass: new THREE.MeshStandardMaterial({ color: themeColors.dark.grass, roughness: 0.9, metalness: 0.05 }),
-      innerLawn: new THREE.MeshStandardMaterial({ color: themeColors.dark.innerLawn, roughness: 0.85 }),
-      court: new THREE.MeshStandardMaterial({ color: themeColors.dark.court, roughness: 0.75 }),
-      courtLines: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }),
-      road: new THREE.MeshStandardMaterial({ color: themeColors.dark.road, roughness: 0.8 }),
-      roadLine: new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.4 }),
-      pad: new THREE.MeshStandardMaterial({ color: themeColors.dark.pad, roughness: 0.85 }),
-      park: new THREE.MeshStandardMaterial({ color: themeColors.dark.park, roughness: 0.85 }),
-      parkingLines: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+      grass: new THREE.MeshStandardMaterial({ color: themeColors.dark.grass, roughness: 0.85, metalness: 0.05 }),
+      innerLawn: new THREE.MeshStandardMaterial({ color: themeColors.dark.innerLawn, roughness: 0.8 }),
+      court: new THREE.MeshStandardMaterial({ color: themeColors.dark.court, roughness: 0.65 }),
+      courtLines: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+      road: new THREE.MeshStandardMaterial({ color: themeColors.dark.road, roughness: 0.75 }),
+      roadLine: new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 }),
+      roadStripe: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 }),
+      pad: new THREE.MeshStandardMaterial({ color: themeColors.dark.pad, roughness: 0.8 }),
+      park: new THREE.MeshStandardMaterial({ color: themeColors.dark.park, roughness: 0.8 }),
+      parkingLines: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4 }),
 
-      wallBase: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallBase, roughness: 0.45, metalness: 0.05 }),
-      wallBlockM: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallM, roughness: 0.4 }),
-      wallBlockF: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallF, roughness: 0.4 }),
-      wallAdmin: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallAdmin, roughness: 0.45 }),
-      wallBlockE: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallE, roughness: 0.4 }),
-      wallBlockB: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallB, roughness: 0.4 }),
-      wallCanteen: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallCanteen, roughness: 0.45 }),
+      wallBase: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallBase, roughness: 0.4, metalness: 0.05 }),
+      wallBlockM: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallM, roughness: 0.35 }),
+      wallBlockF: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallF, roughness: 0.35 }),
+      wallAdmin: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallAdmin, roughness: 0.4 }),
+      wallBlockE: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallE, roughness: 0.35 }),
+      wallBlockB: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallB, roughness: 0.35 }),
+      wallCanteen: new THREE.MeshStandardMaterial({ color: themeColors.dark.wallCanteen, roughness: 0.4 }),
 
-      trimM: new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.3, metalness: 0.2 }),
-      trimF: new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.3, metalness: 0.2 }),
-      trimAdmin: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.3, metalness: 0.2 }),
-      trimE: new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.3, metalness: 0.2 }),
-      trimB: new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3, metalness: 0.2 }),
-      trimCanteen: new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.3, metalness: 0.2 }),
+      trimM: new THREE.MeshStandardMaterial({ color: 0x84cc16, roughness: 0.25, metalness: 0.25 }),
+      trimF: new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.25, metalness: 0.25 }),
+      trimAdmin: new THREE.MeshStandardMaterial({ color: 0xeab308, roughness: 0.25, metalness: 0.25 }),
+      trimE: new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.25, metalness: 0.25 }),
+      trimB: new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.25, metalness: 0.25 }),
+      trimCanteen: new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.25, metalness: 0.25 }),
 
-      wallHOD: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.4 }),
-      wallLab: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.4 }),
-      wallWork: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.5 }),
-      wash: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.6 }),
+      wallHOD: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.35 }),
+      wallLab: new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35 }),
+      wallWork: new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.45 }),
+      wash: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.55 }),
 
       stairs: new THREE.MeshStandardMaterial({
         color: 0xf59e0b,
         emissive: 0xd97706,
-        emissiveIntensity: 0.35,
-        roughness: 0.4,
-        metalness: 0.1
+        emissiveIntensity: 0.4,
+        roughness: 0.35,
+        metalness: 0.15
       }),
 
       glass: new THREE.MeshStandardMaterial({
         color: 0x38bdf8,
-        roughness: 0.1,
-        metalness: 0.6,
+        roughness: 0.08,
+        metalness: 0.85,
         transparent: true,
-        opacity: 0.85
+        opacity: 0.82
       }),
-      slab: new THREE.MeshStandardMaterial({ color: themeColors.dark.slab, roughness: 0.6 }),
+      slab: new THREE.MeshStandardMaterial({ color: themeColors.dark.slab, roughness: 0.55 }),
       slabGhost: new THREE.MeshStandardMaterial({ color: 0x22d3ee, roughness: 0.3, metalness: 0.1, transparent: true, opacity: 0.08, depthWrite: false }),
-      trunk: new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 }),
-      leaf: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 }),
+      trunk: new THREE.MeshStandardMaterial({ color: 0x5c2c11, roughness: 0.9 }),
+      leaf: new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.75 }),
+      leafLight: new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.7 }),
+      palmLeaf: new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.65 }),
+      hedge: new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 }),
+      flowerPink: new THREE.MeshStandardMaterial({ color: 0xf43f5e, roughness: 0.6 }),
+      flowerYellow: new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.6 }),
+
+      // Vehicles & Details
+      carRed: new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.2, metalness: 0.8 }),
+      carBlue: new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.2, metalness: 0.8 }),
+      carWhite: new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25, metalness: 0.5 }),
+      carSilver: new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.2, metalness: 0.9 }),
+      carDark: new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.2, metalness: 0.8 }),
+      carGlass: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1, metalness: 0.9 }),
+      carWheel: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.9 }),
+
+      // Lighting & Roof Tech
+      lampPost: new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 }),
+      lampGlow: new THREE.MeshBasicMaterial({ color: 0xfef08a }),
+      solarPanel: new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.9, roughness: 0.1 }),
+      hvac: new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.6, roughness: 0.4 }),
+      curb: new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.6 })
     };
 
     function applyTheme(isDark) {
@@ -945,11 +981,93 @@
       );
     }
 
+    // ─── REALISTIC 3D ENVIRONMENT HELPERS ──────────────────────
+    function addParkedCar(x, z, rotY, bodyMat) {
+      const car = new THREE.Group();
+      car.name = "parked-car";
+      const body = box(1.9, 0.75, 4.0, bodyMat, 0, 0.5, 0, car);
+      const cabin = box(1.65, 0.65, 2.2, mats.carGlass, 0, 1.15, -0.2, car);
+      [-0.9, 0.9].forEach(wx => {
+        [-1.2, 1.2].forEach(wz => {
+          const w = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.25, 12), mats.carWheel);
+          w.rotation.z = Math.PI / 2;
+          w.position.set(wx, 0.32, wz);
+          car.add(w);
+        });
+      });
+      car.position.set(x, 0.22, z);
+      car.rotation.y = rotY;
+      ground.add(car);
+    }
+
+    function addStreetLamp(x, z) {
+      const lamp = new THREE.Group();
+      lamp.name = "street-lamp";
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 4.2, 8), mats.lampPost);
+      pole.position.y = 2.1;
+      pole.castShadow = true;
+      lamp.add(pole);
+
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.25, 0.6), mats.lampPost);
+      head.position.set(0, 4.2, 0);
+      lamp.add(head);
+
+      const glow = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), mats.lampGlow);
+      glow.position.set(0, 4.05, 0);
+      lamp.add(glow);
+
+      lamp.position.set(x, 0.2, z);
+      ground.add(lamp);
+    }
+
+    function addPalmTree(x, z, s = 1) {
+      const p = new THREE.Group();
+      p.name = "tree";
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25 * s, 0.4 * s, 5.5 * s, 8), mats.trunk);
+      trunk.position.y = 2.75 * s;
+      trunk.castShadow = true;
+      p.add(trunk);
+
+      for (let i = 0; i < 7; i++) {
+        const frond = new THREE.Mesh(new THREE.ConeGeometry(0.8 * s, 3.2 * s, 4), mats.palmLeaf);
+        frond.rotation.z = Math.PI / 3;
+        frond.rotation.y = (i * Math.PI * 2) / 7;
+        frond.position.set(0, 5.2 * s, 0);
+        frond.castShadow = true;
+        p.add(frond);
+      }
+      p.position.set(x, 0, z);
+      ground.add(p);
+    }
+
+    function addManicuredHedge(x, z, w, d) {
+      box(w, 0.7, d, mats.hedge, x, 0.55, z, ground);
+    }
+
     // ─── GROUND TERRAIN & AMENITIES ──────────────────────────────
     box(340, 0.8, 580, mats.grass, -20, -0.4, -80, ground);
     box(210, 0.45, 160, mats.pad, 4, 0.05, 4, ground);
     box(54, 0.3, 34, mats.innerLawn, -4, 0.22, -6, ground);
     label(ground, "🌿 OPEN GROUND", -4, 1.2, -6, true);
+
+    // Hedge border around open lawn
+    addManicuredHedge(-4, -23.5, 54.5, 1.2);
+    addManicuredHedge(-4, 11.5, 54.5, 1.2);
+    addManicuredHedge(-31.5, -6, 1.2, 34.5);
+    addManicuredHedge(23.5, -6, 1.2, 34.5);
+
+    // Main Campus Decorative Entrance Gate Arch
+    const gateGroup = new THREE.Group();
+    gateGroup.name = "main-gate-arch";
+    box(2.4, 6.8, 2.4, mats.wallAdmin, -60, 3.4, -55, gateGroup);
+    box(2.4, 6.8, 2.4, mats.wallAdmin, -44, 3.4, -55, gateGroup);
+    box(18.4, 1.3, 2.6, mats.trimAdmin, -52, 7.0, -55, gateGroup);
+    label(gateGroup, "🏛️ S.B. JAIN MAIN GATE", -52, 8.4, -55, true);
+    ground.add(gateGroup);
+
+    // Palm trees along entrance avenue
+    [-58, -50, -42].forEach(px => addPalmTree(px, -62, 1.1));
+    [-58, -50, -42].forEach(px => addPalmTree(px, -48, 1.1));
 
     const road = new THREE.Mesh(new THREE.RingGeometry(78, 94, 64), mats.road);
     road.rotation.x = -Math.PI / 2;
@@ -958,11 +1076,37 @@
     road.receiveShadow = true;
     ground.add(road);
 
+    // Outer road ring stripe line
+    const roadLineRing = new THREE.Mesh(new THREE.RingGeometry(85.5, 86.5, 64), mats.roadLine);
+    roadLineRing.rotation.x = -Math.PI / 2;
+    roadLineRing.position.set(4, 0.15, 6);
+    roadLineRing.scale.set(1.15, 0.85, 1);
+    ground.add(roadLineRing);
+
     box(34, 0.25, 18, mats.park, -2, 0.22, 28, ground, "parking-a");
     label(ground, "🅿️ PARKING A", -2, 1.2, 28, true);
     box(10, 0.25, 24, mats.park, 48, 0.22, 22, ground, "parking-b-sub");
     box(18, 0.25, 14, mats.park, 72, 0.22, 36, ground, "parking-b");
     label(ground, "🅿️ PARKING B", 72, 1.2, 36);
+
+    // Parked Vehicles in Parking A
+    addParkedCar(-12, 28, 0, mats.carRed);
+    addParkedCar(-7, 28, 0, mats.carWhite);
+    addParkedCar(-2, 28, 0, mats.carBlue);
+    addParkedCar(3, 28, 0, mats.carSilver);
+    addParkedCar(8, 28, 0, mats.carDark);
+
+    // Parked Vehicles in Parking B
+    addParkedCar(68, 36, Math.PI / 2, mats.carWhite);
+    addParkedCar(72, 36, Math.PI / 2, mats.carBlue);
+    addParkedCar(76, 36, Math.PI / 2, mats.carRed);
+
+    // Street Lamps along pedestrian pathways
+    [
+      [-30, -18], [22, -18], [-30, 8], [22, 8],
+      [-50, -40], [-20, -40], [20, -40], [50, -40],
+      [-75, 0], [-75, 40], [50, 40], [-94, -30]
+    ].forEach(([lx, lz]) => addStreetLamp(lx, lz));
 
     box(7.5, 3.4, 5.5, mats.wallLab, -63, 1.7, 22.5, ground, "amul-franchise");
     label(ground, "🍦 AMUL", -63, 3.8, 22.5, true);
@@ -984,7 +1128,7 @@
       const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.22 * s, 0.32 * s, 1.8 * s, 6), mats.trunk);
       tr.position.y = 0.9 * s;
       tr.castShadow = true;
-      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3 * s, 1), mats.leaf);
+      const leaf = new THREE.Mesh(new THREE.IcosahedronGeometry(1.3 * s, 1), (s > 1.1 ? mats.leafLight : mats.leaf));
       leaf.position.y = 2.4 * s;
       leaf.castShadow = true;
       t.add(tr, leaf);
@@ -1216,6 +1360,23 @@
       room(g, "room-M305", 6.2, 3.6, 27.4, 35, 3, mats.wallBlockM, "M305");
       stairs(3, 12, 12, "🪜 STAIRS (M-1)");
       stairs(3, 22, 16, "🪜 STAIRS (M-2)");
+
+      // ─── ROOFTOP ARCHITECTURAL REALISM ─────────────────────────────
+      function addRooftopTech(parent, x, z, type) {
+        const roofY = floorY(3) + FH / 2 + 0.15;
+        if (type === 'solar') {
+          const solar = box(14, 0.15, 6, mats.solarPanel, x, roofY, z, parent);
+          solar.rotation.x = 0.1;
+        } else if (type === 'hvac') {
+          box(3.2, 1.4, 2.2, mats.hvac, x, roofY + 0.7, z, parent);
+          box(2.2, 1.2, 1.8, mats.hvac, x + 3.8, roofY + 0.6, z + 0.5, parent);
+        }
+      }
+
+      addRooftopTech(g, 22, 28, 'solar');
+      addRooftopTech(g, 32, 22, 'hvac');
+      addRooftopTech(g, -48, 28, 'solar');
+      addRooftopTech(g, -42, -26, 'hvac');
     }
 
     function deriveMeshBlock(id) {
@@ -1505,12 +1666,12 @@
       floorGroups.forEach(g => {
         if (!foundObj) g.traverse(checkObj);
       });
-      
+
       // Fallback search in campus
       if (!foundObj) {
         campus.traverse(checkObj);
       }
-      
+
       return foundObj;
     }
 
@@ -1539,10 +1700,10 @@
       mesh.getWorldPosition(pos);
       const floor = getMeshFloor(mesh);
       pos.y = floorY(floor) + 0.35;
-      
+
       const block = getMeshBlock(mesh).toUpperCase();
       const doorPos = pos.clone();
-      
+
       if (block === "M") {
         doorPos.x = 25;
       } else if (block === "F" || block === "E") {
@@ -1552,7 +1713,7 @@
       } else if (block === "ADM") {
         doorPos.z = -28;
       }
-      
+
       return { roomPos: pos, doorPos: doorPos, floor: floor, block: block };
     }
 
@@ -1560,52 +1721,52 @@
       if (!points || points.length === 0) return;
       const routeBox = new THREE.Box3();
       points.forEach(p => routeBox.expandByPoint(p));
-      
+
       const center = new THREE.Vector3();
       routeBox.getCenter(center);
-      
+
       const size = new THREE.Vector3();
       routeBox.getSize(size);
-      
+
       const maxDim = Math.max(size.x, size.y, size.z);
-      const offsetDistance = Math.max(maxDim * 1.35, 48); 
-      
+      const offsetDistance = Math.max(maxDim * 1.35, 48);
+
       const cameraPos = new THREE.Vector3(
         center.x + offsetDistance * 0.65,
         center.y + offsetDistance * 0.65 + 16,
         center.z + offsetDistance * 0.65
       );
-      
+
       smoothFlyCamera(cameraPos, center);
     }
 
     function updateLabelVisibility(isNavActive = false, activeRouteNodes = null, startMesh = null, targetMesh = null) {
       const activeFloorNum = activeFloorKey === "all" ? null : Number(activeFloorKey);
       const isAll = activeFloorKey === "all";
-      
+
       const startRoomId = startMesh ? (startMesh.userData.roomId || "").toLowerCase() : "";
       const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
-      
+
       document.querySelectorAll(".map-label").forEach((el) => {
         if (isNavActive) {
           const labelText = (el.textContent || "").toLowerCase().trim();
           const isStairs = el.dataset.stairs === "true" || el.classList.contains("stairs-label");
           let showLabel = false;
-          
+
           if (startRoomId && (labelText.includes(startRoomId) || startRoomId.includes(labelText))) {
             showLabel = true;
           }
           if (targetRoomId && (labelText.includes(targetRoomId) || targetRoomId.includes(labelText))) {
             showLabel = true;
           }
-          
+
           if (isStairs && activeRouteNodes) {
             let stairsBlock = null;
             if (labelText.includes("(m)")) stairsBlock = "M";
             else if (labelText.includes("(f)")) stairsBlock = "F";
             else if (labelText.includes("(e)")) stairsBlock = "E";
             else if (labelText.includes("(b)")) stairsBlock = "B";
-            
+
             if (stairsBlock) {
               const searchKey = "STAIRS_" + stairsBlock;
               activeRouteNodes.forEach(nodeKey => {
@@ -1615,7 +1776,7 @@
               });
             }
           }
-          
+
           el.style.display = showLabel ? "" : "none";
         } else {
           const floorAttr = el.dataset.floor;
@@ -1625,7 +1786,9 @@
             if (!floorMatches) { el.style.display = "none"; return; }
           }
           const isMajor = el.dataset.major === "true" || el.classList.contains("major");
-          el.style.display = (isMajor || isStairs) ? "" : "none";
+          const text = (el.textContent || "").trim();
+          const isRoomCode = /^[FMEBG]\d/i.test(text) || /^ROOM/i.test(text);
+          el.style.display = ((isMajor || isStairs) && !isRoomCode) ? "" : "none";
         }
       });
 
@@ -1639,7 +1802,9 @@
       group.visible = on;
       group.traverse((obj) => {
         obj.visible = on;
-        if (obj.isCSS2DObject && obj.element) obj.element.style.display = on ? "" : "none";
+        if (obj.isCSS2DObject && obj.element) {
+          if (!on) obj.element.style.display = "none";
+        }
       });
     }
 
@@ -1653,7 +1818,7 @@
         floorGroups.forEach((g, i) => isolateFloor(g, i === n));
         now.innerHTML = `<span>●</span> ${names[n]} Active`;
       }
-      updateLabelVisibility(false);
+      updateLabelVisibility(isPathVisible);
     }
 
     function setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, isNavActive = true) {
@@ -1675,7 +1840,7 @@
         }
         activeBlocks.add("GROUND");
       }
-      
+
       const activeFloors = new Set();
       if (isNavActive && activeRouteNodes) {
         activeRouteNodes.forEach(nodeKey => {
@@ -1690,7 +1855,7 @@
           badgeObj.element.style.display = isNavActive ? "none" : "";
         }
       });
-      
+
       campus.traverse((obj) => {
         if (obj.isCSS2DObject || (obj.userData && obj.userData.isLabel)) {
           if (isNavActive) {
@@ -1698,7 +1863,7 @@
             const targetRoomId = targetMesh ? (targetMesh.userData.roomId || "").toLowerCase() : "";
             const text = (obj.userData.text || (obj.element ? obj.element.textContent : "") || "").toLowerCase().trim();
             const isStairs = obj.userData.isStairs || (obj.element && obj.element.classList.contains("stairs-label"));
-            
+
             let showLabel = false;
             if (startRoomId && (text.includes(startRoomId) || startRoomId.includes(text))) showLabel = true;
             if (targetRoomId && (text.includes(targetRoomId) || targetRoomId.includes(text))) showLabel = true;
@@ -1714,12 +1879,12 @@
                 activeRouteNodes.forEach(nodeKey => {
                   if (nodeKey.startsWith(searchKey)) isUsedInRoute = true;
                 });
-                
+
                 // Show ONLY ONE stairs label per staircase block (on active target or start floor) to avoid stacked duplicates
                 const targetFloor = targetMesh ? getMeshFloor(targetMesh) : (startMesh ? getMeshFloor(startMesh) : 0);
-                const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ? 
+                const labelFloor = (obj.parent && obj.parent.name && obj.parent.name.startsWith("floor-")) ?
                   parseInt(obj.parent.name.replace("floor-", ""), 10) : 0;
-                
+
                 if (isUsedInRoute && labelFloor === targetFloor) {
                   showLabel = true;
                 }
@@ -1730,9 +1895,11 @@
           } else {
             const isMajor = obj.userData.isMajor;
             const isStairs = obj.userData.isStairs;
+            const text = (obj.userData.text || (obj.element ? obj.element.textContent : "") || "").trim();
+            const isRoomCode = /^[FMEBG]\d/i.test(text) || /^ROOM/i.test(text);
             const floorAttr = obj.element ? obj.element.dataset.floor : undefined;
             const isAll = (activeFloorKey === "all");
-            let showLabel = isMajor || isStairs;
+            let showLabel = (isMajor || isStairs) && !isRoomCode;
             if (floorAttr !== undefined && !isAll) {
               showLabel = showLabel && (floorAttr === String(activeFloorKey));
             }
@@ -1750,7 +1917,7 @@
           const isStartMesh = (obj === startMesh);
           const meshBlock = (obj.userData.block || deriveMeshBlock(obj.name || "")).toUpperCase();
           const meshFloor = getMeshFloor(obj);
-          
+
           if (!isNavActive) {
             obj.visible = true;
             // Restore original slab material if it was ghosted
@@ -1760,7 +1927,7 @@
             }
           } else {
             const belongsToActiveBlock = activeBlocks.has(meshBlock);
-            
+
             if (obj.userData.isRoom && !isStairs) {
               obj.visible = isStartMesh || isTargetMesh;
             } else if (isStairs) {
@@ -1779,7 +1946,7 @@
           }
         }
       });
-      
+
       ground.traverse((obj) => {
         if (obj.name === "tree" || (obj.parent && obj.parent.name === "tree")) {
           obj.visible = !isNavActive;
@@ -1793,7 +1960,7 @@
           }
         }
       });
-      
+
       updateLabelVisibility(isNavActive, activeRouteNodes, startMesh, targetMesh);
     }
 
@@ -1801,7 +1968,7 @@
       highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
       highlightedMeshes = [];
       targetDestinationObject = null;
-      
+
       let targetMesh = findRoomMesh(targetCabin || targetBlock);
       if (targetMesh) {
         targetDestinationObject = targetMesh;
@@ -1814,7 +1981,7 @@
         targetMesh.material = targetMesh.userData.highlightMaterial;
         highlightedMeshes.push(targetMesh);
       }
-      
+
       let startMesh = findRoomMesh(startKey);
       if (!startMesh && typeof startKey === "string") {
         startMesh = findRoomMesh(startKey.replace(/^room-/i, ""));
@@ -1829,7 +1996,7 @@
         startMesh.material = startMesh.userData.startHighlightMaterial;
         highlightedMeshes.push(startMesh);
       }
-      
+
       return { startMesh, targetMesh };
     }
 
@@ -1867,60 +2034,70 @@
       return obj;
     }
 
-    function getExactRoutePoints(startKeyOrInfo, targetBlock, floorLevel = 0, customTargetName = null, cabinCode = null) {
+    function getExactRoutePoints(startKeyOrInfo, targetBlock, floorLevel = 0, customTargetName = null, cabinCode = null, customStartPos = null) {
       const pts = [];
-      
+
       let startPos = null;
       let startDoorPos = null;
       let startFloor = 0;
       let startBlock = "F";
       let startNodeKey = "ENTRANCE_F";
-      
-      let startMesh = findRoomMesh(startKeyOrInfo);
-      if (!startMesh && typeof startKeyOrInfo === "string") {
-        var cleanedCode = startKeyOrInfo.replace(/^room-/i, "");
-        startMesh = findRoomMesh(cleanedCode);
-      }
-      
-      if (startMesh) {
-        const access = getWalkableAccessPoints(startMesh);
-        startPos = access.roomPos;
-        startDoorPos = access.doorPos;
-        startFloor = access.floor;
-        startBlock = access.block;
-        startNodeKey = findNearestNode(startDoorPos, startFloor, startBlock);
+
+      if (customStartPos && customStartPos.isVector3) {
+        startPos = customStartPos.clone();
+        startDoorPos = startPos.clone();
+        startNodeKey = findNearestNode(startPos, floorLevel, targetBlock);
+        if (navNodes[startNodeKey]) {
+          startBlock = navNodes[startNodeKey].block || "F";
+          startFloor = navNodes[startNodeKey].floor || 0;
+        }
       } else {
-        if (typeof startKeyOrInfo === "string" && startLocations[startKeyOrInfo]) {
-          startNodeKey = startLocations[startKeyOrInfo].node;
-          startBlock = startLocations[startKeyOrInfo].block;
-          startFloor = startLocations[startKeyOrInfo].floor || 0;
-          startPos = navNodes[startNodeKey].pos.clone();
-          startDoorPos = startPos.clone();
-        } else if (typeof startKeyOrInfo === "string" && navNodes[startKeyOrInfo]) {
-          startNodeKey = startKeyOrInfo;
-          startBlock = navNodes[startKeyOrInfo].block;
-          startFloor = navNodes[startKeyOrInfo].floor || 0;
-          startPos = navNodes[startKeyOrInfo].pos.clone();
-          startDoorPos = startPos.clone();
+        let startMesh = findRoomMesh(startKeyOrInfo);
+        if (!startMesh && typeof startKeyOrInfo === "string") {
+          var cleanedCode = startKeyOrInfo.replace(/^room-/i, "");
+          startMesh = findRoomMesh(cleanedCode);
+        }
+
+        if (startMesh) {
+          const access = getWalkableAccessPoints(startMesh);
+          startPos = access.roomPos;
+          startDoorPos = access.doorPos;
+          startFloor = access.floor;
+          startBlock = access.block;
+          startNodeKey = findNearestNode(startDoorPos, startFloor, startBlock);
         } else {
-          startPos = navNodes["ENTRANCE_F"].pos.clone();
-          startDoorPos = startPos.clone();
-          startNodeKey = "ENTRANCE_F";
-          startBlock = "F";
-          startFloor = 0;
+          if (typeof startKeyOrInfo === "string" && startLocations[startKeyOrInfo]) {
+            startNodeKey = startLocations[startKeyOrInfo].node;
+            startBlock = startLocations[startKeyOrInfo].block;
+            startFloor = startLocations[startKeyOrInfo].floor || 0;
+            startPos = navNodes[startNodeKey].pos.clone();
+            startDoorPos = startPos.clone();
+          } else if (typeof startKeyOrInfo === "string" && navNodes[startKeyOrInfo]) {
+            startNodeKey = startKeyOrInfo;
+            startBlock = navNodes[startKeyOrInfo].block;
+            startFloor = navNodes[startKeyOrInfo].floor || 0;
+            startPos = navNodes[startKeyOrInfo].pos.clone();
+            startDoorPos = startPos.clone();
+          } else {
+            startPos = navNodes["ENTRANCE_F"].pos.clone();
+            startDoorPos = startPos.clone();
+            startNodeKey = "ENTRANCE_F";
+            startBlock = "F";
+            startFloor = 0;
+          }
         }
       }
-      
+
       let finalTargetPos = null;
       let targetDoorPos = null;
       let targetFloor = floorLevel;
       let targetNodeKey = "ENTRANCE_M";
-      
+
       let targetMesh = findRoomMesh(cabinCode || customTargetName || targetBlock);
       if (!targetMesh && customTargetName) {
         targetMesh = findRoomMesh(customTargetName);
       }
-      
+
       if (targetMesh) {
         const access = getWalkableAccessPoints(targetMesh);
         finalTargetPos = access.roomPos;
@@ -1929,30 +2106,30 @@
         targetNodeKey = findNearestNode(targetDoorPos, targetFloor, targetBlock);
       } else {
         const fY = floorY(floorLevel) + 0.35;
-        const blockDefaultTargets = { 
-          M: new THREE.Vector3(25, fY, 28), 
-          F: new THREE.Vector3(-48, fY, -10), 
-          ADM: new THREE.Vector3(-12, fY, -28), 
-          E: new THREE.Vector3(-46, fY, 30), 
-          B: new THREE.Vector3(2, fY, 12), 
-          CANTEEN: new THREE.Vector3(-84, fY, -96) 
+        const blockDefaultTargets = {
+          M: new THREE.Vector3(25, fY, 28),
+          F: new THREE.Vector3(-48, fY, -10),
+          ADM: new THREE.Vector3(-12, fY, -28),
+          E: new THREE.Vector3(-46, fY, 30),
+          B: new THREE.Vector3(2, fY, 12),
+          CANTEEN: new THREE.Vector3(-84, fY, -96)
         };
         finalTargetPos = blockDefaultTargets[targetBlock] || new THREE.Vector3(25, fY, 28);
         targetDoorPos = finalTargetPos.clone();
         targetNodeKey = findNearestNode(targetDoorPos, floorLevel, targetBlock);
       }
-      
+
       const nodePath = findNavGraphRoute(startNodeKey, targetNodeKey);
-      
+
       pts.push(startPos.clone());
       if (startDoorPos.distanceTo(startPos) > 0.1) {
         pts.push(startDoorPos.clone());
       }
-      
+
       for (let i = 0; i < nodePath.length; i++) {
         const currNode = navNodes[nodePath[i]];
         const currPos = currNode.pos.clone();
-        
+
         if (i > 0) {
           const prevNode = navNodes[nodePath[i - 1]];
           if (prevNode.floor !== currNode.floor) {
@@ -1960,8 +2137,8 @@
             for (let s = 1; s <= stepsCount; s++) {
               const r = s / (stepsCount + 1);
               pts.push(new THREE.Vector3(
-                prevNode.pos.x + (s % 2 === 1 ? -0.7 : 0.7), 
-                prevNode.pos.y + (currNode.pos.y - prevNode.pos.y) * r, 
+                prevNode.pos.x + (s % 2 === 1 ? -0.7 : 0.7),
+                prevNode.pos.y + (currNode.pos.y - prevNode.pos.y) * r,
                 prevNode.pos.z + (s % 2 === 1 ? 0.7 : -0.7)
               ));
             }
@@ -1971,35 +2148,35 @@
           pts.push(currPos);
         }
       }
-      
+
       if (targetDoorPos.distanceTo(pts[pts.length - 1]) > 0.4) {
         pts.push(targetDoorPos.clone());
       }
       if (finalTargetPos.distanceTo(pts[pts.length - 1]) > 0.1) {
         pts.push(finalTargetPos.clone());
       }
-      
+
       let totalDistUnits = 0;
       for (let i = 0; i < pts.length - 1; i++) {
         totalDistUnits += pts[i].distanceTo(pts[i + 1]);
       }
-      
-      return { 
-        points: pts, 
-        nodePath, 
-        startPos, 
-        targetPos: finalTargetPos, 
-        distanceMeters: Math.round(totalDistUnits * 1.5), 
-        estimatedMinutes: Math.max(1, Math.round(totalDistUnits * 1.5 / 65)), 
-        startBlock 
+
+      return {
+        points: pts,
+        nodePath,
+        startPos,
+        targetPos: finalTargetPos,
+        distanceMeters: Math.round(totalDistUnits * 1.5),
+        estimatedMinutes: Math.max(1, Math.round(totalDistUnits * 1.5 / 65)),
+        startBlock
       };
     }
 
-    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null, sourceBlock = null, startName = null) {
+    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null, sourceBlock = null, startName = null, customStartPos = null) {
       if (startKey) currentStartLocation = startKey;
       currentTargetBlock = targetBlock; currentRouteFloor = floorLevel; currentTargetName = customTargetName; currentCabinCode = cabinCode;
       currentSourceBlock = sourceBlock || (startLocations[currentStartLocation]?.block || "F");
-      
+
       while (pathGroup.children.length > 0) {
         const child = pathGroup.children[0];
         if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
@@ -2011,24 +2188,24 @@
       const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
 
       if (!isPathVisible) return;
-      
-      const routeResult = getExactRoutePoints(currentStartLocation, targetBlock, floorLevel, customTargetName, cabinCode || customTargetName || targetBlock);
-      
+
+      const routeResult = getExactRoutePoints(currentStartLocation, targetBlock, floorLevel, customTargetName, cabinCode || customTargetName || targetBlock, customStartPos);
+
       // Update visibility dynamically
       const activeRouteNodes = new Set(routeResult.nodePath);
       setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, true);
 
       if (routeResult.points.length < 2) return;
-      
+
       activeCurve = new CorridorCurve(routeResult.points);
       const tubeGeo = new THREE.TubeGeometry(activeCurve, 160, 0.45, 14, false);
       const pathMesh = new THREE.Mesh(tubeGeo, pathMat); pathMesh.renderOrder = 999; pathGroup.add(pathMesh);
-      
+
       const curvePts = activeCurve.getPoints(180);
       const coreGeo = new THREE.BufferGeometry().setFromPoints(curvePts);
       const coreMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 4 });
       const pathCoreLine = new THREE.Line(coreGeo, coreMat); pathCoreLine.renderOrder = 1000; pathGroup.add(pathCoreLine);
-      
+
       for (let i = 0; i < 7; i++) {
         const orb = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 16), pulseMat);
         orb.userData = { progress: i * 0.14 }; orb.renderOrder = 1001; pathGroup.add(orb); pulseOrbs.push(orb);
@@ -2050,7 +2227,6 @@
         const dir = new THREE.Vector3().subVectors(ptAhead, pt).normalize();
         const axis = new THREE.Vector3(0, 1, 0);
         const quaternion = new THREE.Quaternion();
-        // Cone default points up (+Y), we want it pointing in dir
         const rotAxis = new THREE.Vector3().crossVectors(axis, dir).normalize();
         const angle = Math.acos(Math.min(1, Math.max(-1, axis.dot(dir))));
         if (rotAxis.length() > 0.001) {
@@ -2061,110 +2237,107 @@
         pathGroup.add(arrow);
       }
 
-      // ── Floor Transition Labels at staircase waypoints ──
-      if (routeResult.nodePath && routeResult.nodePath.length > 1) {
-        for (let i = 1; i < routeResult.nodePath.length; i++) {
-          const prevKey = routeResult.nodePath[i - 1];
-          const currKey = routeResult.nodePath[i];
-          const prevNode = navNodes[prevKey];
-          const currNode = navNodes[currKey];
-          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
-            const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
-            const goingUp = currNode.floor > prevNode.floor;
-            const transLabel = (goingUp ? '⬆️ Going Up to ' : '⬇️ Going Down to ') + (floorNames[currNode.floor] || ('Floor ' + currNode.floor));
-            createCustomLabel(transLabel, 'floor-transition-' + i, 
-              new THREE.Vector3(currNode.pos.x, currNode.pos.y + 2.8, currNode.pos.z)
-            );
-          }
-        }
+      // Start location pin and label (only if not using custom live start position)
+      if (!customStartPos) {
+        startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), startPinMat);
+        startBeacon.position.copy(routeResult.startPos).add(new THREE.Vector3(0, 1.25, 0)); pathGroup.add(startBeacon);
+
+        let finalStartLabel = "Start Location";
+        if (startName) finalStartLabel = startName;
+        else if (startLocations[currentStartLocation]) finalStartLabel = startLocations[currentStartLocation].label;
+        else if (startMesh) finalStartLabel = startMesh.name || ("Classroom " + startKey);
+
+        createCustomLabel("📍 " + finalStartLabel, "pin-label-start", routeResult.startPos.clone().add(new THREE.Vector3(0, 3.6, 0)));
       }
-      
-      // Start location pin and label
-      startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), startPinMat);
-      startBeacon.position.copy(routeResult.startPos).add(new THREE.Vector3(0, 1.25, 0)); pathGroup.add(startBeacon);
-      
-      let finalStartLabel = "Start Location";
-      if (startName) finalStartLabel = startName;
-      else if (startLocations[currentStartLocation]) finalStartLabel = startLocations[currentStartLocation].label;
-      else if (startMesh) finalStartLabel = startMesh.name || ("Classroom " + startKey);
-      
-      createCustomLabel("📍 " + finalStartLabel, "pin-label-start", routeResult.startPos.clone().add(new THREE.Vector3(0, 3.6, 0)));
-      
+
       // Target location pin and label
       targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.8, 16), pulseMat);
       targetBeacon.rotation.x = Math.PI; targetBeacon.position.copy(routeResult.targetPos).add(new THREE.Vector3(0, 3.0, 0)); pathGroup.add(targetBeacon);
-      
+
       const auraGeo = new THREE.BoxGeometry(5.2, 5.2, 5.2), auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.9 });
       targetAuraBox = new THREE.Mesh(auraGeo, auraMat); targetAuraBox.position.copy(routeResult.targetPos); pathGroup.add(targetAuraBox);
-      
+
       let finalTargetLabel = "Destination";
       if (customTargetName) finalTargetLabel = customTargetName;
       else if (targetMesh) finalTargetLabel = targetMesh.name || ("Classroom " + targetBlock);
-      
+
       createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
-      
-    function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
-      const steps = [];
-      const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
-      const startFlStr = floorNames[startFloor] || `Floor ${startFloor}`;
-      const targetFlStr = floorNames[targetFloor] || `Floor ${targetFloor}`;
 
-      steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
+      function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
+        const steps = [];
+        const floorNames = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
+        const startFlStr = floorNames[startFloor] || `Floor ${startFloor}`;
+        const targetFlStr = floorNames[targetFloor] || `Floor ${targetFloor}`;
 
-      let usedStairs = [];
-      if (nodePath) {
-        for (let i = 1; i < nodePath.length; i++) {
-          const prevKey = nodePath[i - 1];
-          const currKey = nodePath[i];
-          const prevNode = navNodes[prevKey];
-          const currNode = navNodes[currKey];
-          if (prevNode && currNode && prevNode.floor !== currNode.floor) {
-            const goingUp = currNode.floor > prevNode.floor;
-            const destFl = floorNames[currNode.floor] || `Floor ${currNode.floor}`;
-            const stairsName = currNode.block ? `Stairs (Block ${currNode.block})` : 'the stairs';
-            usedStairs.push({ goingUp, destFl, stairsName });
+        steps.push(`Start at ${startLabel} (${startFlStr}, Block ${startBlock})`);
+
+        let usedStairs = [];
+        if (nodePath) {
+          for (let i = 1; i < nodePath.length; i++) {
+            const prevKey = nodePath[i - 1];
+            const currKey = nodePath[i];
+            const prevNode = navNodes[prevKey];
+            const currNode = navNodes[currKey];
+            if (prevNode && currNode && prevNode.floor !== currNode.floor) {
+              const goingUp = currNode.floor > prevNode.floor;
+              const destFl = floorNames[currNode.floor] || `Floor ${currNode.floor}`;
+              const stairsName = currNode.block ? `Stairs (Block ${currNode.block})` : 'the stairs';
+              usedStairs.push({ goingUp, destFl, stairsName });
+            }
           }
         }
+
+        if (usedStairs.length > 0) {
+          usedStairs.forEach(s => {
+            steps.push(`${s.goingUp ? '⬆️ Take' : '⬇️ Take'} ${s.stairsName} to ${s.destFl}`);
+          });
+        }
+
+        if (startBlock !== targetBlock) {
+          steps.push(`Follow the walking corridor/pathway from Block ${startBlock} to Block ${targetBlock}`);
+        } else {
+          steps.push(`Continue straight along the corridor`);
+        }
+
+        steps.push(`Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
+        return steps;
       }
 
-      if (usedStairs.length > 0) {
-        usedStairs.forEach(s => {
-          steps.push(`${s.goingUp ? '⬆️ Take' : '⬇️ Take'} ${s.stairsName} to ${s.destFl}`);
-        });
-      }
-
-      if (startBlock !== targetBlock) {
-        steps.push(`Follow the walking corridor/pathway from Block ${startBlock} to Block ${targetBlock}`);
-      } else {
-        steps.push(`Continue straight along the corridor`);
-      }
-
-      steps.push(`Arrive at ${targetLabel} (${targetFlStr}, Block ${targetBlock})`);
-      return steps;
-    }
+      const displayStartLabel = customStartPos ? "🔵 Live Location" : (startName || "Start Location");
 
       if (window.parent && window.parent !== window) {
         const steps = generateTurnByTurnSteps(
-          routeResult.nodePath, 
-          finalStartLabel, 
-          finalTargetLabel, 
-          startFloor, 
-          targetFloor, 
-          routeResult.startBlock || 'F', 
+          routeResult.nodePath,
+          displayStartLabel,
+          finalTargetLabel,
+          startFloor,
+          targetFloor,
+          routeResult.startBlock || 'F',
           targetBlock || 'M'
         );
-        window.parent.postMessage({ 
-          type: 'ROUTE_CALCULATED', 
-          from: finalStartLabel, 
-          to: finalTargetLabel, 
-          distanceMeters: routeResult.distanceMeters, 
+        window.parent.postMessage({
+          type: 'ROUTE_CALCULATED',
+          from: displayStartLabel,
+          to: finalTargetLabel,
+          distanceMeters: routeResult.distanceMeters,
           estimatedMinutes: routeResult.estimatedMinutes,
-          steps: steps
+          steps: steps,
+          isLiveGps: !!customStartPos
         }, '*');
+
+        // Arrival detection (within 4 meters of target)
+        if (routeResult.distanceMeters <= 4 || (customStartPos && customStartPos.distanceTo(routeResult.targetPos) <= 4.0)) {
+          window.parent.postMessage({
+            type: 'DESTINATION_ARRIVED',
+            destination: finalTargetLabel
+          }, '*');
+        }
       }
 
-      // Automatically frame route in viewport
-      frameRoute(routeResult.points);
+      // Automatically frame route in viewport if not continuously updating live GPS
+      if (!customStartPos) {
+        frameRoute(routeResult.points);
+      }
     }
 
     const views = { iso: { pos: [95, 75, 95], tgt: [6, 4, 6] }, top: { pos: [6, 175, 10], tgt: [6, 0, 6] }, fl: { pos: [-95, 55, 105], tgt: [4, 4, 6] }, fr: { pos: [115, 52, 95], tgt: [4, 4, 6] } };
@@ -2268,9 +2441,100 @@
           togglePathBtn.classList.remove("off");
         }
 
-        render3DGreenPath(block, floor, name, cabin, startLoc, srcBlock, startName);
+        var isLiveGpsRoute = e.data.useLiveGps || (e.data.from && e.data.from.id === 'LIVE_GPS');
+        var livePos = isLiveGpsRoute && currentLiveUserPos ? currentLiveUserPos : null;
+
+        render3DGreenPath(block, floor, name, cabin, startLoc, srcBlock, startName, livePos);
+      } else if (e.data.type === 'UPDATE_GPS_POSITION') {
+        var gpsX = e.data.x !== undefined ? e.data.x : 0;
+        var gpsZ = e.data.z !== undefined ? e.data.z : 0;
+        var accuracyMeters = e.data.accuracy || 5;
+        updateUserGPSMarker(gpsX, gpsZ, accuracyMeters);
       }
     });
+
+    let gpsMarkerGroup = null;
+    let gpsPulseRing = null;
+    let gpsLabelObj = null;
+    let currentLiveUserPos = null;
+
+    function updateUserGPSMarker(x, z, accuracy) {
+      if (!gpsMarkerGroup) {
+        gpsMarkerGroup = new THREE.Group();
+        gpsMarkerGroup.name = "user-gps-beacon";
+
+        // Glowing Blue Core Sphere
+        const coreGeo = new THREE.SphereGeometry(1.2, 32, 32);
+        const coreMat = new THREE.MeshStandardMaterial({
+          color: 0x38bdf8,
+          emissive: 0x0284c7,
+          emissiveIntensity: 0.9,
+          roughness: 0.2,
+          metalness: 0.8
+        });
+        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+        coreMesh.position.y = 1.2;
+        coreMesh.castShadow = true;
+        gpsMarkerGroup.add(coreMesh);
+
+        // Ground Radar Pulse Ring
+        const ringGeo = new THREE.RingGeometry(1.5, 3.2, 32);
+        ringGeo.rotateX(-Math.PI / 2);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.6
+        });
+        gpsPulseRing = new THREE.Mesh(ringGeo, ringMat);
+        gpsPulseRing.position.y = 0.15;
+        gpsMarkerGroup.add(gpsPulseRing);
+
+        // Vertical Light Beam
+        const beamGeo = new THREE.CylinderGeometry(0.1, 0.8, 12, 16);
+        const beamMat = new THREE.MeshBasicMaterial({
+          color: 0x38bdf8,
+          transparent: true,
+          opacity: 0.25
+        });
+        const beam = new THREE.Mesh(beamGeo, beamMat);
+        beam.position.y = 6;
+        gpsMarkerGroup.add(beam);
+
+        // Label
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'pin-label-start';
+        labelDiv.style.background = 'linear-gradient(135deg, #0284c7, #2563eb)';
+        labelDiv.style.borderColor = '#60a5fa';
+        labelDiv.style.boxShadow = '0 6px 20px rgba(2, 132, 199, 0.7)';
+        labelDiv.textContent = '🔵 You (Live Location)';
+        gpsLabelObj = new CSS2DObject(labelDiv);
+        gpsLabelObj.position.set(0, 4.5, 0);
+        gpsMarkerGroup.add(gpsLabelObj);
+
+        scene.add(gpsMarkerGroup);
+      }
+
+      gpsMarkerGroup.position.set(x, 0, z);
+
+      const currentY = floorY(currentRouteFloor || 0) + 0.35;
+      currentLiveUserPos = new THREE.Vector3(x, currentY, z);
+
+      // Dynamic path vanishing: If navigation route is active, continuously recalculate the green corridor path
+      // starting at current live user position, vanishing covered path segments behind the user in real time.
+      if (isPathVisible && currentTargetBlock) {
+        render3DGreenPath(
+          currentTargetBlock,
+          currentRouteFloor,
+          currentTargetName,
+          currentCabinCode,
+          currentStartLocation,
+          currentSourceBlock,
+          null,
+          currentLiveUserPos
+        );
+      }
+    }
 
     // Check URL params for theme
     const urlParams = new URLSearchParams(window.location.search);
@@ -2315,6 +2579,12 @@
       if (targetAuraBox) {
         targetAuraBox.rotation.y += 0.02;
         targetAuraBox.rotation.x += 0.015;
+      }
+      if (gpsPulseRing) {
+        gpsPulseRing.rotation.z += 0.02;
+        const pulse = (Date.now() % 2000) / 2000;
+        gpsPulseRing.scale.set(1 + pulse * 0.8, 1 + pulse * 0.8, 1);
+        gpsPulseRing.material.opacity = 0.7 * (1 - pulse);
       }
 
       renderer.render(scene, camera);

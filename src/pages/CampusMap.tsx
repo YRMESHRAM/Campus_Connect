@@ -18,10 +18,20 @@ import {
   Info,
   Footprints,
   Building,
+  Crosshair,
+  Radio,
+  RefreshCw,
+  CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { fetchFacultyFromSupabase, getCachedFacultyData } from '../utils/facultyStore';
+import {
+  gpsToCampusCoords,
+  findNearestLandmark,
+  GPSPosition,
+} from '../utils/gpsUtils';
 
 // ─── Types ──────────────────────────────────────────────
 interface FacultyMember {
@@ -232,6 +242,167 @@ const CampusMap: React.FC = () => {
     steps: string[];
   } | null>(null);
 
+  // ─── Live GPS Geolocation State ───────────────────────
+  const [gpsPosition, setGpsPosition] = useState<GPSPosition | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'acquiring' | 'active' | 'denied' | 'error' | 'simulated'>('idle');
+  const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const simTimerRef = useRef<any>(null);
+
+  // Send GPS Position to 3D Iframe
+  const sendGpsToIframe = useCallback((pos: GPSPosition) => {
+    const coords = gpsToCampusCoords(pos.lat, pos.lng);
+    try {
+      iframeRef.current?.contentWindow?.postMessage({
+        type: 'UPDATE_GPS_POSITION',
+        lat: pos.lat,
+        lng: pos.lng,
+        accuracy: pos.accuracy,
+        x: coords.x,
+        z: coords.z
+      }, '*');
+    } catch (_) { }
+  }, []);
+
+  // Update From location when GPS updates
+  const updateFromPlaceWithGps = useCallback((pos: GPSPosition, isSimulated = false) => {
+    const nearest = findNearestLandmark(pos.lat, pos.lng);
+
+    const livePlace: PlaceItem = {
+      id: 'LIVE_GPS',
+      key: nearest.landmark.id,
+      name: isSimulated ? '🔵 Simulated GPS Walking' : '🔵 Live GPS (Laptop Location)',
+      type: 'gate',
+      block: nearest.landmark.block,
+      floor: nearest.landmark.floor,
+      floorLabel: 'Ground Floor',
+      icon: '🔵',
+      subtitle: `${pos.lat.toFixed(5)}°N, ${pos.lng.toFixed(5)}°E · Near ${nearest.landmark.name}`
+    };
+
+    setFromPlace(livePlace);
+    sendGpsToIframe(pos);
+  }, [sendGpsToIframe]);
+
+  // Start Real Browser Geolocation Watch Position
+  const startGpsTracking = useCallback(() => {
+    if (simTimerRef.current) {
+      clearInterval(simTimerRef.current);
+      simTimerRef.current = null;
+    }
+
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('error');
+      setGpsErrorMessage('Geolocation is not supported by your browser. Defaulting to Entrance F.');
+      const entranceF = standardPlaces.find(p => p.id === 'ENTRANCE_F') || standardPlaces[0];
+      setFromPlace(entranceF);
+      return;
+    }
+
+    setGpsStatus('acquiring');
+    setGpsErrorMessage(null);
+
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const currentPos: GPSPosition = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy || 10),
+          altitude: pos.coords.altitude,
+          heading: pos.coords.heading,
+          speed: pos.coords.speed,
+          timestamp: pos.timestamp
+        };
+        setGpsPosition(currentPos);
+        setGpsStatus('active');
+        updateFromPlaceWithGps(currentPos, false);
+      },
+      (err) => {
+        console.warn('GPS Error:', err.message);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsStatus('denied');
+          setGpsErrorMessage('Location permission denied. Defaulting to Main Entrance.');
+        } else {
+          setGpsStatus('error');
+          setGpsErrorMessage(err.message || 'Unable to retrieve GPS location. Defaulting to Main Entrance.');
+        }
+        // Fallback to provided entrance point when live location is unavailable
+        setFromPlace((prevFrom) => {
+          if (!prevFrom || prevFrom.id === 'LIVE_GPS') {
+            return standardPlaces.find(p => p.id === 'ENTRANCE_F') || standardPlaces[0];
+          }
+          return prevFrom;
+        });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+
+    watchIdRef.current = id;
+  }, [updateFromPlaceWithGps]);
+
+  // Stop GPS Tracking
+  const stopGpsTracking = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    if (simTimerRef.current) {
+      clearInterval(simTimerRef.current);
+      simTimerRef.current = null;
+    }
+    setGpsStatus('idle');
+    setGpsPosition(null);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current);
+      if (simTimerRef.current) clearInterval(simTimerRef.current);
+    };
+  }, []);
+
+  // Attempt to use Live GPS location by default on load; fall back to entrance point if unavailable
+  useEffect(() => {
+    startGpsTracking();
+  }, [startGpsTracking]);
+
+  // Simulated GPS Walk across campus for testing indoors
+  const startSimulatedWalk = useCallback(() => {
+    stopGpsTracking();
+    setGpsStatus('simulated');
+    setGpsErrorMessage(null);
+
+    const waypoints = [
+      { lat: 21.23200, lng: 79.03010 },
+      { lat: 21.23230, lng: 79.03048 },
+      { lat: 21.23245, lng: 79.03060 },
+      { lat: 21.23260, lng: 79.03040 },
+      { lat: 21.23270, lng: 79.03075 },
+    ];
+
+    let stepIndex = 0;
+    const updateSimStep = () => {
+      const wp = waypoints[stepIndex % waypoints.length];
+      const simPos: GPSPosition = {
+        lat: wp.lat + (Math.random() - 0.5) * 0.00003,
+        lng: wp.lng + (Math.random() - 0.5) * 0.00003,
+        accuracy: 4,
+        timestamp: Date.now()
+      };
+      setGpsPosition(simPos);
+      updateFromPlaceWithGps(simPos, true);
+      stepIndex++;
+    };
+
+    updateSimStep();
+    simTimerRef.current = setInterval(updateSimStep, 2500);
+  }, [stopGpsTracking, updateFromPlaceWithGps]);
+
   // ─── Data loading ───────────────────────────────────
   useEffect(() => {
     async function loadFaculty() {
@@ -294,12 +465,16 @@ const CampusMap: React.FC = () => {
   const filteredFromOptions = useMemo(() => filterPlaces(fromQuery, fromCategoryFilter), [fromQuery, fromCategoryFilter, allPlaces]);
   const filteredToOptions = useMemo(() => filterPlaces(toQuery, toCategoryFilter), [toQuery, toCategoryFilter, allPlaces]);
 
-  // ─── Listen for 3D iframe route stats ─────────────
+  // Arrival alert state
+  const [isArrived, setIsArrived] = useState(false);
+  const [arrivedDestination, setArrivedDestination] = useState<string | null>(null);
+
+  // ─── Listen for 3D iframe route stats & arrival events ─────
   useEffect(() => {
     const handleMsg = (e: MessageEvent) => {
       if (e.data?.type === 'ROUTE_CALCULATED') {
         setRouteStats({
-          distanceMeters: e.data.distanceMeters || 100,
+          distanceMeters: e.data.distanceMeters || 0,
           estimatedMinutes: e.data.estimatedMinutes || 1,
           steps: e.data.steps && e.data.steps.length > 0 ? e.data.steps : [
             `Walk from ${fromPlace?.name || 'Start'}`,
@@ -307,6 +482,9 @@ const CampusMap: React.FC = () => {
             `Arrive at destination: ${toPlace?.name || 'Destination'}`
           ]
         });
+      } else if (e.data?.type === 'DESTINATION_ARRIVED') {
+        setIsArrived(true);
+        setArrivedDestination(e.data.destination || toPlace?.name || 'Destination');
       }
     };
     window.addEventListener('message', handleMsg);
@@ -321,7 +499,7 @@ const CampusMap: React.FC = () => {
         isDark: isDark,
         theme: isDark ? 'dark' : 'light'
       }, '*');
-    } catch (_) {}
+    } catch (_) { }
   }, [isDark]);
 
   // ─── Send Navigation Route to 3D Iframe ────────────
@@ -348,14 +526,14 @@ const CampusMap: React.FC = () => {
         startLocation: from.key || from.cabin || from.id,
         sourceBlock: from.block
       }, '*');
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   // ─── Send RESET_VIEW to show full campus (no route) ─
   const sendResetToIframe = useCallback(() => {
     try {
       iframeRef.current?.contentWindow?.postMessage({ type: 'RESET_VIEW' }, '*');
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   // ─── Trigger navigation ONLY when both From and Where are set ─
@@ -396,6 +574,10 @@ const CampusMap: React.FC = () => {
         subtitle: `${blockInfo[block]?.shortLabel || 'Block ' + block} · ${floorName}`
       };
       setToPlace(customTo);
+
+      // Default starting point to Entrance (F004-F005) when navigating from classroom/faculty finder
+      const entranceF = standardPlaces.find(p => p.id === 'ENTRANCE_F') || standardPlaces[0];
+      setFromPlace(entranceF);
     }
   }, [searchParams]);
 
@@ -452,6 +634,8 @@ const CampusMap: React.FC = () => {
     setFromQuery('');
     setToQuery('');
     setRouteStats(null);
+    setIsArrived(false);
+    setArrivedDestination(null);
     sendResetToIframe();
   };
 
@@ -474,9 +658,8 @@ const CampusMap: React.FC = () => {
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 6 }}
-        className={`absolute left-0 right-0 top-full mt-1.5 rounded-2xl border shadow-2xl z-50 max-h-80 overflow-hidden backdrop-blur-2xl ${
-          isDarkTheme ? 'bg-gray-900/95 border-gray-700' : 'bg-white/95 border-gray-200'
-        }`}
+        className={`absolute left-0 right-0 top-full mt-1.5 rounded-2xl border shadow-2xl z-50 max-h-80 overflow-hidden backdrop-blur-2xl ${isDarkTheme ? 'bg-gray-900/95 border-gray-700' : 'bg-white/95 border-gray-200'
+          }`}
       >
         {/* Category filter pills */}
         <div className={`p-2 border-b flex items-center gap-1.5 overflow-x-auto scrollbar-thin ${isDarkTheme ? 'bg-gray-800/80 border-gray-800' : 'bg-gray-50 border-gray-100'}`}>
@@ -484,11 +667,10 @@ const CampusMap: React.FC = () => {
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
-              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition whitespace-nowrap ${
-                categoryFilter === cat
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold capitalize transition whitespace-nowrap ${categoryFilter === cat
                   ? 'bg-emerald-500 text-white shadow-sm'
                   : isDarkTheme ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200/70'
-              }`}
+                }`}
             >
               {cat === 'all' ? '✨ All' : cat === 'entrance' ? '🚪 Entrances' : cat === 'classroom' ? '🎓 Rooms' : cat === 'faculty' ? '👤 Faculty' : '🍽️ Amenities'}
             </button>
@@ -504,9 +686,8 @@ const CampusMap: React.FC = () => {
               <button
                 key={item.id}
                 onClick={() => onSelect(item)}
-                className={`w-full p-3 text-left flex items-center justify-between border-b last:border-0 transition-colors ${
-                  isDarkTheme ? 'hover:bg-gray-800/80 border-gray-800 text-white' : 'hover:bg-emerald-50/60 border-gray-100 text-gray-800'
-                }`}
+                className={`w-full p-3 text-left flex items-center justify-between border-b last:border-0 transition-colors ${isDarkTheme ? 'hover:bg-gray-800/80 border-gray-800 text-white' : 'hover:bg-emerald-50/60 border-gray-100 text-gray-800'
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-base">{item.icon || '📍'}</span>
@@ -565,11 +746,10 @@ const CampusMap: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border mb-4 sm:mb-5 shadow-xl backdrop-blur-xl relative z-30 transition-all ${
-            isDark
+          className={`p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border mb-4 sm:mb-5 shadow-xl backdrop-blur-xl relative z-30 transition-all ${isDark
               ? 'bg-gray-800/90 border-gray-700/80 shadow-black/40'
               : 'bg-white/95 border-gray-200 shadow-slate-200/60'
-          }`}
+            }`}
         >
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
 
@@ -592,21 +772,30 @@ const CampusMap: React.FC = () => {
                     onFocus={() => { setFromQuery(''); setIsFromDropdownOpen(true); setIsToDropdownOpen(false); }}
                     onChange={(e) => { setFromQuery(e.target.value); setIsFromDropdownOpen(true); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleFromInputSubmit(); } }}
-                    className={`w-full pl-11 pr-10 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${
-                      isDark
+                    className={`w-full pl-11 pr-32 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${isDark
                         ? 'bg-gray-900/90 border-gray-700 text-white placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                         : 'bg-gray-50/90 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
-                    }`}
+                      }`}
                   />
-                  {fromPlace && (
+                  <div className="absolute right-2.5 flex items-center gap-1.5 z-20">
                     <button
-                      onClick={() => { setFromPlace(null); setFromQuery(''); }}
-                      className="absolute right-3 text-gray-400 hover:text-red-500 p-1.5 transition"
-                      title="Clear starting point"
+                      onClick={startGpsTracking}
+                      title="Use live GPS location from your laptop"
+                      className="px-2.5 py-1 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 font-bold text-[11px] flex items-center gap-1 transition active:scale-95 border border-blue-500/30"
                     >
-                      <X size={14} />
+                      <Crosshair size={12} className={gpsStatus === 'acquiring' ? 'animate-spin' : ''} />
+                      <span className="hidden sm:inline">Use GPS</span>
                     </button>
-                  )}
+                    {fromPlace && (
+                      <button
+                        onClick={() => { setFromPlace(null); setFromQuery(''); stopGpsTracking(); }}
+                        className="text-gray-400 hover:text-red-500 p-1 transition"
+                        title="Clear starting point"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* From Autocomplete Dropdown */}
@@ -636,15 +825,14 @@ const CampusMap: React.FC = () => {
                     onFocus={() => { setToQuery(''); setIsToDropdownOpen(true); setIsFromDropdownOpen(false); }}
                     onChange={(e) => { setToQuery(e.target.value); setIsToDropdownOpen(true); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleToInputSubmit(); } }}
-                    className={`w-full pl-11 pr-10 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${
-                      isDark
+                    className={`w-full pl-11 pr-10 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${isDark
                         ? 'bg-gray-900/90 border-gray-700 text-white placeholder-gray-500 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
                         : 'bg-gray-50/90 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20'
-                    }`}
+                      }`}
                   />
                   {toPlace && (
                     <button
-                      onClick={() => { setToPlace(null); setToQuery(''); }}
+                      onClick={() => { setToPlace(null); setToQuery(''); setIsArrived(false); }}
                       className="absolute right-3 text-gray-400 hover:text-red-500 p-1.5 transition"
                       title="Clear destination"
                     >
@@ -657,7 +845,16 @@ const CampusMap: React.FC = () => {
                 <AnimatePresence>
                   {isToDropdownOpen && renderDropdown(
                     filteredToOptions,
-                    (item) => { setToPlace(item); setToQuery(''); setIsToDropdownOpen(false); },
+                    (item) => {
+                      setToPlace(item);
+                      setToQuery('');
+                      setIsToDropdownOpen(false);
+                      setIsArrived(false);
+                      // Auto enable live GPS starting point if no start place chosen
+                      if (!fromPlace) {
+                        startGpsTracking();
+                      }
+                    },
                     () => setIsToDropdownOpen(false),
                     'Select Destination Room / Block',
                     toCategoryFilter,
@@ -669,33 +866,123 @@ const CampusMap: React.FC = () => {
 
             </div>
 
-            {/* Mobile & Desktop Action Toolbar (Swap & Reset) */}
+            {/* Mobile & Desktop Action Toolbar (Live GPS, Swap & Reset) */}
             <div className="flex items-center justify-between lg:justify-start gap-2 pt-1 lg:pt-0">
+              <button
+                onClick={gpsStatus === 'active' || gpsStatus === 'simulated' ? stopGpsTracking : startGpsTracking}
+                title="Toggle live laptop GPS navigation"
+                className={`flex-1 lg:flex-none px-3.5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 text-xs font-bold ${
+                  gpsStatus === 'active' || gpsStatus === 'simulated'
+                    ? 'bg-blue-600 border-blue-500 text-white shadow-blue-500/30'
+                    : isDark ? 'bg-gray-800 border-gray-700 text-blue-400 hover:bg-gray-700' : 'bg-white border-gray-200 text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                <Radio size={15} className={gpsStatus === 'active' ? 'animate-pulse text-cyan-300' : ''} />
+                <span>{gpsStatus === 'active' ? 'GPS Active' : gpsStatus === 'simulated' ? 'Sim Walk' : 'Live GPS'}</span>
+              </button>
+
               <button
                 onClick={handleSwapFromTo}
                 title="Swap From ↔ Where"
                 disabled={!fromPlace && !toPlace}
-                className={`flex-1 lg:flex-none px-3.5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed ${
-                  isDark
+                className={`flex-1 lg:flex-none px-3.5 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed ${isDark
                     ? 'bg-gray-800 border-gray-700 text-emerald-400 hover:bg-gray-700'
                     : 'bg-white border-gray-200 text-emerald-600 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <ArrowUpDown size={15} /> <span>Swap</span>
               </button>
 
               <button
-                onClick={handleReset}
+                onClick={() => { stopGpsTracking(); handleReset(); }}
                 title="Clear both & show full campus"
-                className={`flex-1 lg:flex-none px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 ${
-                  isDark ? 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}
+                className={`flex-1 lg:flex-none px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border text-xs font-bold transition-all active:scale-95 flex items-center justify-center gap-1.5 ${isDark ? 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
               >
                 <RotateCcw size={14} /> <span>Reset Map</span>
               </button>
             </div>
 
           </div>
+
+          {/* ─── LIVE GPS TELEMETRY & STATUS BANNER ─── */}
+          <AnimatePresence>
+            {gpsStatus !== 'idle' && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className={`mt-3 pt-3 border-t flex flex-wrap items-center justify-between gap-2.5 text-xs ${
+                  isDark ? 'border-gray-700/80' : 'border-gray-200/80'
+                }`}
+              >
+                {/* Status Indicator */}
+                <div className="flex items-center gap-2">
+                  {gpsStatus === 'acquiring' && (
+                    <div className="flex items-center gap-2 text-amber-500 font-bold">
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Acquiring GPS Signal from Laptop…</span>
+                    </div>
+                  )}
+                  {gpsStatus === 'active' && gpsPosition && (
+                    <div className="flex items-center gap-2 text-cyan-400 font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping" />
+                      <CheckCircle2 size={14} className="text-cyan-400" />
+                      <span>Live GPS Connected</span>
+                      <span className={`font-mono text-[11px] px-2 py-0.5 rounded-md border ${isDark ? 'bg-gray-900 border-gray-700 text-cyan-300' : 'bg-slate-100 border-gray-300 text-cyan-700'}`}>
+                        {gpsPosition.lat.toFixed(5)}° N, {gpsPosition.lng.toFixed(5)}° E
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        (±{gpsPosition.accuracy}m Accuracy)
+                      </span>
+                    </div>
+                  )}
+                  {gpsStatus === 'simulated' && gpsPosition && (
+                    <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>Simulated Indoor Walk Active (Covered Path Vanishes Live)</span>
+                      <span className={`font-mono text-[11px] px-2 py-0.5 rounded-md border ${isDark ? 'bg-gray-900 border-gray-700 text-emerald-300' : 'bg-slate-100 border-gray-300 text-emerald-700'}`}>
+                        {gpsPosition.lat.toFixed(5)}° N, {gpsPosition.lng.toFixed(5)}° E
+                      </span>
+                    </div>
+                  )}
+                  {gpsStatus === 'denied' && (
+                    <div className="flex items-center gap-2 text-rose-500 font-bold">
+                      <AlertTriangle size={14} />
+                      <span>{gpsErrorMessage || 'Location permission denied in browser.'}</span>
+                    </div>
+                  )}
+                  {gpsStatus === 'error' && (
+                    <div className="flex items-center gap-2 text-amber-500 font-bold">
+                      <AlertTriangle size={14} />
+                      <span>{gpsErrorMessage || 'GPS unavailable.'}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Telemetry Controls & Simulated Walk Trigger */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={startSimulatedWalk}
+                    title="Simulate live walking updates across campus for testing indoors"
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                      gpsStatus === 'simulated'
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                        : isDark ? 'bg-gray-800 text-gray-400 hover:text-white border-gray-700' : 'bg-gray-100 text-gray-600 hover:text-gray-900 border-gray-200'
+                    }`}
+                  >
+                    🚶 Simulate Walk
+                  </button>
+                  <button
+                    onClick={stopGpsTracking}
+                    className="px-2 py-1 rounded-lg text-[11px] font-bold bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30 transition"
+                  >
+                    Stop GPS
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Status hint below inputs */}
           <div className={`mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t text-[11px] font-medium flex items-center gap-2 ${isDark ? 'border-gray-700/60 text-gray-500' : 'border-gray-200/60 text-gray-400'}`}>
@@ -705,7 +992,7 @@ const CampusMap: React.FC = () => {
                 <span>Route active: <strong className={isDark ? 'text-emerald-400' : 'text-emerald-600'}>{fromPlace!.name}</strong>
                   <ArrowRight size={10} className="inline mx-1" />
                   <strong className={isDark ? 'text-rose-400' : 'text-rose-600'}>{toPlace!.name}</strong>
-                  <span className="hidden sm:inline"> — Unrelated rooms hidden.</span>
+                  <span className="ml-2 text-cyan-400 font-bold">✨ Path behind user vanishes as you move!</span>
                 </span>
               </div>
             ) : (
@@ -781,9 +1068,8 @@ const CampusMap: React.FC = () => {
               {/* "Full Campus View" badge when not navigating */}
               {!isNavigating && iframeLoaded && (
                 <div className="absolute left-3 bottom-3 sm:left-4 sm:bottom-4 z-20 pointer-events-none max-w-[calc(100%-5rem)]">
-                  <div className={`px-2.5 py-1.5 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold backdrop-blur-md border shadow-lg flex items-center gap-1.5 truncate ${
-                    isDark ? 'bg-slate-900/80 text-gray-300 border-white/10' : 'bg-white/80 text-gray-600 border-gray-200'
-                  }`}>
+                  <div className={`px-2.5 py-1.5 sm:px-3 rounded-xl text-[10px] sm:text-xs font-bold backdrop-blur-md border shadow-lg flex items-center gap-1.5 truncate ${isDark ? 'bg-slate-900/80 text-gray-300 border-white/10' : 'bg-white/80 text-gray-600 border-gray-200'
+                    }`}>
                     <Building size={12} className="text-emerald-500 shrink-0" />
                     <span className="truncate">All Blocks Active</span>
                   </div>
@@ -804,9 +1090,9 @@ const CampusMap: React.FC = () => {
               <div className="hidden md:flex items-center gap-2">
                 {isNavigating ? (
                   <>
-                    <span>🟢 Green Corridor Active</span>
+                    <span>🟢 Path Vanishes as Covered</span>
                     <span>•</span>
-                    <span>📍 Destination Aura</span>
+                    <span>📍 Dynamic Live Location</span>
                   </>
                 ) : (
                   <span>Select From & Where above to navigate</span>
@@ -838,7 +1124,7 @@ const CampusMap: React.FC = () => {
                           ~{routeStats?.estimatedMinutes || Math.max(1, Math.abs((toPlace.floor || 0) - (fromPlace.floor || 0)) + 2)} min
                         </span>
                         <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                          ({routeStats?.distanceMeters || 160}m)
+                          ({routeStats?.distanceMeters || 0}m remaining)
                         </span>
                       </div>
                     </div>
@@ -860,7 +1146,7 @@ const CampusMap: React.FC = () => {
                       <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({fromPlace.floorLabel})</span>
                     </div>
                     <div className={`ml-[5px] border-l-2 border-dashed pl-4 py-1 text-[11px] ${isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>
-                      Walk via corridors & stairs
+                      Walk via corridors & stairs (Covered path vanishes)
                     </div>
                     <div className={`flex items-center gap-2 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                       <MapPin size={11} className="text-rose-500 fill-rose-500 shrink-0" />
@@ -878,20 +1164,18 @@ const CampusMap: React.FC = () => {
                       `Arrive at destination: ${toPlace.name} (${toPlace.floorLabel})`
                     ]).map((step, idx, arr) => (
                       <div key={idx} className="flex items-start gap-2 text-xs">
-                        <div className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold mt-0.5 ${
-                          idx === 0
+                        <div className={`w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold mt-0.5 ${idx === 0
                             ? 'bg-cyan-500/20 text-cyan-500'
                             : idx === arr.length - 1
                               ? 'bg-rose-500/20 text-rose-500'
                               : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        }`}>
+                          }`}>
                           {idx + 1}
                         </div>
-                        <p className={`leading-relaxed ${
-                          idx === arr.length - 1
+                        <p className={`leading-relaxed ${idx === arr.length - 1
                             ? isDark ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold'
                             : isDark ? 'text-gray-300' : 'text-gray-700'
-                        }`}>
+                          }`}>
                           {step}
                         </p>
                       </div>
@@ -980,12 +1264,14 @@ const CampusMap: React.FC = () => {
                           subtitle: `${f.department} · Cabin ${f.cabin}`
                         };
                         setToPlace(target);
+                        if (!fromPlace) {
+                          startGpsTracking();
+                        }
                       }}
-                      className={`w-full p-2 rounded-xl text-left text-xs transition flex items-center justify-between mb-1 ${
-                        toPlace?.name === f.name
+                      className={`w-full p-2 rounded-xl text-left text-xs transition flex items-center justify-between mb-1 ${toPlace?.name === f.name
                           ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700 font-bold'
                           : isDark ? 'hover:bg-gray-700/60 text-gray-300' : 'hover:bg-gray-50 text-gray-700'
-                      }`}
+                        }`}
                     >
                       <div>
                         <p className="font-semibold text-[11px]">{f.name}</p>
@@ -1002,13 +1288,48 @@ const CampusMap: React.FC = () => {
               {/* Map legend info */}
               <div className={`flex items-start gap-2 p-3 rounded-2xl text-[11px] ${isDark ? 'bg-gray-800/40 text-gray-500' : 'bg-gray-50 text-gray-400'}`}>
                 <Info size={13} className="shrink-0 mt-0.5" />
-                <span>3D model of S.B. Jain Institute campus. The complete map is shown when not navigating. Select both From & Where to see the route with only relevant blocks visible.</span>
+                <span>3D map with live GPS tracking. As you walk towards your destination, covered path segments vanish in real-time.</span>
               </div>
             </motion.div>
           )}
 
         </div>
       </div>
+
+      {/* ═══ Destination Arrival Modal Alert ═══ */}
+      <AnimatePresence>
+        {isArrived && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className={`w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl border ${
+                isDark ? 'bg-gray-900 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'
+              }`}
+            >
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-3xl shadow-lg ring-8 ring-emerald-500/10">
+                🎉
+              </div>
+              <h3 className="text-xl font-black mb-1 text-emerald-400">Arrived at Destination!</h3>
+              <p className="text-sm font-semibold mb-4 text-gray-300">
+                You have reached <strong>{arrivedDestination || toPlace?.name}</strong>.
+              </p>
+              <button
+                onClick={() => setIsArrived(false)}
+                className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/30 transition active:scale-95"
+              >
+                Got It, Thank You!
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ═══ Keyboard Shortcuts Modal ═══ */}
       <AnimatePresence>

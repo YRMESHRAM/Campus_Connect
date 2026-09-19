@@ -56,11 +56,10 @@ const Notifications: React.FC = () => {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                filter === f
+              className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${filter === f
                   ? 'bg-green-600 text-white'
                   : isDark ? 'bg-gray-800 text-gray-400 hover:bg-gray-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+                }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
@@ -80,11 +79,10 @@ const Notifications: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.08 }}
                 onClick={() => setNotifications((ns) => ns.map((n) => n.id === notif.id ? { ...n, isRead: true } : n))}
-                className={`relative p-4 rounded-2xl border cursor-pointer transition-all ${
-                  !notif.isRead
+                className={`relative p-4 rounded-2xl border cursor-pointer transition-all ${!notif.isRead
                     ? isDark ? 'bg-green-900/20 border-green-800/50 hover:bg-green-900/30' : 'bg-green-50/60 border-green-200 hover:bg-green-50'
                     : isDark ? 'bg-gray-800 border-gray-700 hover:bg-gray-750' : 'bg-white border-gray-200 shadow-sm hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${colors.bg}`}>
