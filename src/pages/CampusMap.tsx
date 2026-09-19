@@ -9,6 +9,7 @@ import {
   Minimize2,
   RotateCcw,
   ChevronRight,
+  ChevronLeft,
   Compass,
   Home,
   ArrowRight,
@@ -18,11 +19,27 @@ import {
   Info,
   Footprints,
   Building,
+<<<<<<< HEAD
   Crosshair,
   Radio,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+=======
+  Search,
+  Play,
+  Pause,
+  RotateCw,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  ChevronDown,
+  ChevronUp,
+  Volume2,
+  VolumeX,
+  Share2,
+  Copy,
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
@@ -57,13 +74,23 @@ export interface PlaceItem {
 }
 
 // ─── Utility functions ──────────────────────────────────
-function deriveBlock(cabin: string): string {
-  if (!cabin) return 'M';
-  const upper = cabin.toUpperCase();
-  if (upper.startsWith('ADM') || upper.includes('ADMIN') || upper.includes('PRINCIPAL')) return 'ADM';
-  if (upper.includes('CANTEEN')) return 'CANTEEN';
-  const match = upper.match(/^([A-Z]+)/);
-  return match ? match[1] : 'M';
+function deriveBlock(cabin: string, department?: string): string {
+  if (cabin) {
+    const upper = cabin.toUpperCase();
+    if (upper.startsWith('ADM') || upper.includes('ADMIN') || upper.includes('PRINCIPAL')) return 'ADM';
+    if (upper.includes('CANTEEN')) return 'CANTEEN';
+    const match = upper.match(/^([A-Z]+)/);
+    if (match) return match[1];
+  }
+  if (department) {
+    const d = department.toLowerCase();
+    if (d.includes('first') || d.includes('fy') || d.includes('basic') || d.includes('humanities') || d.includes('applied')) return 'F';
+    if (d.includes('cse') || d.includes('computer') || d.includes('ai') || d.includes('ml') || d.includes('data')) return 'M';
+    if (d.includes('etc') || d.includes('electronics') || d.includes('telecom') || d.includes('mba') || d.includes('mca') || d.includes('bca')) return 'E';
+    if (d.includes('mech') || d.includes('elect') || d.includes('civil')) return 'B';
+    if (d.includes('admin') || d.includes('principal') || d.includes('office')) return 'ADM';
+  }
+  return 'M';
 }
 
 function deriveFloor(cabin: string): number {
@@ -106,13 +133,13 @@ function toFacultyMember(raw: any, index: number): FacultyMember | null {
   }
   const department = (raw['Department'] || raw.department || 'General').trim();
   const rawCabin = (raw['Cabin No.'] || raw.cabin || '').trim();
-  const cabin = rawCabin.toLowerCase() === '(blank)' ? '' : rawCabin;
+  const cabin = (!rawCabin || rawCabin.toLowerCase() === '(blank)' || rawCabin === '--' || rawCabin === '-') ? '' : rawCabin;
   return {
     id: String(raw.id ?? index),
     name,
     department,
     cabin,
-    block: deriveBlock(cabin),
+    block: deriveBlock(cabin, department),
     floor: deriveFloor(cabin),
   };
 }
@@ -147,6 +174,17 @@ function parseRoomCode(input: string): PlaceItem | null {
   };
 }
 
+function getManeuverIcon(stepText: string): string {
+  if (!stepText) return '🧭';
+  const lower = stepText.toLowerCase();
+  if (lower.includes('arrive') || lower.includes('destination') || lower.includes('🎯')) return '🎯';
+  if (lower.includes('stair') || lower.includes('stairs') || lower.includes('up') || lower.includes('down') || lower.includes('floor') || lower.includes('🪜')) return '🪜';
+  if (lower.includes('left') || lower.includes('↩️')) return '↩️';
+  if (lower.includes('right') || lower.includes('↪️')) return '↪️';
+  if (lower.includes('walk') || lower.includes('forward') || lower.includes('corridor') || lower.includes('path') || lower.includes('along')) return '⬆️';
+  return '🧭';
+}
+
 // ─── Constants ──────────────────────────────────────────
 const blockInfo: Record<string, { label: string; shortLabel: string; color: string; gradient: string; icon: string }> = {
   M: { label: 'Block M – CSE / AIML / DS / IT', shortLabel: 'Block M', color: '#84cc16', gradient: 'from-lime-500 to-emerald-600', icon: '💻' },
@@ -170,6 +208,13 @@ const standardPlaces: PlaceItem[] = [
   { id: 'BLOCK_B', key: 'BLOCK_B', name: 'Block B Entrance', type: 'entrance', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '⚙️', subtitle: 'Mechanical Wing & Stage' },
   { id: 'BLOCK_M', key: 'BLOCK_M', name: 'Block M Entrance', type: 'entrance', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '💻', subtitle: 'CSE / AIML Dept Entrance' },
   { id: 'CANTEEN', key: 'CANTEEN', name: 'Campus Canteen', type: 'amenity', block: 'CANTEEN', floor: 0, floorLabel: 'Ground Floor', icon: '🍽️', subtitle: 'Food Court & Refreshments' },
+
+  // Emergency & Administrative Services
+  { id: 'security', key: 'MAIN_GATE', name: 'Security Office (Main Gate)', type: 'amenity', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🛡️', subtitle: 'Campus Security, 24/7 Guard Post', cabin: 'MAIN_GATE' },
+  { id: 'medical', key: 'room-F004', name: 'Medical Room (Block F)', type: 'amenity', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '❤️', subtitle: 'First Aid & Healthcare Clinic', cabin: 'F004' },
+  { id: 'reception', key: 'ADM', name: 'Reception / Helpdesk', type: 'amenity', block: 'ADM', floor: 0, floorLabel: 'Ground Floor', icon: '📞', subtitle: 'Visitor Helpdesk & Inquiries', cabin: 'ADM' },
+  { id: 'fire', key: 'MAIN_GATE', name: 'Fire Safety HQ', type: 'amenity', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🔥', subtitle: 'Fire Emergency Response & Station', cabin: 'MAIN_GATE' },
+  { id: 'admin-office', key: 'ADM', name: 'Administration Office', type: 'amenity', block: 'ADM', floor: 1, floorLabel: '1st Floor', icon: '🏛️', subtitle: 'Academic Administration & Records', cabin: 'ADM' },
 
   // Key Academic Destinations
   { id: 'library', name: 'Central Library (F203)', type: 'amenity', block: 'F', floor: 2, floorLabel: '2nd Floor', icon: '📖', subtitle: 'Main Books, Reading Hall & Digital Library', cabin: 'F203' },
@@ -196,7 +241,9 @@ const standardPlaces: PlaceItem[] = [
   { id: 'room-B002', name: 'HOD Mech Office (B002)', type: 'classroom', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '👨‍💼', subtitle: 'Mechanical Engineering Head Office', cabin: 'B002' },
   { id: 'room-B103', name: 'HOD Electrical Office (B103)', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '👨‍💼', subtitle: 'Electrical Engineering Head Office', cabin: 'B103' },
 
-  // Popular Classrooms
+  // Popular Classrooms & Faculty Rooms
+  { id: 'room-M203', name: 'Faculty Room M203', type: 'faculty', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '👤', subtitle: 'CSE & AIML Faculty Room (Between M202 & M204)', cabin: 'M203' },
+  { id: 'room-M202', name: 'Classroom M202', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML 2nd Floor', cabin: 'M202' },
   { id: 'room-M001', name: 'Classroom M001', type: 'classroom', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'CSE Ground Floor Lab', cabin: 'M001' },
   { id: 'room-M213', name: 'Classroom M213', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML Lecture Hall', cabin: 'M213' },
   { id: 'room-F004', name: 'Classroom F004', type: 'classroom', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'First Year Section A', cabin: 'F004' },
@@ -209,6 +256,148 @@ const standardPlaces: PlaceItem[] = [
   { id: 'room-B101', name: 'Classroom B101', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'Mechanical Dept Lecture Hall', cabin: 'B101' },
 ];
 
+function generateFallbackSteps(from: PlaceItem, to: PlaceItem): string[] {
+  const fromFl = from.floorLabel || `${from.floor}th Floor`;
+  const toFl = to.floorLabel || `${to.floor}th Floor`;
+  const fromKey = `${from.block}${from.floor}`;
+  const toKey = `${to.block}${to.floor}`;
+  const routeKey = `${fromKey}_${toKey}`;
+  const toUpper = (to.cabin || to.name || '').toUpperCase();
+
+  type RouteSteps = string[];
+  const knownRoutes: Record<string, RouteSteps> = {
+    // F Ground → M 2nd Floor (Entrance -> Block M 2nd Floor / Faculty / Classrooms)
+    'F0_M2': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway into Block M`,
+      `⬆️ Then go through stairs UP to 2nd Floor (Block M)`,
+      `↪️ Go Right / Turn Right into the 2nd Floor hallway`,
+      `🚶 Walk along the hallway past M201 & M202`,
+    ],
+    // F Ground → M 1st Floor
+    'F0_M1': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway into Block M`,
+      `⬆️ Then go through stairs UP to 1st Floor (Block M)`,
+      `↪️ Go Right / Turn Right into the 1st Floor hallway`,
+    ],
+    // F Ground → M Ground
+    'F0_M0': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↩️ Take first Left turn at the junction towards Block M`,
+      `🚶 Walk across the courtyard walkway straight into Block M Ground Floor`,
+    ],
+    // F Ground → E Ground
+    'F0_E0': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↪️ Take first Right turn at the junction towards Block E`,
+      `🚶 Walk along the connecting pathway into Block E`,
+    ],
+    // F Ground → E 1st Floor
+    'F0_E1': [
+      `Start at ${from.name} (${fromFl}, Block F)`,
+      `🚶 Walk forward from entrance along the main corridor`,
+      `↪️ Take first Right turn at the junction towards Block E`,
+      `🚶 Walk along the connecting pathway into Block E`,
+      `⬆️ Then go through stairs UP to 1st Floor (Block E)`,
+      `↩️ Take Left turn into the 1st Floor corridor`,
+    ],
+    // M 2nd → same block
+    'M2_M2': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk along the 2nd Floor Block M corridor`,
+    ],
+    // M 1st → M 2nd
+    'M1_M2': [
+      `Start at ${from.name} (1st Floor, Block M)`,
+      `🚶 Walk along the 1st Floor corridor to the staircase`,
+      `⬆️ Then go through stairs UP to 2nd Floor`,
+      `↪️ Go Right into the 2nd Floor hallway`,
+    ],
+    // M Ground → M 2nd
+    'M0_M2': [
+      `Start at ${from.name} (Ground Floor, Block M)`,
+      `🚶 Walk through the Ground Floor Block M corridor to the staircase`,
+      `⬆️ Then go through stairs UP to 2nd Floor`,
+      `↪️ Go Right into the 2nd Floor hallway`,
+      `🚶 Walk along the 2nd Floor corridor`,
+    ],
+    // M 2nd → M Ground
+    'M2_M0': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk along the 2nd Floor corridor to the staircase`,
+      `⬇️ Then go through stairs DOWN to Ground Floor`,
+      `↪️ Go Right into the Ground Floor corridor`,
+    ],
+    // M 2nd → F Ground
+    'M2_F0': [
+      `Start at ${from.name} (2nd Floor, Block M)`,
+      `🚶 Walk to the Block M staircase`,
+      `⬇️ Then go through stairs DOWN to Ground Floor`,
+      `🚶 Walk through the Ground Floor corridor`,
+      `↪️ Take Right turn towards Block F`,
+      `🚶 Walk along the connecting walkway into Block F`,
+    ],
+  };
+
+  const steps: string[] = knownRoutes[routeKey]
+    ? [...knownRoutes[routeKey]]
+    : (() => {
+        const s: string[] = [];
+        s.push(`Start at ${from.name} (${fromFl}, Block ${from.block})`);
+        if (from.block === 'F' && from.floor === 0) {
+          s.push(`🚶 Walk forward from entrance along the hallway`);
+          if (to.block === 'M') {
+            s.push(`↩️ Take first Left turn at the junction towards Block M`);
+            s.push(`🚶 Walk across the courtyard walkway into Block M`);
+          } else if (to.block === 'E') {
+            s.push(`↪️ Take first Right turn at the junction towards Block E`);
+          }
+        } else if (from.block === to.block) {
+          s.push(`🚶 Walk along the ${fromFl} corridor`);
+        } else {
+          s.push(`🚶 Walk along the ${fromFl} corridor towards the connecting walkway`);
+          s.push(`🚶 Follow the connecting path to Block ${to.block}`);
+        }
+        if (from.floor < to.floor) {
+          s.push(`⬆️ Then go through stairs UP to ${toFl} (Block ${to.block})`);
+          s.push(`↪️ Go Right / Turn into the ${toFl} corridor`);
+        } else if (from.floor > to.floor) {
+          s.push(`⬇️ Then go through stairs DOWN to ${toFl} (Block ${to.block})`);
+          s.push(`↩️ Go Left / Turn into the ${toFl} corridor`);
+        }
+        return s;
+      })();
+
+  // Room-specific final approach
+  if (toUpper.includes('M203') || toUpper.includes('FACULTY M203') || toUpper.includes('SWATI')) {
+    steps.push(`🚶 Faculty Room M203 is on your right between M202 & M204`);
+  } else if (toUpper.includes('M202')) {
+    steps.push(`🚶 M202 is on your right after M201`);
+  } else if (toUpper.includes('M201')) {
+    steps.push(`🚶 M201 is the first room on your right in the 2nd Floor hallway`);
+  } else if (toUpper.includes('M204')) {
+    steps.push(`🚶 Walk past M201, M202, M203 — Faculty M204 is on your right`);
+  } else if (toUpper.includes('M208') || toUpper.includes('HOD AIML')) {
+    steps.push(`🚶 Walk to the far end of the 2nd Floor corridor — HOD Office M208 is on the left`);
+  } else if (toUpper.includes('LIBRARY') || toUpper.includes('DEPT LIBRARY')) {
+    steps.push(`🚶 Walk straight along the 2nd Floor corridor — CSE Dept Library is on your left`);
+  } else if (toUpper.includes('M213')) {
+    steps.push(`🚶 Walk to the end of the left-side corridor — M213 is at the far end`);
+  } else if (toUpper.includes('EXAM') || toUpper.includes('EXAM CENTER')) {
+    steps.push(`🚶 Walk to the far end of Block E — the Exam Center is at the end of the ground floor`);
+  }
+
+  steps.push(`🎯 Arrive at ${to.name} (${toFl}, Block ${to.block})`);
+  return steps;
+}
+
 // ─── Main Component ─────────────────────────────────────
 const CampusMap: React.FC = () => {
   const { isDark } = useTheme();
@@ -216,8 +405,9 @@ const CampusMap: React.FC = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
-  // ── BOTH start null — user must manually pick From AND Where ──
-  const [fromPlace, setFromPlace] = useState<PlaceItem | null>(null);
+  // ── Default starting point is Entrance F (standardPlaces[0]) until user changes it ──
+  const defaultStartPlace = standardPlaces[0];
+  const [fromPlace, setFromPlace] = useState<PlaceItem | null>(defaultStartPlace);
   const [toPlace, setToPlace] = useState<PlaceItem | null>(null);
 
   const [fromQuery, setFromQuery] = useState('');
@@ -230,7 +420,38 @@ const CampusMap: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [facultyList, setFacultyList] = useState<FacultyMember[]>([]);
+  const [facultySearchQuery, setFacultySearchQuery] = useState('');
+  const [facultyDeptFilter, setFacultyDeptFilter] = useState('All');
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Dynamic department list for quick filtering
+  const facultyDepartments = useMemo(() => {
+    const depts = new Set<string>();
+    facultyList.forEach((f) => {
+      if (f.department && f.department.trim()) {
+        depts.add(f.department.trim());
+      }
+    });
+    return ['All', ...Array.from(depts)];
+  }, [facultyList]);
+
+  // Filtered faculty list with real-time search & department filter
+  const filteredFaculty = useMemo(() => {
+    let list = facultyList;
+    if (facultyDeptFilter !== 'All') {
+      list = list.filter((f) => f.department.toLowerCase() === facultyDeptFilter.toLowerCase());
+    }
+    if (facultySearchQuery.trim()) {
+      const q = facultySearchQuery.toLowerCase().trim();
+      list = list.filter((f) =>
+        f.name.toLowerCase().includes(q) ||
+        f.department.toLowerCase().includes(q) ||
+        (f.cabin && f.cabin.toLowerCase().includes(q)) ||
+        f.block.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [facultyList, facultyDeptFilter, facultySearchQuery]);
 
   // Whether we are actively navigating (both From and Where selected)
   const isNavigating = fromPlace !== null && toPlace !== null;
@@ -242,6 +463,7 @@ const CampusMap: React.FC = () => {
     steps: string[];
   } | null>(null);
 
+<<<<<<< HEAD
   // ─── Live GPS Geolocation State ───────────────────────
   const [gpsPosition, setGpsPosition] = useState<GPSPosition | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'acquiring' | 'active' | 'denied' | 'error' | 'simulated'>('idle');
@@ -402,6 +624,19 @@ const CampusMap: React.FC = () => {
     updateSimStep();
     simTimerRef.current = setInterval(updateSimStep, 2500);
   }, [stopGpsTracking, updateFromPlaceWithGps]);
+=======
+  // ─── Real-Time Live Navigation State ─────────────────
+  const [isLiveNavigating, setIsLiveNavigating] = useState(false);
+  const [liveNavProgress, setLiveNavProgress] = useState(0);
+  const [liveStepIndex, setLiveStepIndex] = useState(0);
+  const [distanceRemaining, setDistanceRemaining] = useState<number | null>(null);
+  const [navSpeed, setNavSpeed] = useState<1 | 2>(1);
+  const [followCamera, setFollowCamera] = useState(true);
+  const [hasArrived, setHasArrived] = useState(false);
+  const [isSignCollapsed, setIsSignCollapsed] = useState(false);
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
 
   // ─── Data loading ───────────────────────────────────
   useEffect(() => {
@@ -465,31 +700,111 @@ const CampusMap: React.FC = () => {
   const filteredFromOptions = useMemo(() => filterPlaces(fromQuery, fromCategoryFilter), [fromQuery, fromCategoryFilter, allPlaces]);
   const filteredToOptions = useMemo(() => filterPlaces(toQuery, toCategoryFilter), [toQuery, toCategoryFilter, allPlaces]);
 
+<<<<<<< HEAD
   // Arrival alert state
   const [isArrived, setIsArrived] = useState(false);
   const [arrivedDestination, setArrivedDestination] = useState<string | null>(null);
 
   // ─── Listen for 3D iframe route stats & arrival events ─────
+=======
+  // ─── Voice Speech Synthesis Helper ──────────────────────────────────
+  const speakInstruction = useCallback((text: string) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const cleanText = text
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}\u{1F1E0}-\u{1F1FF}]/gu, '')
+        .replace(/[↩️↪️⬆️⬇️🚶🪜🎯🚩🚪🏛️💻📡⚙️🍽️📖🎙️⚡🔬🧪👤📍]/g, '')
+        .trim();
+      if (!cleanText) return;
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    } catch (_) {}
+  }, []);
+
+  // ─── Share Route Direct Link ─────────────────────────────────────────
+  const handleShareRoute = useCallback(() => {
+    if (!toPlace) return;
+    const origin = window.location.origin;
+    const path = window.location.pathname;
+    const params = new URLSearchParams();
+    if (fromPlace) params.set('from', fromPlace.key || fromPlace.cabin || fromPlace.id);
+    if (toPlace.cabin) params.set('cabin', toPlace.cabin);
+    else if (toPlace.id) params.set('to', toPlace.id);
+    if (toPlace.name) params.set('name', toPlace.name);
+    if (toPlace.block) params.set('block', toPlace.block);
+    if (toPlace.floor !== undefined) params.set('floor', String(toPlace.floor));
+
+    const fullUrl = `${origin}${path}?${params.toString()}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(fullUrl).then(() => {
+        setToastMessage('Route link copied to clipboard!');
+        setTimeout(() => setToastMessage(null), 3000);
+      });
+    } else {
+      setToastMessage('Route link: ' + fullUrl);
+      setTimeout(() => setToastMessage(null), 5000);
+    }
+  }, [fromPlace, toPlace]);
+
+  // ─── Listen for 3D iframe route stats & live nav updates ─────────────
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
   useEffect(() => {
     const handleMsg = (e: MessageEvent) => {
       if (e.data?.type === 'ROUTE_CALCULATED') {
+        const fallback = fromPlace && toPlace ? generateFallbackSteps(fromPlace, toPlace) : [
+          `Walk from ${fromPlace?.name || 'Start'}`,
+          `Follow the glowing green corridor pathway`,
+          `Arrive at destination: ${toPlace?.name || 'Destination'}`
+        ];
+        const steps = e.data.steps && e.data.steps.length > 0 ? e.data.steps : fallback;
         setRouteStats({
           distanceMeters: e.data.distanceMeters || 0,
           estimatedMinutes: e.data.estimatedMinutes || 1,
-          steps: e.data.steps && e.data.steps.length > 0 ? e.data.steps : [
-            `Walk from ${fromPlace?.name || 'Start'}`,
-            `Follow the glowing green corridor pathway`,
-            `Arrive at destination: ${toPlace?.name || 'Destination'}`
-          ]
+          steps,
         });
+<<<<<<< HEAD
       } else if (e.data?.type === 'DESTINATION_ARRIVED') {
         setIsArrived(true);
         setArrivedDestination(e.data.destination || toPlace?.name || 'Destination');
+=======
+        setDistanceRemaining(e.data.distanceMeters || 100);
+        setLiveNavProgress(0);
+        setLiveStepIndex(0);
+        setIsLiveNavigating(false);
+        setHasArrived(false);
+        if (isVoiceEnabled && steps[0]) {
+          speakInstruction(steps[0]);
+        }
+      } else if (e.data?.type === 'LIVE_NAV_UPDATE') {
+        setLiveNavProgress(e.data.progress || 0);
+        if (e.data.currentStepIndex !== undefined) {
+          const nextIdx = e.data.currentStepIndex;
+          setLiveStepIndex(prev => {
+            if (prev !== nextIdx && isVoiceEnabled && routeStats?.steps?.[nextIdx]) {
+              speakInstruction(routeStats.steps[nextIdx]);
+            }
+            return nextIdx;
+          });
+        }
+        if (e.data.distanceRemainingMeters !== undefined) {
+          setDistanceRemaining(e.data.distanceRemainingMeters);
+        }
+        if (e.data.isFinished) {
+          setIsLiveNavigating(false);
+          setHasArrived(true);
+          if (isVoiceEnabled) {
+            speakInstruction('You have arrived at your destination.');
+          }
+        }
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
       }
     };
     window.addEventListener('message', handleMsg);
     return () => window.removeEventListener('message', handleMsg);
-  }, [fromPlace, toPlace]);
+  }, [fromPlace, toPlace, isVoiceEnabled, routeStats, speakInstruction]);
 
   // ─── Sync Theme to 3D Map iframe ───────────────────
   useEffect(() => {
@@ -547,21 +862,25 @@ const CampusMap: React.FC = () => {
     }
   }, [fromPlace, toPlace, iframeLoaded, sendRouteToIframe, sendResetToIframe]);
 
-  // ─── Handle URL query params ───────────────────────
+  // ─── Handle URL query params (deep-linking) ───────────────────────
   useEffect(() => {
-    const roomParam = searchParams.get('room');
-    const cabinParam = searchParams.get('cabin');
+    const toParam = searchParams.get('to') || searchParams.get('room') || searchParams.get('cabin') || searchParams.get('dest');
+    const fromParam = searchParams.get('from') || searchParams.get('start') || searchParams.get('source');
+    const nameParam = searchParams.get('name');
     const blockParam = searchParams.get('block');
     const floorParam = searchParams.get('floor');
-    const nameParam = searchParams.get('name');
-    const targetRoomName = roomParam || cabinParam;
 
-    if (targetRoomName) {
-      const block = parseBlockParam(blockParam, targetRoomName);
-      const floor = parseFloorParam(floorParam, targetRoomName);
-      const displayName = nameParam || `Room ${targetRoomName}`;
-      const floorName = floorLabels[floor] || 'Ground Floor';
+    if (toParam) {
+      const q = toParam.trim().toLowerCase();
+      const matchedTo = allPlaces.find(p =>
+        p.id.toLowerCase() === q ||
+        (p.key && p.key.toLowerCase() === q) ||
+        (p.cabin && p.cabin.toLowerCase() === q) ||
+        p.name.toLowerCase() === q ||
+        (nameParam && p.name.toLowerCase() === nameParam.toLowerCase())
+      );
 
+<<<<<<< HEAD
       const customTo: PlaceItem = {
         id: targetRoomName,
         name: displayName,
@@ -578,8 +897,49 @@ const CampusMap: React.FC = () => {
       // Default starting point to Entrance (F004-F005) when navigating from classroom/faculty finder
       const entranceF = standardPlaces.find(p => p.id === 'ENTRANCE_F') || standardPlaces[0];
       setFromPlace(entranceF);
+=======
+      if (matchedTo) {
+        setToPlace(matchedTo);
+      } else {
+        const parsed = parseRoomCode(toParam);
+        if (parsed) {
+          if (nameParam) parsed.name = nameParam;
+          setToPlace(parsed);
+        } else {
+          const block = parseBlockParam(blockParam, toParam);
+          const floor = parseFloorParam(floorParam, toParam);
+          const displayName = nameParam || `Room ${toParam}`;
+          const floorName = floorLabels[floor] || 'Ground Floor';
+
+          setToPlace({
+            id: toParam,
+            name: displayName,
+            type: 'classroom',
+            block: block,
+            floor: floor,
+            floorLabel: floorName,
+            cabin: toParam,
+            icon: '📍',
+            subtitle: `${blockInfo[block]?.shortLabel || 'Block ' + block} · ${floorName}`
+          });
+        }
+      }
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
     }
-  }, [searchParams]);
+
+    if (fromParam) {
+      const fq = fromParam.trim().toLowerCase();
+      const matchedFrom = allPlaces.find(p =>
+        p.id.toLowerCase() === fq ||
+        (p.key && p.key.toLowerCase() === fq) ||
+        (p.cabin && p.cabin.toLowerCase() === fq) ||
+        p.name.toLowerCase() === fq
+      );
+      if (matchedFrom) {
+        setFromPlace(matchedFrom);
+      }
+    }
+  }, [searchParams, allPlaces]);
 
   // ─── Keyboard shortcuts ────────────────────────────
   useEffect(() => {
@@ -627,17 +987,126 @@ const CampusMap: React.FC = () => {
     setToPlace(temp);
   };
 
-  // ─── Reset View — clear both, show full campus ──────
+  // ─── Live Navigation Controls ──────────────────────
+  const startLiveNav = useCallback(() => {
+    setIsLiveNavigating(true);
+    setHasArrived(false);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'START_LIVE_NAV',
+      speed: navSpeed,
+      follow: followCamera
+    }, '*');
+  }, [navSpeed, followCamera]);
+
+  const pauseLiveNav = useCallback(() => {
+    setIsLiveNavigating(false);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'PAUSE_LIVE_NAV'
+    }, '*');
+  }, []);
+
+  const restartLiveNav = useCallback(() => {
+    setLiveNavProgress(0);
+    setLiveStepIndex(0);
+    setHasArrived(false);
+    setIsLiveNavigating(true);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'SEEK_LIVE_NAV',
+      progress: 0
+    }, '*');
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'START_LIVE_NAV',
+      speed: navSpeed,
+      follow: followCamera
+    }, '*');
+  }, [navSpeed, followCamera]);
+
+  const toggleNavSpeed = useCallback(() => {
+    const nextSpeed = navSpeed === 1 ? 2 : 1;
+    setNavSpeed(nextSpeed);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'SET_NAV_SPEED',
+      speed: nextSpeed
+    }, '*');
+  }, [navSpeed]);
+
+  const toggleFollowCam = useCallback(() => {
+    const nextFollow = !followCamera;
+    setFollowCamera(nextFollow);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'SET_FOLLOW_CAM',
+      follow: nextFollow
+    }, '*');
+  }, [followCamera]);
+
+  const handleSeekNav = useCallback((newProgress: number) => {
+    setLiveNavProgress(newProgress);
+    if (newProgress < 1) setHasArrived(false);
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'SEEK_LIVE_NAV',
+      progress: newProgress
+    }, '*');
+  }, []);
+
+  // ─── Reset View — reset to default starting point (Entrance F) ──────
   const handleReset = () => {
-    setFromPlace(null);
+    setFromPlace(defaultStartPlace);
     setToPlace(null);
     setFromQuery('');
     setToQuery('');
     setRouteStats(null);
+<<<<<<< HEAD
     setIsArrived(false);
     setArrivedDestination(null);
+=======
+    setIsLiveNavigating(false);
+    setLiveNavProgress(0);
+    setLiveStepIndex(0);
+    setHasArrived(false);
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
     sendResetToIframe();
   };
+
+  const activeSteps = useMemo(() => {
+    if (routeStats?.steps && routeStats.steps.length > 0) return routeStats.steps;
+    if (fromPlace && toPlace) return generateFallbackSteps(fromPlace, toPlace);
+    return [];
+  }, [routeStats, fromPlace, toPlace]);
+
+  // ─── Step-by-Step Navigation Controls (after activeSteps) ────────
+  const goToStep = useCallback((idx: number) => {
+    const steps = activeSteps;
+    if (!steps.length) return;
+    const clampedIdx = Math.max(0, Math.min(steps.length - 1, idx));
+    const targetProg = steps.length > 1 ? clampedIdx / (steps.length - 1) : 0;
+    setLiveStepIndex(clampedIdx);
+    setLiveNavProgress(targetProg);
+    setIsLiveNavigating(false);
+    if (clampedIdx >= steps.length - 1) {
+      setHasArrived(true);
+      if (isVoiceEnabled) speakInstruction("You have arrived at your destination.");
+    } else {
+      setHasArrived(false);
+      if (isVoiceEnabled && steps[clampedIdx]) {
+        speakInstruction(steps[clampedIdx]);
+      }
+    }
+    iframeRef.current?.contentWindow?.postMessage({
+      type: 'GO_TO_STEP',
+      stepIndex: clampedIdx,
+      progress: targetProg,
+      smooth: true
+    }, '*');
+  }, [activeSteps, isVoiceEnabled, speakInstruction]);
+
+  const goToNextStep = useCallback(() => {
+    goToStep(liveStepIndex + 1);
+  }, [liveStepIndex, goToStep]);
+
+  const goToPrevStep = useCallback(() => {
+    goToStep(liveStepIndex - 1);
+  }, [liveStepIndex, goToStep]);
+
 
   const toggleFullscreen = () => setIsFullscreen(f => !f);
 
@@ -1053,6 +1522,228 @@ const CampusMap: React.FC = () => {
                 </button>
               </div>
 
+              {/* ═══ Floating Turn-by-Turn GPS Navigation Sign on 3D Map ═══ */}
+              {isNavigating && activeSteps.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -15, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className={`absolute left-3 top-3 sm:left-4 sm:top-4 z-30 shadow-2xl rounded-2xl sm:rounded-3xl border backdrop-blur-2xl transition-all overflow-hidden ${
+                    isSignCollapsed ? 'w-auto max-w-xs' : 'w-[calc(100%-4.5rem)] sm:w-auto sm:max-w-md'
+                  } ${isDark ? 'bg-slate-900/95 border-emerald-500/40 text-white shadow-black/60' : 'bg-slate-900/95 border-emerald-500/50 text-white shadow-emerald-950/40'}`}
+                >
+                  {isSignCollapsed ? (
+                    /* Collapsed mini banner */
+                    <div className="p-2.5 flex items-center gap-2">
+                      <span className="text-base">{hasArrived ? '🎯' : getManeuverIcon(activeSteps[liveStepIndex] || '')}</span>
+                      <div className="min-w-0 pr-1">
+                        <p className="text-xs font-bold truncate text-white">
+                          {hasArrived ? 'Arrived!' : activeSteps[liveStepIndex]}
+                        </p>
+                        <p className="text-[10px] text-emerald-400 font-semibold">
+                          {distanceRemaining !== null ? `${distanceRemaining}m left` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 ml-auto shrink-0">
+                        <button
+                          onClick={() => {
+                            const nextVal = !isVoiceEnabled;
+                            setIsVoiceEnabled(nextVal);
+                            if (nextVal && activeSteps[liveStepIndex]) {
+                              speakInstruction(activeSteps[liveStepIndex]);
+                            } else {
+                              window.speechSynthesis?.cancel();
+                            }
+                          }}
+                          className={`p-1 rounded-lg transition ${isVoiceEnabled ? 'bg-emerald-500/30 text-emerald-300' : 'hover:bg-slate-800 text-gray-400 hover:text-white'}`}
+                          title={isVoiceEnabled ? 'Voice Guidance Active (Click to Mute)' : 'Enable Voice Guidance (Audio GPS)'}
+                        >
+                          {isVoiceEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
+                        </button>
+                        <button
+                          onClick={() => setIsSignCollapsed(false)}
+                          className="p-1 rounded-lg hover:bg-slate-800 text-gray-400 hover:text-white transition"
+                          title="Expand Navigation Sign"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Expanded full GPS Turn-by-Turn Navigation Sign */
+                    <div className="p-3 sm:p-4">
+                      {/* Top directive row */}
+                      <div className="flex items-start gap-3">
+                        {/* Big maneuver icon badge */}
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-lg text-lg sm:text-xl font-black ${
+                          hasArrived
+                            ? 'bg-gradient-to-br from-emerald-400 to-green-600 text-white shadow-emerald-500/40 animate-bounce'
+                            : isLiveNavigating
+                              ? 'bg-gradient-to-br from-cyan-400 to-emerald-500 text-slate-950 shadow-cyan-500/40'
+                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                        }`}>
+                          {hasArrived ? '🎯' : getManeuverIcon(activeSteps[liveStepIndex] || '')}
+                        </div>
+
+                        {/* Maneuver details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full ${isLiveNavigating ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`} />
+                              {hasArrived ? 'Destination Reached' : isLiveNavigating ? 'Real-Time Navigation' : 'Turn-by-Turn Navigation'}
+                            </span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => {
+                                  const nextVal = !isVoiceEnabled;
+                                  setIsVoiceEnabled(nextVal);
+                                  if (nextVal && activeSteps[liveStepIndex]) {
+                                    speakInstruction(activeSteps[liveStepIndex]);
+                                  } else {
+                                    window.speechSynthesis?.cancel();
+                                  }
+                                }}
+                                className={`p-1 rounded-lg border transition ${isVoiceEnabled ? 'bg-emerald-500/30 border-emerald-400/50 text-emerald-300' : 'border-white/10 hover:bg-slate-800 text-gray-400 hover:text-white'}`}
+                                title={isVoiceEnabled ? 'Voice Guidance Active (Click to Mute)' : 'Enable Voice Guidance (Audio GPS)'}
+                              >
+                                {isVoiceEnabled ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                              </button>
+                              <button
+                                onClick={handleShareRoute}
+                                className="p-1 rounded-lg border border-white/10 hover:bg-slate-800 text-gray-400 hover:text-white transition"
+                                title="Copy & Share Route Link"
+                              >
+                                <Share2 size={12} />
+                              </button>
+                              <span className="text-[10px] font-bold text-gray-400">
+                                {Math.min(activeSteps.length, liveStepIndex + 1)}/{activeSteps.length}
+                              </span>
+                              <button
+                                onClick={() => setIsSignCollapsed(true)}
+                                className="p-0.5 rounded-md hover:bg-slate-800 text-gray-400 hover:text-white transition"
+                                title="Minimize Sign"
+                              >
+                                <ChevronUp size={13} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <p className="text-xs sm:text-sm font-bold text-white mt-1 leading-snug line-clamp-2">
+                            {hasArrived
+                              ? `You have arrived at ${toPlace!.name}!`
+                              : (activeSteps[liveStepIndex] || 'Follow the glowing green path')}
+                          </p>
+
+                          {!hasArrived && activeSteps[liveStepIndex + 1] && (
+                            <p className="text-[10px] text-gray-400 mt-1 truncate flex items-center gap-1">
+                              <span className="text-gray-500 font-medium">Then:</span> {activeSteps[liveStepIndex + 1]}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Smooth Route Progress Bar with Glow */}
+                      <div className="mt-3">
+                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden relative">
+                          <motion.div
+                            className="h-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-500 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                            style={{ width: `${Math.min(100, Math.round(liveNavProgress * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Live metrics & Real-Time playback toolbar */}
+                      <div className="mt-2.5 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 text-[11px] font-semibold text-gray-300">
+                          <span className="text-cyan-400 font-bold">
+                            {distanceRemaining !== null ? `${distanceRemaining}m` : `${routeStats?.distanceMeters || 120}m`}
+                          </span>
+                          <span className="text-gray-500">•</span>
+                          <span>
+                            ~{Math.max(1, Math.round(((distanceRemaining ?? (routeStats?.distanceMeters || 120)) / (routeStats?.distanceMeters || 120)) * (routeStats?.estimatedMinutes || 2)))} min
+                          </span>
+                        </div>
+
+                        {/* Prev / Next step controls */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={goToPrevStep}
+                            disabled={liveStepIndex <= 0}
+                            title="Previous Step"
+                            className="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[10px] font-bold flex items-center gap-0.5 transition active:scale-95"
+                          >
+                            <ChevronLeft size={11} />
+                            Prev
+                          </button>
+                          <button
+                            onClick={goToNextStep}
+                            disabled={liveStepIndex >= activeSteps.length - 1}
+                            title="Next Step"
+                            className="px-2 py-1 rounded-lg bg-cyan-500 hover:bg-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed text-slate-950 text-[10px] font-black flex items-center gap-0.5 transition active:scale-95"
+                          >
+                            Next
+                            <ChevronRight size={11} />
+                          </button>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          {!isLiveNavigating ? (
+                            <button
+                              onClick={hasArrived ? restartLiveNav : startLiveNav}
+                              className="px-2.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] flex items-center gap-1 shadow-md transition active:scale-95 cursor-pointer"
+                            >
+                              <Play size={10} className="fill-current" />
+                              <span>{hasArrived ? 'Replay' : liveNavProgress > 0 ? 'Resume' : 'Start Live Nav'}</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={pauseLiveNav}
+                              className="px-2.5 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-[10px] flex items-center gap-1 shadow-md transition active:scale-95 cursor-pointer"
+                            >
+                              <Pause size={10} className="fill-current" />
+                              <span>Pause</span>
+                            </button>
+                          )}
+
+                          <button
+                            onClick={restartLiveNav}
+                            title="Restart Navigation from start"
+                            className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-gray-300 transition"
+                          >
+                            <RotateCw size={11} />
+                          </button>
+
+                          <button
+                            onClick={toggleNavSpeed}
+                            title="Toggle Walk Speed"
+                            className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold border transition ${
+                              navSpeed === 2
+                                ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-300'
+                                : 'bg-slate-800 border-slate-700 text-gray-400'
+                            }`}
+                          >
+                            {navSpeed}x
+                          </button>
+
+                          <button
+                            onClick={toggleFollowCam}
+                            title={followCamera ? 'Camera Following Avatar (click to Free Orbit)' : 'Free Orbit Camera (click to Follow)'}
+                            className={`p-1 rounded-lg border transition ${
+                              followCamera
+                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300'
+                                : 'bg-slate-800 border-slate-700 text-gray-400'
+                            }`}
+                          >
+                            {followCamera ? <Eye size={11} /> : <EyeOff size={11} />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
               {/* Floating Active Route Badge on Map — only when navigating */}
               {isNavigating && (
                 <div className="absolute left-3 bottom-3 sm:left-4 sm:bottom-4 z-20 flex items-center gap-2 pointer-events-none max-w-[calc(100%-5rem)]">
@@ -1075,6 +1766,21 @@ const CampusMap: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Floating Toast Notification */}
+              <AnimatePresence>
+                {toastMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute bottom-5 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-emerald-300 font-bold text-xs px-4 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-emerald-500/50 backdrop-blur-md"
+                  >
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <span>{toastMessage}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
 
             {/* Navigation hint — responsive for mobile & desktop */}
@@ -1121,10 +1827,14 @@ const CampusMap: React.FC = () => {
                       </div>
                       <div className="flex items-baseline gap-2 mt-1">
                         <span className={`text-2xl font-black ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                          ~{routeStats?.estimatedMinutes || Math.max(1, Math.abs((toPlace.floor || 0) - (fromPlace.floor || 0)) + 2)} min
+                          ~{Math.max(1, Math.round(((distanceRemaining ?? (routeStats?.distanceMeters || 120)) / (routeStats?.distanceMeters || 120)) * (routeStats?.estimatedMinutes || 2)))} min
                         </span>
                         <span className={`text-xs font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+<<<<<<< HEAD
                           ({routeStats?.distanceMeters || 0}m remaining)
+=======
+                          ({distanceRemaining !== null ? distanceRemaining : (routeStats?.distanceMeters || 160)}m)
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
                         </span>
                       </div>
                     </div>
@@ -1136,6 +1846,97 @@ const CampusMap: React.FC = () => {
                         {activeDestInfo.shortLabel}
                       </span>
                     )}
+                  </div>
+
+                  {/* Real-Time Navigation Action Bar in Sidebar */}
+                  <div className={`mt-3 p-3 rounded-2xl border ${isDark ? 'bg-gray-900/60 border-gray-700/80' : 'bg-emerald-50/50 border-emerald-100'}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-emerald-500 flex items-center gap-1">
+                        <Navigation size={12} className={isLiveNavigating ? 'animate-pulse' : ''} />
+                        Real-Time Navigation
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-400">
+                        {Math.round(liveNavProgress * 100)}% Complete
+                      </span>
+                    </div>
+
+                    {/* Scrub Slider */}
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      value={liveNavProgress}
+                      onChange={(e) => handleSeekNav(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                    />
+
+                    <div className="flex items-center justify-between gap-2 mt-2.5">
+                      {!isLiveNavigating ? (
+                        <button
+                          onClick={hasArrived ? restartLiveNav : startLiveNav}
+                          className="flex-1 py-1.5 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                        >
+                          <Play size={12} className="fill-current" />
+                          <span>{hasArrived ? 'Replay Walk' : liveNavProgress > 0 ? 'Resume Walk' : 'Start Walk'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={pauseLiveNav}
+                          className="flex-1 py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                        >
+                          <Pause size={12} className="fill-current" />
+                          <span>Pause Walk</span>
+                        </button>
+                      )}
+
+                      <button
+                        onClick={toggleNavSpeed}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition ${
+                          navSpeed === 2
+                            ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400'
+                            : isDark ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
+                        }`}
+                        title="Toggle Speed"
+                      >
+                        {navSpeed}x
+                      </button>
+
+                      <button
+                        onClick={restartLiveNav}
+                        className={`p-2 rounded-xl border transition ${
+                          isDark ? 'bg-gray-800 border-gray-700 text-gray-300' : 'bg-white border-gray-200 text-gray-600'
+                        }`}
+                        title="Restart from Start"
+                      >
+                        <RotateCw size={13} />
+                      </button>
+                    </div>
+
+                    {/* ─── Prev / Next Step Buttons ─── */}
+                    <div className="flex items-center justify-between gap-2 mt-2.5">
+                      <button
+                        onClick={goToPrevStep}
+                        disabled={liveStepIndex <= 0}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed ${
+                          isDark ? 'bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700' : 'bg-gray-100 border border-gray-200 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title="Previous Step"
+                      >
+                        <ChevronLeft size={14} /> Prev Step
+                      </button>
+                      <span className={`text-[10px] font-bold shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        {Math.min(activeSteps.length, liveStepIndex + 1)}/{activeSteps.length}
+                      </span>
+                      <button
+                        onClick={goToNextStep}
+                        disabled={liveStepIndex >= activeSteps.length - 1}
+                        className="flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition disabled:opacity-30 disabled:cursor-not-allowed bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                        title="Next Step"
+                      >
+                        Next Step <ChevronRight size={14} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Route details */}
@@ -1155,8 +1956,9 @@ const CampusMap: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Steps */}
+                  {/* Steps with Real-Time Active Step Highlighting — click any step to jump */}
                   <div className="mt-3.5 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+<<<<<<< HEAD
                     <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Directions:</p>
                     {(routeStats?.steps && routeStats.steps.length > 0 ? routeStats.steps : [
                       `Start at ${fromPlace.name} (${fromPlace.floorLabel})`,
@@ -1180,6 +1982,59 @@ const CampusMap: React.FC = () => {
                         </p>
                       </div>
                     ))}
+=======
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Directions <span className={`normal-case font-normal ml-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>(tap step to jump)</span>:
+                    </p>
+                    {activeSteps.map((step, idx, arr) => {
+                      const isCurrent = idx === liveStepIndex && !hasArrived;
+                      const isPast = idx < liveStepIndex || hasArrived;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => goToStep(idx)}
+                          title={`Jump to Step ${idx + 1}`}
+                          className={`p-2 rounded-xl transition flex items-start gap-2 text-xs cursor-pointer select-none ${
+                            isCurrent
+                              ? isDark
+                                ? 'bg-emerald-950/40 border border-emerald-500/50 shadow-sm'
+                                : 'bg-emerald-50 border border-emerald-400/50 shadow-sm'
+                              : isPast
+                                ? isDark ? 'opacity-70 hover:opacity-100 hover:bg-gray-800/60' : 'opacity-75 hover:opacity-100 hover:bg-gray-50'
+                                : isDark ? 'hover:bg-gray-800/60' : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[9px] font-bold mt-0.5 ${
+                            isPast
+                              ? 'bg-emerald-500/20 text-emerald-500'
+                              : isCurrent
+                                ? 'bg-cyan-500 text-slate-950 font-black'
+                                : idx === arr.length - 1
+                                  ? 'bg-rose-500/20 text-rose-500'
+                                  : isDark ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          }`}>
+                            {isPast ? <CheckCircle2 size={12} className="text-emerald-500" /> : idx + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`leading-relaxed ${
+                              isCurrent
+                                ? isDark ? 'text-emerald-300 font-bold' : 'text-emerald-800 font-bold'
+                                : idx === arr.length - 1
+                                  ? isDark ? 'text-emerald-400 font-bold' : 'text-emerald-600 font-bold'
+                                  : isDark ? 'text-gray-300' : 'text-gray-700'
+                            }`}>
+                              {step}
+                            </p>
+                            {isCurrent && (
+                              <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-500 text-white">
+                                Active Step
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
                   </div>
                 </div>
               ) : fromPlace ? (
@@ -1192,6 +2047,44 @@ const CampusMap: React.FC = () => {
                   <p className={`text-xs leading-relaxed ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                     Starting from <strong>{fromPlace.name}</strong>. Enter or select your destination in the <strong>Where</strong> box above.
                   </p>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
+                    <button
+                      onClick={() => {
+                        const m203 = allPlaces.find(p => p.cabin === 'M203' || p.id === 'room-M203');
+                        if (m203) setToPlace(m203);
+                      }}
+                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      👤 Faculty M203
+                    </button>
+                    <button
+                      onClick={() => {
+                        const m213 = allPlaces.find(p => p.cabin === 'M213' || p.id === 'room-M213');
+                        if (m213) setToPlace(m213);
+                      }}
+                      className="px-2.5 py-1 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      🎯 M213
+                    </button>
+                    <button
+                      onClick={() => {
+                        const lib = allPlaces.find(p => p.id === 'library' || p.cabin === 'F203');
+                        if (lib) setToPlace(lib);
+                      }}
+                      className="px-2.5 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      📖 Library
+                    </button>
+                    <button
+                      onClick={() => {
+                        const exam = allPlaces.find(p => p.id === 'exam-center' || p.cabin === 'E202');
+                        if (exam) setToPlace(exam);
+                      }}
+                      className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg text-[11px] font-semibold transition flex items-center gap-1"
+                    >
+                      📝 Exam Center
+                    </button>
+                  </div>
                 </div>
               ) : toPlace ? (
                 /* Prompt to select start */
@@ -1241,17 +2134,16 @@ const CampusMap: React.FC = () => {
 
               {/* Faculty Directory Quick Pick */}
               <div className={`rounded-3xl border overflow-hidden ${isDark ? 'bg-gray-800/80 border-gray-700' : 'bg-white border-gray-200 shadow-sm'}`}>
+                {/* Header with live count & clear action */}
                 <div className={`px-4 py-3 border-b flex items-center justify-between ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-100 bg-gray-50'}`}>
                   <span className="text-xs font-bold flex items-center gap-2">
                     <User size={13} className="text-emerald-500" />
-                    Faculty Cabins ({facultyList.length})
+                    Faculty Cabins ({filteredFaculty.length === facultyList.length ? facultyList.length : `${filteredFaculty.length} of ${facultyList.length}`})
                   </span>
-                </div>
-                <div className="max-h-56 overflow-y-auto scrollbar-thin p-2">
-                  {facultyList.slice(0, 20).map((f) => (
+                  {(facultySearchQuery || facultyDeptFilter !== 'All') && (
                     <button
-                      key={f.id}
                       onClick={() => {
+<<<<<<< HEAD
                         const target: PlaceItem = {
                           id: `fac-${f.id}`,
                           name: f.name,
@@ -1272,16 +2164,122 @@ const CampusMap: React.FC = () => {
                           ? isDark ? 'bg-emerald-900/40 text-emerald-400' : 'bg-emerald-50 text-emerald-700 font-bold'
                           : isDark ? 'hover:bg-gray-700/60 text-gray-300' : 'hover:bg-gray-50 text-gray-700'
                         }`}
+=======
+                        setFacultySearchQuery('');
+                        setFacultyDeptFilter('All');
+                      }}
+                      className="text-[10px] text-emerald-500 hover:underline font-semibold"
+>>>>>>> ab63062b24cbb73392c9f2baf084cffd310a70cc
                     >
-                      <div>
-                        <p className="font-semibold text-[11px]">{f.name}</p>
-                        <p className={`text-[9px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{f.department}</p>
-                      </div>
-                      <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold text-white" style={{ backgroundColor: blockInfo[f.block]?.color || '#10b981' }}>
-                        {f.cabin}
-                      </span>
+                      Clear filters
                     </button>
-                  ))}
+                  )}
+                </div>
+
+                {/* Search Bar & Department Filter Chips */}
+                <div className={`p-2.5 border-b ${isDark ? 'border-gray-700/60 bg-gray-900/40' : 'border-gray-100 bg-gray-50/70'}`}>
+                  <div className="relative">
+                    <Search size={13} className={`absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none ${isDark ? 'text-gray-400' : 'text-gray-400'}`} />
+                    <input
+                      type="text"
+                      value={facultySearchQuery}
+                      onChange={(e) => setFacultySearchQuery(e.target.value)}
+                      placeholder="Search faculty name, dept, cabin..."
+                      className={`w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border transition-colors outline-none ${
+                        isDark
+                          ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-emerald-500'
+                          : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-emerald-500'
+                      }`}
+                    />
+                    {facultySearchQuery && (
+                      <button
+                        onClick={() => setFacultySearchQuery('')}
+                        className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition ${
+                          isDark ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-200 text-gray-400'
+                        }`}
+                        title="Clear search"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Horizontal Scrollable Department Filter Pills */}
+                  {facultyDepartments.length > 2 && (
+                    <div className="flex items-center gap-1.5 mt-2 overflow-x-auto scrollbar-thin pb-1">
+                      {facultyDepartments.map((dept) => (
+                        <button
+                          key={dept}
+                          onClick={() => setFacultyDeptFilter(dept)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-medium whitespace-nowrap transition shrink-0 ${
+                            facultyDeptFilter === dept
+                              ? 'bg-emerald-500 text-white shadow-xs'
+                              : isDark
+                                ? 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-gray-200'
+                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {dept}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Faculty List (ALL matching faculties, smoothly scrollable) */}
+                <div className="max-h-72 overflow-y-auto scrollbar-thin p-2 space-y-1">
+                  {filteredFaculty.length === 0 ? (
+                    <div className="p-4 text-center">
+                      <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                        No faculty found matching "{facultySearchQuery}"
+                      </p>
+                      <button
+                        onClick={() => {
+                          setFacultySearchQuery('');
+                          setFacultyDeptFilter('All');
+                        }}
+                        className="mt-2 text-[11px] text-emerald-500 hover:underline font-semibold"
+                      >
+                        Show all {facultyList.length} faculty
+                      </button>
+                    </div>
+                  ) : (
+                    filteredFaculty.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => {
+                          const target: PlaceItem = {
+                            id: `fac-${f.id}`,
+                            name: f.name,
+                            type: 'faculty',
+                            block: f.block,
+                            floor: f.floor,
+                            floorLabel: floorLabels[f.floor] || `${f.floor}th Floor`,
+                            cabin: f.cabin || undefined,
+                            icon: '👤',
+                            subtitle: `${f.department}${f.cabin ? ` · Cabin ${f.cabin}` : ` · ${blockInfo[f.block]?.shortLabel || f.block}`}`
+                          };
+                          setToPlace(target);
+                        }}
+                        className={`w-full p-2.5 rounded-xl text-left text-xs transition flex items-center justify-between group ${
+                          toPlace?.name === f.name
+                            ? isDark ? 'bg-emerald-900/40 text-emerald-300 ring-1 ring-emerald-500/50' : 'bg-emerald-50 text-emerald-800 font-bold ring-1 ring-emerald-500/40'
+                            : isDark ? 'hover:bg-gray-700/60 text-gray-200' : 'hover:bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <div className="pr-2 min-w-0 flex-1">
+                          <p className="font-semibold text-[11px] truncate">{f.name}</p>
+                          <p className={`text-[9px] truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{f.department}</p>
+                        </div>
+                        <span
+                          className="px-2 py-0.5 rounded-lg text-[9px] font-bold text-white shrink-0 shadow-xs"
+                          style={{ backgroundColor: blockInfo[f.block]?.color || '#10b981' }}
+                        >
+                          {f.cabin || `${f.block} Dept`}
+                        </span>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
 

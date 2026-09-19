@@ -138,32 +138,6 @@ const Dashboard: React.FC = () => {
             <img src="/images/campus.jpg" alt="Campus Map" className="w-full h-56 md:h-72 object-cover" />
             <div className={`absolute inset-0 ${isDark ? 'bg-gray-900/40' : 'bg-black/10'}`} />
 
-            {/* Map Markers
-            {[
-              { x: '20%', y: '40%', label: 'Block A', delay: 0 },
-              { x: '45%', y: '30%', label: 'Block B', delay: 0.3 },
-              { x: '70%', y: '50%', label: 'Block C', delay: 0.6 },
-              { x: '60%', y: '70%', label: 'Admin', delay: 0.9 },
-            ].map(({ x, y, label, delay }) => (
-              <motion.div
-                key={label}
-                style={{ left: x, top: y }}
-                className="absolute"
-                initial={{ opacity: 0, scale: 0 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: delay + 0.5 }}
-              >
-                <div className="relative flex flex-col items-center">
-                  <div className="pin-bounce">
-                    <MapPin size={24} className="text-green-500 drop-shadow-lg" fill="#16a34a" />
-                  </div>
-                  <span className="mt-1 bg-white/90 dark:bg-gray-900/90 text-gray-900 dark:text-white text-xs font-bold px-2 py-0.5 rounded-full shadow whitespace-nowrap">
-                    {label}
-                  </span>
-                </div>
-              </motion.div>
-            ))} */}
-
             {/* Center CTA */}
             <div className="absolute inset-0 flex items-center justify-center">
               <Link to="/campus-map" className="glass text-white font-semibold px-6 py-3 rounded-2xl flex items-center gap-2 hover:bg-white/20 transition-all backdrop-blur-md border border-white/30 shadow-xl">
