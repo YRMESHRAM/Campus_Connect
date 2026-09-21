@@ -159,6 +159,27 @@ const blockInfo: Record<string, { label: string; shortLabel: string; color: stri
 
 const floorLabels = ['Ground Floor', '1st Floor', '2nd Floor', '3rd Floor'];
 
+const QR_FROM_MAP: Record<string, string> = {
+  "cse-notice": "cse-notice",
+  "block-m": "BLOCK_M",
+  "block-f": "ENTRANCE_F",
+  "block-e": "BLOCK_E",
+  "block-b": "BLOCK_B",
+  "admin": "ADM",
+  "library": "library",
+  "canteen": "CANTEEN",
+  "main-gate": "MAIN_GATE",
+  "auditorium": "auditorium",
+};
+
+function placeFromQr(id: string) {
+  const mapped = QR_FROM_MAP[id] || id;
+  return (
+    standardPlaces.find((p) => p.id.toLowerCase() === mapped.toLowerCase()) ||
+    standardPlaces.find((p) => (p.key || "").toLowerCase() === mapped.toLowerCase()) ||
+    null
+  );
+}
 // Standard Known Places — all blocks, rooms, labs, amenities
 const standardPlaces: PlaceItem[] = [
   // Entrances / Gates
@@ -170,7 +191,8 @@ const standardPlaces: PlaceItem[] = [
   { id: 'BLOCK_B', key: 'BLOCK_B', name: 'Block B Entrance', type: 'entrance', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '⚙️', subtitle: 'Mechanical Wing & Stage' },
   { id: 'BLOCK_M', key: 'BLOCK_M', name: 'Block M Entrance', type: 'entrance', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '💻', subtitle: 'CSE / AIML Dept Entrance' },
   { id: 'CANTEEN', key: 'CANTEEN', name: 'Campus Canteen', type: 'amenity', block: 'CANTEEN', floor: 0, floorLabel: 'Ground Floor', icon: '🍽️', subtitle: 'Food Court & Refreshments' },
-
+  { id: 'cse-notice', key: 'BLOCK_M', name: 'CSE Notice Board', type: 'entrance', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '📌', subtitle: 'Block M corridor / CSE notice board' },
+  
   // Key Academic Destinations
   { id: 'library', name: 'Central Library (F203)', type: 'amenity', block: 'F', floor: 2, floorLabel: '2nd Floor', icon: '📖', subtitle: 'Main Books, Reading Hall & Digital Library', cabin: 'F203' },
   { id: 'auditorium', name: 'Auditorium M008', type: 'amenity', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Main Academic Auditorium (Ground)', cabin: 'M008' },
@@ -213,6 +235,7 @@ const standardPlaces: PlaceItem[] = [
 const CampusMap: React.FC = () => {
   const { isDark } = useTheme();
   const [searchParams] = useSearchParams();
+  const fromId = (searchParams.get("from") || searchParams.get("start") || "").toLowerCase().trim();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
 
@@ -252,7 +275,11 @@ const CampusMap: React.FC = () => {
   // Send GPS Position to 3D Iframe
   const sendGpsToIframe = useCallback((pos: GPSPosition) => {
     const coords = gpsToCampusCoords(pos.lat, pos.lng);
-    try {
+    iframeRef.current?.contentWindow?.postMessage(
+  { type: "SET_START", preset: from.key || from.id, from: from.id, start: from.id },
+  "*"
+);
+try {
       iframeRef.current?.contentWindow?.postMessage({
         type: 'UPDATE_GPS_POSITION',
         lat: pos.lat,
@@ -368,8 +395,9 @@ const CampusMap: React.FC = () => {
 
   // Attempt to use Live GPS location by default on load; fall back to entrance point if unavailable
   useEffect(() => {
-    startGpsTracking();
-  }, [startGpsTracking]);
+  if (fromId) return; // QR already set start
+  startGpsTracking();
+  }, [startGpsTracking, fromId]);
 
   // Simulated GPS Walk across campus for testing indoors
   const startSimulatedWalk = useCallback(() => {
@@ -548,6 +576,7 @@ const CampusMap: React.FC = () => {
   }, [fromPlace, toPlace, iframeLoaded, sendRouteToIframe, sendResetToIframe]);
 
   // ─── Handle URL query params ───────────────────────
+    // ─── Handle URL query params (QR from=  /  room= ) ───
   useEffect(() => {
     const roomParam = searchParams.get('room');
     const cabinParam = searchParams.get('cabin');
@@ -556,13 +585,22 @@ const CampusMap: React.FC = () => {
     const nameParam = searchParams.get('name');
     const targetRoomName = roomParam || cabinParam;
 
+    // 1) QR scan: /campus-map?from=cse-notice
+    if (fromId) {
+      const mappedId = QR_FROM_MAP[fromId] || fromId;
+      const spot =
+        standardPlaces.find((p) => p.id.toLowerCase() === mappedId.toLowerCase()) ||
+        standardPlaces.find((p) => (p.key || '').toLowerCase() === mappedId.toLowerCase());
+      if (spot) setFromPlace(spot);
+    }
+
     if (targetRoomName) {
       const block = parseBlockParam(blockParam, targetRoomName);
       const floor = parseFloorParam(floorParam, targetRoomName);
       const displayName = nameParam || `Room ${targetRoomName}`;
       const floorName = floorLabels[floor] || 'Ground Floor';
 
-      const customTo: PlaceItem = {
+      setToPlace({
         id: targetRoomName,
         name: displayName,
         type: 'classroom',
@@ -571,15 +609,15 @@ const CampusMap: React.FC = () => {
         floorLabel: floorName,
         cabin: targetRoomName,
         icon: '📍',
-        subtitle: `${blockInfo[block]?.shortLabel || 'Block ' + block} · ${floorName}`
-      };
-      setToPlace(customTo);
+        subtitle: `${blockInfo[block]?.shortLabel || 'Block ' + block} · ${floorName}`,
+      });
 
-      // Default starting point to Entrance (F004-F005) when navigating from classroom/faculty finder
-      const entranceF = standardPlaces.find(p => p.id === 'ENTRANCE_F') || standardPlaces[0];
-      setFromPlace(entranceF);
+      // Default Entrance F ONLY if this is not a QR scan
+      if (!fromId) {
+        setFromPlace(standardPlaces.find((p) => p.id === 'ENTRANCE_F') || standardPlaces[0]);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, fromId]);
 
   // ─── Keyboard shortcuts ────────────────────────────
   useEffect(() => {
@@ -1033,14 +1071,20 @@ const CampusMap: React.FC = () => {
 
               <iframe
                 ref={iframeRef}
-                src={`/map3d/campus-3d.html?theme=${isDark ? 'dark' : 'light'}`}
+                src={`/map3d/campus-3d.html?theme=${isDark ? "dark" : "light"}${fromId ? `&from=${encodeURIComponent(fromId)}` : ""}`}
                 title="3D Campus Map"
                 className="w-full h-full border-0"
+                allow="geolocation; fullscreen"
                 onLoad={() => {
-                  setIframeLoaded(true);
-                }}
-                allow="fullscreen"
-              />
+                setIframeLoaded(true);
+                if (fromId) {
+                  iframeRef.current?.contentWindow?.postMessage(
+                  { type: "SET_START", preset: fromId, from: fromId, start: fromId },
+                  "*"
+      );
+    }
+  }}
+/>
 
               {/* Viewport Floating Controls */}
               <div className="absolute right-3 top-3 sm:right-4 sm:top-4 z-20 flex flex-col gap-2">
