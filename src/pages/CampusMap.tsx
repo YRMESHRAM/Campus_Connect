@@ -172,19 +172,12 @@ const QR_FROM_MAP: Record<string, string> = {
   "auditorium": "auditorium",
 };
 
-function placeFromQr(id: string) {
-  const mapped = QR_FROM_MAP[id] || id;
-  return (
-    standardPlaces.find((p) => p.id.toLowerCase() === mapped.toLowerCase()) ||
-    standardPlaces.find((p) => (p.key || "").toLowerCase() === mapped.toLowerCase()) ||
-    null
-  );
-}
+
 // Standard Known Places — all blocks, rooms, labs, amenities
 const standardPlaces: PlaceItem[] = [
   // Entrances / Gates
   { id: 'ENTRANCE_F', key: 'ENTRANCE_F', name: 'Entrance (F004-F005)', type: 'entrance', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🚪', subtitle: 'Main First Year Wing Entrance' },
-  { id: 'MAIN_GATE', key: 'MAIN_GATE', name: 'Main Campus Gate', type: 'gate', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🚩', subtitle: 'Campus Entry & Guard Post' },
+  { id: 'MAIN_GATE', key: 'MAIN_GATE', name: 'S.B. Jain Main Gate', type: 'gate', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Campus Entry & Guard Post' },
   { id: 'PARKING', key: 'PARKING', name: 'Parking Area A', type: 'gate', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🅿️', subtitle: 'Two & Four Wheeler Parking' },
   { id: 'ADM', key: 'ADM', name: 'Admin Block Entrance', type: 'entrance', block: 'ADM', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Principal Office & Accounts' },
   { id: 'BLOCK_E', key: 'BLOCK_E', name: 'Block E Entrance', type: 'entrance', block: 'E', floor: 0, floorLabel: 'Ground Floor', icon: '📡', subtitle: 'ETC / MCA Wing Entrance' },
@@ -265,7 +258,7 @@ const CampusMap: React.FC = () => {
     steps: string[];
   } | null>(null);
 
-  // ─── Live GPS Geolocation State ───────────────────────
+  // ─── Live GPS State ─────────────────────────────────────
   const [gpsPosition, setGpsPosition] = useState<GPSPosition | null>(null);
   const [gpsStatus, setGpsStatus] = useState<'idle' | 'acquiring' | 'active' | 'denied' | 'error' | 'simulated'>('idle');
   const [gpsErrorMessage, setGpsErrorMessage] = useState<string | null>(null);
@@ -275,18 +268,16 @@ const CampusMap: React.FC = () => {
   // Send GPS Position to 3D Iframe
   const sendGpsToIframe = useCallback((pos: GPSPosition) => {
     const coords = gpsToCampusCoords(pos.lat, pos.lng);
-    iframeRef.current?.contentWindow?.postMessage(
-  { type: "SET_START", preset: from.key || from.id, from: from.id, start: from.id },
-  "*"
-);
-try {
+    try {
       iframeRef.current?.contentWindow?.postMessage({
         type: 'UPDATE_GPS_POSITION',
         lat: pos.lat,
         lng: pos.lng,
         accuracy: pos.accuracy,
         x: coords.x,
-        z: coords.z
+        z: coords.z,
+        heading: pos.heading,
+        speed: pos.speed
       }, '*');
     } catch (_) { }
   }, []);
@@ -295,21 +286,26 @@ try {
   const updateFromPlaceWithGps = useCallback((pos: GPSPosition, isSimulated = false) => {
     const nearest = findNearestLandmark(pos.lat, pos.lng);
 
-    const livePlace: PlaceItem = {
-      id: 'LIVE_GPS',
-      key: nearest.landmark.id,
-      name: isSimulated ? '🔵 Simulated GPS Walking' : '🔵 Live GPS (Laptop Location)',
-      type: 'gate',
-      block: nearest.landmark.block,
-      floor: nearest.landmark.floor,
-      floorLabel: 'Ground Floor',
-      icon: '🔵',
-      subtitle: `${pos.lat.toFixed(5)}°N, ${pos.lng.toFixed(5)}°E · Near ${nearest.landmark.name}`
-    };
+    // Only update starting location if destination is not yet chosen
+    setFromPlace((prev) => {
+      if (prev && prev.id !== 'LIVE_GPS') return prev;
+      return {
+        id: 'LIVE_GPS',
+        key: nearest.landmark.id,
+        name: isSimulated ? '🔵 Simulated GPS Walking' : '🔵 Live GPS (Laptop Location)',
+        type: 'gate',
+        block: nearest.landmark.block,
+        floor: nearest.landmark.floor,
+        floorLabel: 'Ground Floor',
+        icon: '🔵',
+        subtitle: `${pos.lat.toFixed(5)}°N, ${pos.lng.toFixed(5)}°E · Near ${nearest.landmark.name}`
+      };
+    });
 
-    setFromPlace(livePlace);
     sendGpsToIframe(pos);
   }, [sendGpsToIframe]);
+
+
 
   // Start Real Browser Geolocation Watch Position
   const startGpsTracking = useCallback(() => {
@@ -506,10 +502,16 @@ try {
           estimatedMinutes: e.data.estimatedMinutes || 1,
           steps: e.data.steps && e.data.steps.length > 0 ? e.data.steps : [
             `Walk from ${fromPlace?.name || 'Start'}`,
-            `Follow the glowing green corridor pathway`,
+            `Follow the glowing blue corridor pathway`,
             `Arrive at destination: ${toPlace?.name || 'Destination'}`
           ]
         });
+      } else if (e.data?.type === 'ROUTE_PROGRESS') {
+        setRouteStats(prev => prev ? {
+          ...prev,
+          distanceMeters: e.data.remainingDistanceMeters,
+          estimatedMinutes: e.data.estimatedMinutes
+        } : null);
       } else if (e.data?.type === 'DESTINATION_ARRIVED') {
         setIsArrived(true);
         setArrivedDestination(e.data.destination || toPlace?.name || 'Destination');
@@ -978,7 +980,7 @@ try {
                   {gpsStatus === 'simulated' && gpsPosition && (
                     <div className="flex items-center gap-2 text-emerald-400 font-bold">
                       <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <span>Simulated Indoor Walk Active (Covered Path Vanishes Live)</span>
+                      <span>Simulated GPS Active — Cursor moving on map</span>
                       <span className={`font-mono text-[11px] px-2 py-0.5 rounded-md border ${isDark ? 'bg-gray-900 border-gray-700 text-emerald-300' : 'bg-slate-100 border-gray-300 text-emerald-700'}`}>
                         {gpsPosition.lat.toFixed(5)}° N, {gpsPosition.lng.toFixed(5)}° E
                       </span>
@@ -998,18 +1000,18 @@ try {
                   )}
                 </div>
 
-                {/* Telemetry Controls & Simulated Walk Trigger */}
+                {/* Telemetry Controls */}
                 <div className="flex items-center gap-2 ml-auto">
                   <button
                     onClick={startSimulatedWalk}
-                    title="Simulate live walking updates across campus for testing indoors"
+                    title="Simulate GPS position updates across campus for testing when indoors"
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
                       gpsStatus === 'simulated'
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                         : isDark ? 'bg-gray-800 text-gray-400 hover:text-white border-gray-700' : 'bg-gray-100 text-gray-600 hover:text-gray-900 border-gray-200'
                     }`}
                   >
-                    🚶 Simulate Walk
+                    🔵 Simulate GPS
                   </button>
                   <button
                     onClick={stopGpsTracking}
@@ -1185,18 +1187,37 @@ try {
                   {/* Route details */}
                   <div className="mt-3 space-y-2">
                     <div className={`flex items-center gap-2 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0 shadow-sm" />
                       <span className="font-semibold">{fromPlace.name}</span>
                       <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({fromPlace.floorLabel})</span>
                     </div>
                     <div className={`ml-[5px] border-l-2 border-dashed pl-4 py-1 text-[11px] ${isDark ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'}`}>
-                      Walk via corridors & stairs (Covered path vanishes)
+                      Walk along route (covered path erases behind live)
                     </div>
                     <div className={`flex items-center gap-2 text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
                       <MapPin size={11} className="text-rose-500 fill-rose-500 shrink-0" />
                       <span className="font-semibold">{toPlace.name}</span>
                       <span className={`text-[10px] ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>({toPlace.floorLabel})</span>
                     </div>
+                  </div>
+
+                  {/* ── Live GPS Cursor Status ── */}
+                  <div className={`mt-3 p-3 rounded-2xl border ${isDark ? 'bg-gray-900/80 border-gray-700/80' : 'bg-slate-50 border-gray-200'}`}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${gpsStatus === 'active' ? 'bg-cyan-400 animate-ping' : gpsStatus === 'simulated' ? 'bg-emerald-400 animate-pulse' : 'bg-gray-500'}`} />
+                      <span className="text-[11px] font-bold flex items-center gap-1.5 text-blue-400">
+                        <Navigation size={12} className="text-blue-500" />
+                        Live GPS Cursor
+                      </span>
+                      {routeStats && (
+                        <span className={`ml-auto text-[10px] font-semibold ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          ~{routeStats.estimatedMinutes}min · {routeStats.distanceMeters}m left
+                        </span>
+                      )}
+                    </div>
+                    <p className={`mt-2 text-[10px] font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      🔵 Cursor follows your real GPS location. Path behind you erases automatically.
+                    </p>
                   </div>
 
                   {/* Steps */}

@@ -869,7 +869,7 @@
 
     // ─── Multi-Staircase Infrastructure ───────────────────────────
     const staircases = [
-      {
+      { 
         id: "STAIRS_F",
         name: "Staircase F (1st Year Wing)",
         block: "F",
@@ -1323,15 +1323,14 @@
       room(g, "room-M213", 3.6, 5, 16, 34, 2, mats.wallBlockM, "M213");
       room(g, "room-M201", 6.2, 3.6, 33, 18, 2, mats.wallBlockM, "M201");
       room(g, "room-M202", 6.2, 3.6, 33, 22.2, 2, mats.wash, "M202 BW");
-      room(g, "faculty-m204", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M204");
-      room(g, "room-M204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "M204");
+      room(g, "faculty-m203", 6.2, 3.4, 33, 26.2, 2, mats.wallBlockM, "FACULTY M203");
+      room(g, "faculty-m204", 6.2, 4.2, 33, 30.4, 2, mats.wallBlockM, "FACULTY M204");
       room(g, "room-M205", 5, 4.2, 33, 35.4, 2, mats.wallBlockM, "M205");
       room(g, "room-M209", 3.8, 3.4, 25.4, 26.6, 2, mats.wallBlockM, "M209");
       room(g, "dept-library", 8.2, 4.6, 25.4, 31.4, 2, mats.wallLab, "📚 DEPT LIBRARY (CSE)", true);
       room(g, "room-M208", 4, 3.6, 29.4, 36.8, 2, mats.wallHOD, "M208 HOD AIML", true);
       room(g, "room-M207", 3.4, 3.4, 25.4, 36.8, 2, mats.wallBlockM, "M207");
       room(g, "room-M206", 3.4, 3.4, 21.6, 36.8, 2, mats.wallBlockM, "M206");
-      room(g, "room-M203", 4, 3.4, 15.6, 31.4, 2, mats.wallBlockM, "M203");
       room(g, "room-M211", 4, 3.4, 15.6, 35.4, 2, mats.wallBlockM, "M211");
       room(g, "room-M212", 4, 3.4, 15.6, 27.4, 2, mats.wallBlockM, "M212 A2");
     }
@@ -1402,20 +1401,29 @@
     pathGroup.renderOrder = 999;
     scene.add(pathGroup);
 
+    const routePathSubGroup = new THREE.Group();
+    routePathSubGroup.name = "route-path-subgroup";
+    pathGroup.add(routePathSubGroup);
+
+    const targetMarkerGroup = new THREE.Group();
+    targetMarkerGroup.name = "target-marker-group";
+    pathGroup.add(targetMarkerGroup);
+
+    // Google Maps Navigation vibrant blue path material
     const pathMat = new THREE.MeshStandardMaterial({
-      color: 0x00ff88,
-      emissive: 0x10b981,
-      emissiveIntensity: 2.4,
-      roughness: 0.1,
-      metalness: 0.2,
+      color: 0x2563eb,
+      emissive: 0x1d4ed8,
+      emissiveIntensity: 2.2,
+      roughness: 0.15,
+      metalness: 0.25,
       depthTest: true,
       transparent: true,
-      opacity: 0.98
+      opacity: 0.96
     });
 
     const pulseMat = new THREE.MeshStandardMaterial({
       color: 0x6ee7b7,
-      emissive: 0x00ff88,
+      emissive: 0x10b981,
       emissiveIntensity: 2.8,
       roughness: 0.1,
       transparent: true,
@@ -1439,6 +1447,8 @@
     let pulseOrbs = [];
     let isPathVisible = true;
     let currentRouteFloor = 0;
+    let currentStartFloor = 0;
+    let currentCursorFloor = 0;
     let currentTargetBlock = "M";
     let currentSourceBlock = "F";
     let currentTargetName = null;
@@ -1825,6 +1835,7 @@
       if (isNavActive) {
         floorGroups.forEach(g => {
           if (!g.parent) campus.add(g);
+          g.visible = true;
         });
       }
 
@@ -2168,62 +2179,69 @@
         targetPos: finalTargetPos,
         distanceMeters: Math.round(totalDistUnits * 1.5),
         estimatedMinutes: Math.max(1, Math.round(totalDistUnits * 1.5 / 65)),
-        startBlock
+        startBlock,
+        startFloor,
+        targetFloor
       };
     }
 
-    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null, sourceBlock = null, startName = null, customStartPos = null) {
-      if (startKey) currentStartLocation = startKey;
-      currentTargetBlock = targetBlock; currentRouteFloor = floorLevel; currentTargetName = customTargetName; currentCabinCode = cabinCode;
-      currentSourceBlock = sourceBlock || (startLocations[currentStartLocation]?.block || "F");
+    let currentRouteFullPoints = [];
+    let currentRouteTotalUnits = 1;
+    let currentRouteProgressIdx = 0;
 
-      while (pathGroup.children.length > 0) {
-        const child = pathGroup.children[0];
+    function buildRoutePathAhead(pointsAhead) {
+      while (routePathSubGroup.children.length > 0) {
+        const child = routePathSubGroup.children[0];
         if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
-        pathGroup.remove(child);
+        routePathSubGroup.remove(child);
       }
       pulseOrbs = [];
 
-      // Highlight rooms and get meshes
-      const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
+      if (!pointsAhead || pointsAhead.length < 2) return;
 
-      if (!isPathVisible) return;
+      activeCurve = new CorridorCurve(pointsAhead);
+      const tubeSegments = Math.min(220, Math.max(25, pointsAhead.length * 16));
+      const tubeGeo = new THREE.TubeGeometry(activeCurve, tubeSegments, 0.46, 14, false);
+      const pathMesh = new THREE.Mesh(tubeGeo, pathMat);
+      pathMesh.renderOrder = 999;
+      routePathSubGroup.add(pathMesh);
 
-      const routeResult = getExactRoutePoints(currentStartLocation, targetBlock, floorLevel, customTargetName, cabinCode || customTargetName || targetBlock, customStartPos);
-
-      // Update visibility dynamically
-      const activeRouteNodes = new Set(routeResult.nodePath);
-      setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, true);
-
-      if (routeResult.points.length < 2) return;
-
-      activeCurve = new CorridorCurve(routeResult.points);
-      const tubeGeo = new THREE.TubeGeometry(activeCurve, 160, 0.45, 14, false);
-      const pathMesh = new THREE.Mesh(tubeGeo, pathMat); pathMesh.renderOrder = 999; pathGroup.add(pathMesh);
-
-      const curvePts = activeCurve.getPoints(180);
+      // Glowing white core stripe
+      const curvePts = activeCurve.getPoints(Math.min(240, pointsAhead.length * 18));
       const coreGeo = new THREE.BufferGeometry().setFromPoints(curvePts);
       const coreMat = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 4 });
-      const pathCoreLine = new THREE.Line(coreGeo, coreMat); pathCoreLine.renderOrder = 1000; pathGroup.add(pathCoreLine);
+      const pathCoreLine = new THREE.Line(coreGeo, coreMat);
+      pathCoreLine.renderOrder = 1000;
+      routePathSubGroup.add(pathCoreLine);
 
-      for (let i = 0; i < 7; i++) {
-        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.75, 16, 16), pulseMat);
-        orb.userData = { progress: i * 0.14 }; orb.renderOrder = 1001; pathGroup.add(orb); pulseOrbs.push(orb);
+      // Pulse orbs along the ahead path
+      const orbCount = Math.min(7, Math.max(2, Math.floor(pointsAhead.length / 2)));
+      for (let i = 0; i < orbCount; i++) {
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 16), pulseMat);
+        orb.userData = { progress: i * (1.0 / orbCount) };
+        orb.renderOrder = 1001;
+        routePathSubGroup.add(orb);
+        pulseOrbs.push(orb);
       }
 
-      // ── Directional Arrow Cones along the path ──
-      const arrowMat = new THREE.MeshStandardMaterial({ color: 0x22d3ee, emissive: 0x22d3ee, emissiveIntensity: 0.8, roughness: 0.3, metalness: 0.2 });
-      const totalPathLen = activeCurve.getLength ? activeCurve.getLength() : 50;
-      const arrowSpacing = Math.max(4, totalPathLen / 12);
-      const numArrows = Math.min(20, Math.max(3, Math.floor(totalPathLen / arrowSpacing)));
-      for (let i = 1; i < numArrows; i++) {
-        const t = i / numArrows;
+      // Directional Arrow Cones along the ahead path
+      const arrowMat = new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.95,
+        roughness: 0.2,
+        metalness: 0.3
+      });
+      const totalLen = activeCurve.getLength ? activeCurve.getLength() : 40;
+      const arrowSpacing = Math.max(5, totalLen / 12);
+      const numArrows = Math.min(18, Math.max(2, Math.floor(totalLen / arrowSpacing)));
+      for (let i = 1; i <= numArrows; i++) {
+        const t = i / (numArrows + 1);
         const pt = activeCurve.getPointAt(t);
         const ptAhead = activeCurve.getPointAt(Math.min(1.0, t + 0.02));
         if (!pt || !ptAhead) continue;
-        const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.4, 8), arrowMat);
+        const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.48, 1.35, 8), arrowMat);
         arrow.position.copy(pt).add(new THREE.Vector3(0, 0.3, 0));
-        // Rotate cone to point in direction of travel
         const dir = new THREE.Vector3().subVectors(ptAhead, pt).normalize();
         const axis = new THREE.Vector3(0, 1, 0);
         const quaternion = new THREE.Quaternion();
@@ -2234,34 +2252,94 @@
           arrow.quaternion.copy(quaternion);
         }
         arrow.renderOrder = 998;
-        pathGroup.add(arrow);
+        routePathSubGroup.add(arrow);
       }
+    }
 
-      // Start location pin and label (only if not using custom live start position)
-      if (!customStartPos) {
-        startBeacon = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 2.5, 16), startPinMat);
-        startBeacon.position.copy(routeResult.startPos).add(new THREE.Vector3(0, 1.25, 0)); pathGroup.add(startBeacon);
+    function render3DGreenPath(targetBlock = "M", floorLevel = 0, customTargetName = null, cabinCode = null, startKey = null, sourceBlock = null, startName = null, customStartPos = null) {
+      if (startKey) currentStartLocation = startKey;
+      currentTargetBlock = targetBlock; currentRouteFloor = floorLevel; currentTargetName = customTargetName; currentCabinCode = cabinCode;
+      currentSourceBlock = sourceBlock || (startLocations[currentStartLocation]?.block || "F");
 
-        let finalStartLabel = "Start Location";
-        if (startName) finalStartLabel = startName;
-        else if (startLocations[currentStartLocation]) finalStartLabel = startLocations[currentStartLocation].label;
-        else if (startMesh) finalStartLabel = startMesh.name || ("Classroom " + startKey);
-
-        createCustomLabel("📍 " + finalStartLabel, "pin-label-start", routeResult.startPos.clone().add(new THREE.Vector3(0, 3.6, 0)));
+      while (routePathSubGroup.children.length > 0) {
+        const child = routePathSubGroup.children[0];
+        if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+        routePathSubGroup.remove(child);
       }
+      while (targetMarkerGroup.children.length > 0) {
+        const child = targetMarkerGroup.children[0];
+        if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+        targetMarkerGroup.remove(child);
+      }
+      pulseOrbs = [];
 
-      // Target location pin and label
+      // Highlight rooms and get meshes
+      const { startMesh, targetMesh } = setRoomHighlights(currentStartLocation, targetBlock, cabinCode || customTargetName || targetBlock);
+
+      if (!isPathVisible) return;
+
+      const routeResult = getExactRoutePoints(currentStartLocation, targetBlock, floorLevel, customTargetName, cabinCode || customTargetName || targetBlock, customStartPos);
+      currentStartFloor = routeResult.startFloor !== undefined ? routeResult.startFloor : 0;
+      currentCursorFloor = currentStartFloor;
+
+      // Ensure active floor indicator matches the starting location's floor
+      document.querySelectorAll('.floors button').forEach(function (b) {
+        b.classList.remove('active');
+        if (b.dataset.floor === String(currentStartFloor)) b.classList.add('active');
+      });
+      if (now) now.innerHTML = `<span>●</span> ${names[currentStartFloor] || 'Floor ' + currentStartFloor} Active`;
+
+      // Update visibility dynamically
+      const activeRouteNodes = new Set(routeResult.nodePath);
+      setSelectiveBlockVisibility(startMesh, targetMesh, activeRouteNodes, true);
+
+      if (routeResult.points.length < 2) return;
+
+      currentRouteFullPoints = routeResult.points.map(p => p.clone());
+      currentRouteTotalUnits = 0;
+      for (let i = 0; i < currentRouteFullPoints.length - 1; i++) {
+        currentRouteTotalUnits += currentRouteFullPoints[i].distanceTo(currentRouteFullPoints[i + 1]);
+      }
+      currentRouteProgressIdx = 0;
+
+      // Render the complete route path initially
+      buildRoutePathAhead(currentRouteFullPoints);
+
+      // Target location pin, aura box and label in targetMarkerGroup
       targetBeacon = new THREE.Mesh(new THREE.ConeGeometry(1.5, 3.8, 16), pulseMat);
-      targetBeacon.rotation.x = Math.PI; targetBeacon.position.copy(routeResult.targetPos).add(new THREE.Vector3(0, 3.0, 0)); pathGroup.add(targetBeacon);
+      targetBeacon.rotation.x = Math.PI;
+      targetBeacon.position.copy(routeResult.targetPos).add(new THREE.Vector3(0, 3.0, 0));
+      targetMarkerGroup.add(targetBeacon);
 
-      const auraGeo = new THREE.BoxGeometry(5.2, 5.2, 5.2), auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.9 });
-      targetAuraBox = new THREE.Mesh(auraGeo, auraMat); targetAuraBox.position.copy(routeResult.targetPos); pathGroup.add(targetAuraBox);
+      const auraGeo = new THREE.BoxGeometry(5.2, 5.2, 5.2);
+      const auraMat = new THREE.MeshBasicMaterial({ color: 0x10b981, wireframe: true, transparent: true, opacity: 0.9 });
+      targetAuraBox = new THREE.Mesh(auraGeo, auraMat);
+      targetAuraBox.position.copy(routeResult.targetPos);
+      targetMarkerGroup.add(targetAuraBox);
 
       let finalTargetLabel = "Destination";
       if (customTargetName) finalTargetLabel = customTargetName;
       else if (targetMesh) finalTargetLabel = targetMesh.name || ("Classroom " + targetBlock);
 
-      createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
+      const targetLabelObj = createCustomLabel("🎯 " + finalTargetLabel, "pin-label-target", routeResult.targetPos.clone().add(new THREE.Vector3(0, 5.2, 0)));
+      targetMarkerGroup.add(targetLabelObj);
+
+      // Initialize Google Maps Navigation Cursor right at the route starting point
+      let initAngle = null;
+      if (currentRouteFullPoints.length >= 2) {
+        const d = new THREE.Vector3().subVectors(currentRouteFullPoints[1], currentRouteFullPoints[0]).normalize();
+        if (d.lengthSq() > 0.001) {
+          initAngle = Math.atan2(d.x, d.z);
+        }
+      }
+      updateUserGPSMarker(
+        currentRouteFullPoints[0].x,
+        currentRouteFullPoints[0].z,
+        5,
+        null,
+        currentRouteFullPoints[0].y + 0.15,
+        initAngle
+      );
 
       function generateTurnByTurnSteps(nodePath, startLabel, targetLabel, startFloor, targetFloor, startBlock, targetBlock) {
         const steps = [];
@@ -2386,6 +2464,327 @@
       routeSelect.onchange = () => { flyToBlock(routeSelect.value); render3DGreenPath(routeSelect.value, 0); };
     }
 
+    // ─── Google Maps Navigation Cursor & Live GPS State ─────────
+    let googleMapsCursorGroup = null;
+    let cursorArrowMesh = null;
+    let cursorPuckMesh = null;
+    let cursorShadowMesh = null;
+    let cursorPulseRing = null;
+    let cursorForwardBeam = null;
+    let cursorLabelObj = null;
+
+    let currentLiveUserPos = null;
+
+    function getOrCreateGoogleMapsCursor() {
+      if (googleMapsCursorGroup) return googleMapsCursorGroup;
+
+      googleMapsCursorGroup = new THREE.Group();
+      googleMapsCursorGroup.name = "google-maps-navigation-cursor";
+
+      // 1. Soft Ground Drop Shadow underneath puck
+      const shadowCanvas = document.createElement("canvas");
+      shadowCanvas.width = 128;
+      shadowCanvas.height = 128;
+      const sCtx = shadowCanvas.getContext("2d");
+      const grad = sCtx.createRadialGradient(64, 64, 8, 64, 64, 60);
+      grad.addColorStop(0, "rgba(0, 0, 0, 0.55)");
+      grad.addColorStop(0.5, "rgba(0, 0, 0, 0.25)");
+      grad.addColorStop(1, "rgba(0, 0, 0, 0)");
+      sCtx.fillStyle = grad;
+      sCtx.fillRect(0, 0, 128, 128);
+      const shadowTex = new THREE.CanvasTexture(shadowCanvas);
+      const shadowGeo = new THREE.PlaneGeometry(6.6, 6.6);
+      shadowGeo.rotateX(-Math.PI / 2);
+      const shadowMat = new THREE.MeshBasicMaterial({
+        map: shadowTex,
+        transparent: true,
+        depthWrite: false,
+        opacity: 0.9
+      });
+      cursorShadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+      cursorShadowMesh.position.y = 0.04;
+      googleMapsCursorGroup.add(cursorShadowMesh);
+
+      // 2. White Circle Base Puck (clean round disc)
+      const puckGeo = new THREE.CylinderGeometry(2.2, 2.3, 0.28, 40);
+      const puckMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.12,
+        metalness: 0.05,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.15
+      });
+      cursorPuckMesh = new THREE.Mesh(puckGeo, puckMat);
+      cursorPuckMesh.position.y = 0.22;
+      cursorPuckMesh.castShadow = true;
+      googleMapsCursorGroup.add(cursorPuckMesh);
+
+      // 3. Crisp Border Rim around puck
+      const rimGeo = new THREE.RingGeometry(2.18, 2.34, 40);
+      rimGeo.rotateX(-Math.PI / 2);
+      const rimMat = new THREE.MeshBasicMaterial({
+        color: 0xdbeafe,
+        side: THREE.DoubleSide
+      });
+      const rimMesh = new THREE.Mesh(rimGeo, rimMat);
+      rimMesh.position.y = 0.37;
+      googleMapsCursorGroup.add(rimMesh);
+
+      // 4. Navigation Chevron Arrow (3D extruded Blue Arrow like image)
+      const arrowShape = new THREE.Shape();
+      arrowShape.moveTo(0, 1.45);        // Forward tip
+      arrowShape.lineTo(1.12, -1.05);   // Right wing tip
+      arrowShape.lineTo(0, -0.45);      // Inverted inner notch
+      arrowShape.lineTo(-1.12, -1.05);  // Left wing tip
+      arrowShape.closePath();
+
+      const extrudeSettings = {
+        steps: 1,
+        depth: 0.22,
+        bevelEnabled: true,
+        bevelThickness: 0.05,
+        bevelSize: 0.04,
+        bevelSegments: 3
+      };
+      const arrowGeo = new THREE.ExtrudeGeometry(arrowShape, extrudeSettings);
+      arrowGeo.rotateX(-Math.PI / 2);
+      arrowGeo.rotateY(Math.PI); // Tip points forward along -Z
+
+      const arrowMat = new THREE.MeshStandardMaterial({
+        color: 0x1d4ed8, // Iconic Google Maps blue
+        emissive: 0x2563eb,
+        emissiveIntensity: 0.65,
+        roughness: 0.12,
+        metalness: 0.25
+      });
+      cursorArrowMesh = new THREE.Mesh(arrowGeo, arrowMat);
+      cursorArrowMesh.position.y = 0.38;
+      googleMapsCursorGroup.add(cursorArrowMesh);
+
+      // 5. Forward Directional Accuracy Flashlight Beam (Translucent blue cone)
+      const beamAngle = Math.PI / 3.6;
+      const beamGeo = new THREE.RingGeometry(2.35, 6.5, 32, 1, -Math.PI / 2 - beamAngle / 2, beamAngle);
+      beamGeo.rotateX(-Math.PI / 2);
+      const beamMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.24,
+        side: THREE.DoubleSide
+      });
+      cursorForwardBeam = new THREE.Mesh(beamGeo, beamMat);
+      cursorForwardBeam.position.y = 0.12;
+      googleMapsCursorGroup.add(cursorForwardBeam);
+
+      // 6. Pulse Radar Ring at base
+      const pulseGeo = new THREE.RingGeometry(2.35, 4.0, 36);
+      pulseGeo.rotateX(-Math.PI / 2);
+      const pulseRingMat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.45,
+        side: THREE.DoubleSide
+      });
+      cursorPulseRing = new THREE.Mesh(pulseGeo, pulseRingMat);
+      cursorPulseRing.position.y = 0.09;
+      googleMapsCursorGroup.add(cursorPulseRing);
+
+      // 7. Floating Pill Label
+      const labelDiv = document.createElement("div");
+      labelDiv.className = "pin-label-start";
+      labelDiv.style.background = "linear-gradient(135deg, #1d4ed8, #2563eb)";
+      labelDiv.style.borderColor = "#ffffff";
+      labelDiv.style.boxShadow = "0 6px 20px rgba(29, 78, 216, 0.65)";
+      labelDiv.textContent = "📍 You (Live Location)";
+      cursorLabelObj = new CSS2DObject(labelDiv);
+      cursorLabelObj.position.set(0, 4.2, 0);
+      googleMapsCursorGroup.add(cursorLabelObj);
+
+      scene.add(googleMapsCursorGroup);
+      return googleMapsCursorGroup;
+    }
+
+    function getRouteElevationAt(x, z) {
+      if (!currentRouteFullPoints || currentRouteFullPoints.length === 0) {
+        return (currentCursorFloor === 0 ? 0.55 : floorY(currentCursorFloor) + 0.35) + 0.15;
+      }
+      if (currentRouteFullPoints.length === 1) {
+        return currentRouteFullPoints[0].y + 0.15;
+      }
+
+      let minDistanceSq = Infinity;
+      let bestY = currentRouteFullPoints[0].y;
+
+      const startIdx = Math.max(0, currentRouteProgressIdx);
+      for (let i = startIdx; i < currentRouteFullPoints.length - 1; i++) {
+        const p1 = currentRouteFullPoints[i];
+        const p2 = currentRouteFullPoints[i + 1];
+        const segX = p2.x - p1.x;
+        const segZ = p2.z - p1.z;
+        const segLenSq = segX * segX + segZ * segZ;
+        if (segLenSq < 0.0001) continue;
+
+        const toUserX = x - p1.x;
+        const toUserZ = z - p1.z;
+        const t = Math.max(0, Math.min(1, (toUserX * segX + toUserZ * segZ) / segLenSq));
+        const projX = p1.x + segX * t;
+        const projZ = p1.z + segZ * t;
+        const distSq = (x - projX) * (x - projX) + (z - projZ) * (z - projZ);
+
+        if (distSq < minDistanceSq) {
+          minDistanceSq = distSq;
+          bestY = p1.y + (p2.y - p1.y) * t;
+        }
+      }
+
+      return bestY + 0.15;
+    }
+
+    function updateUserGPSMarker(x, z, accuracy, heading, yOverride, angleOverride) {
+      const cursor = getOrCreateGoogleMapsCursor();
+      cursor.visible = true;
+
+      let currentY;
+      if (yOverride !== undefined && yOverride !== null) {
+        currentY = yOverride;
+      } else if (currentRouteFullPoints && currentRouteFullPoints.length >= 2) {
+        currentY = getRouteElevationAt(x, z);
+      } else {
+        currentY = (currentCursorFloor === 0 ? 0.55 : floorY(currentCursorFloor) + 0.35) + 0.15;
+      }
+
+      // Automatically update currentCursorFloor and floor buttons as user moves between floors
+      let detectedFloor = 0;
+      if (currentY > floorY(2)) detectedFloor = 3;
+      else if (currentY > floorY(1)) detectedFloor = 2;
+      else if (currentY > floorY(0) + 1.0) detectedFloor = 1;
+      else detectedFloor = 0;
+
+      if (detectedFloor !== currentCursorFloor) {
+        currentCursorFloor = detectedFloor;
+        document.querySelectorAll('.floors button').forEach(function (b) {
+          b.classList.remove('active');
+          if (b.dataset.floor === String(detectedFloor)) b.classList.add('active');
+        });
+        if (now) now.innerHTML = `<span>●</span> ${names[detectedFloor] || 'Floor ' + detectedFloor} Active`;
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({
+            type: 'USER_FLOOR_CHANGED',
+            floor: detectedFloor
+          }, '*');
+        }
+      }
+
+      const targetPos = new THREE.Vector3(x, currentY, z);
+      currentLiveUserPos = targetPos.clone();
+      cursor.position.copy(targetPos);
+
+      // Orientation: angleOverride, or compass heading (deg), or keep current
+      if (angleOverride !== undefined && angleOverride !== null) {
+        cursor.rotation.y = angleOverride;
+      } else if (heading !== undefined && heading !== null && !isNaN(heading)) {
+        cursor.rotation.y = Math.PI - (heading * Math.PI / 180);
+      }
+
+      // Dynamic path trimming: Erase all path behind user in real time
+      if (isPathVisible && currentRouteFullPoints && currentRouteFullPoints.length >= 2) {
+        trimRouteBehindUser(targetPos);
+      }
+    }
+
+    // ─── Dynamic Route Trimming: Erase Crossed Path Behind User ───
+    function trimRouteBehindUser(userPos) {
+      if (!currentRouteFullPoints || currentRouteFullPoints.length < 2) return;
+
+      let bestSegIdx = currentRouteProgressIdx;
+      let minDistance = Infinity;
+      let bestT = 0;
+
+      const startIdx = Math.max(0, currentRouteProgressIdx);
+      for (let i = startIdx; i < currentRouteFullPoints.length - 1; i++) {
+        const p1 = currentRouteFullPoints[i];
+        const p2 = currentRouteFullPoints[i + 1];
+        const segVec = new THREE.Vector3().subVectors(p2, p1);
+        const segLenSq = segVec.x * segVec.x + segVec.z * segVec.z;
+        if (segLenSq < 0.0001) continue;
+
+        const toUser = new THREE.Vector3().subVectors(userPos, p1);
+        const t = Math.max(0, Math.min(1, (toUser.x * segVec.x + toUser.z * segVec.z) / segLenSq));
+        const proj = new THREE.Vector3(
+          p1.x + segVec.x * t,
+          p1.y + (p2.y - p1.y) * t,
+          p1.z + segVec.z * t
+        );
+
+        const dist = proj.distanceTo(userPos);
+        if (dist < minDistance) {
+          minDistance = dist;
+          bestSegIdx = i;
+          bestT = t;
+        }
+      }
+
+      if (bestSegIdx > currentRouteProgressIdx || (bestSegIdx === currentRouteProgressIdx && bestT > 0.05)) {
+        currentRouteProgressIdx = bestSegIdx;
+      }
+
+      // Reconstruct forward path starting at current cursor position
+      // All segments behind bestSegIdx are completely ERASED!
+      const pointsAhead = [userPos.clone()];
+
+      if (bestT < 0.85) {
+        for (let i = bestSegIdx + 1; i < currentRouteFullPoints.length; i++) {
+          pointsAhead.push(currentRouteFullPoints[i].clone());
+        }
+      } else {
+        const nextStart = Math.min(currentRouteFullPoints.length - 1, bestSegIdx + 2);
+        for (let i = nextStart; i < currentRouteFullPoints.length; i++) {
+          pointsAhead.push(currentRouteFullPoints[i].clone());
+        }
+        if (pointsAhead.length === 1 && currentRouteFullPoints.length > 0) {
+          pointsAhead.push(currentRouteFullPoints[currentRouteFullPoints.length - 1].clone());
+        }
+      }
+
+      // Rebuild ahead path
+      buildRoutePathAhead(pointsAhead);
+
+      // Auto-orient arrow along route if no GPS compass heading active
+      if (pointsAhead.length >= 2 && googleMapsCursorGroup) {
+        const forwardDir = new THREE.Vector3().subVectors(pointsAhead[1], pointsAhead[0]).normalize();
+        if (forwardDir.lengthSq() > 0.001) {
+          const angle = Math.atan2(forwardDir.x, forwardDir.z);
+          googleMapsCursorGroup.rotation.y = angle;
+        }
+      }
+
+      // Calculate remaining distance
+      let remainingDistUnits = 0;
+      for (let i = 0; i < pointsAhead.length - 1; i++) {
+        remainingDistUnits += pointsAhead[i].distanceTo(pointsAhead[i + 1]);
+      }
+      const remainingDistMeters = Math.round(remainingDistUnits * 1.5);
+      const remainingMinutes = Math.max(1, Math.round(remainingDistMeters / 65));
+
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'ROUTE_PROGRESS',
+          remainingDistanceMeters: remainingDistMeters,
+          estimatedMinutes: remainingMinutes,
+          completedPercent: Math.min(100, Math.round((1 - remainingDistUnits / Math.max(1, currentRouteTotalUnits)) * 100))
+        }, '*');
+
+        // Arrival detection (within 3.5m of target)
+        const targetPos = currentRouteFullPoints[currentRouteFullPoints.length - 1];
+        if (remainingDistMeters <= 3.5 || (targetPos && userPos.distanceTo(targetPos) <= 3.5)) {
+          window.parent.postMessage({
+            type: 'DESTINATION_ARRIVED',
+            destination: currentTargetName || 'Destination'
+          }, '*');
+        }
+      }
+    }
+
+    // ─── PostMessage Event Handlers ──────────────────────────────
     window.addEventListener('message', function (e) {
       if (!e.data) return;
 
@@ -2400,12 +2799,20 @@
         });
         showFloor(String(f));
       } else if (e.data.type === 'RESET_VIEW') {
-        // Clear path, restore all blocks, no navigation
-        while (pathGroup.children.length > 0) {
-          const child = pathGroup.children[0];
+        while (routePathSubGroup.children.length > 0) {
+          const child = routePathSubGroup.children[0];
           if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
-          pathGroup.remove(child);
+          routePathSubGroup.remove(child);
         }
+        while (targetMarkerGroup.children.length > 0) {
+          const child = targetMarkerGroup.children[0];
+          if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+          targetMarkerGroup.remove(child);
+        }
+        if (googleMapsCursorGroup) {
+          googleMapsCursorGroup.visible = false;
+        }
+        currentRouteFullPoints = [];
         pulseOrbs = [];
         activeCurve = null;
         targetBeacon = null;
@@ -2417,9 +2824,10 @@
         isPathVisible = false;
         setSelectiveBlockVisibility(null, null, null, false);
         showFloor("0");
-        // Fly to default isometric overview
         smoothFlyCamera(new THREE.Vector3(95, 75, 95), new THREE.Vector3(6, 4, 6));
       } else if (e.data.type === 'NAVIGATE_ROUTE' || e.data.type === 'NAVIGATE' || e.data.type === 'SHOW_PATH') {
+        currentRouteProgressIdx = 0;
+
         var block = e.data.block || (e.data.to && e.data.to.block) || 'M';
         var floor = e.data.floor !== undefined ? Number(e.data.floor) : ((e.data.to && e.data.to.floor !== undefined) ? Number(e.data.to.floor) : 0);
         var cabin = e.data.cabin || (e.data.to && (e.data.to.cabin || e.data.to.name)) || '';
@@ -2427,12 +2835,13 @@
         var startLoc = e.data.startLocation || (e.data.from && (e.data.from.key || e.data.from.node)) || e.data.start || currentStartLocation;
         var srcBlock = (e.data.from && e.data.from.block) || e.data.sourceBlock || 'F';
         var startName = (e.data.from && e.data.from.name) || e.data.startName || startLoc;
+        var startFl = (e.data.from && e.data.from.floor !== undefined) ? Number(e.data.from.floor) : ((typeof startLocations[startLoc] !== 'undefined') ? startLocations[startLoc].floor : 0);
 
         document.querySelectorAll('.floors button').forEach(function (b) {
           b.classList.remove('active');
-          if (b.dataset.floor === String(floor)) b.classList.add('active');
+          if (b.dataset.floor === String(startFl)) b.classList.add('active');
         });
-        showFloor(String(floor));
+        showFloor(String(startFl));
 
         if (routeSelect) routeSelect.value = block;
         isPathVisible = true;
@@ -2449,92 +2858,10 @@
         var gpsX = e.data.x !== undefined ? e.data.x : 0;
         var gpsZ = e.data.z !== undefined ? e.data.z : 0;
         var accuracyMeters = e.data.accuracy || 5;
-        updateUserGPSMarker(gpsX, gpsZ, accuracyMeters);
+        var headingDeg = e.data.heading !== undefined ? e.data.heading : null;
+        updateUserGPSMarker(gpsX, gpsZ, accuracyMeters, headingDeg);
       }
     });
-
-    let gpsMarkerGroup = null;
-    let gpsPulseRing = null;
-    let gpsLabelObj = null;
-    let currentLiveUserPos = null;
-
-    function updateUserGPSMarker(x, z, accuracy) {
-      if (!gpsMarkerGroup) {
-        gpsMarkerGroup = new THREE.Group();
-        gpsMarkerGroup.name = "user-gps-beacon";
-
-        // Glowing Blue Core Sphere
-        const coreGeo = new THREE.SphereGeometry(1.2, 32, 32);
-        const coreMat = new THREE.MeshStandardMaterial({
-          color: 0x38bdf8,
-          emissive: 0x0284c7,
-          emissiveIntensity: 0.9,
-          roughness: 0.2,
-          metalness: 0.8
-        });
-        const coreMesh = new THREE.Mesh(coreGeo, coreMat);
-        coreMesh.position.y = 1.2;
-        coreMesh.castShadow = true;
-        gpsMarkerGroup.add(coreMesh);
-
-        // Ground Radar Pulse Ring
-        const ringGeo = new THREE.RingGeometry(1.5, 3.2, 32);
-        ringGeo.rotateX(-Math.PI / 2);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: 0x38bdf8,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.6
-        });
-        gpsPulseRing = new THREE.Mesh(ringGeo, ringMat);
-        gpsPulseRing.position.y = 0.15;
-        gpsMarkerGroup.add(gpsPulseRing);
-
-        // Vertical Light Beam
-        const beamGeo = new THREE.CylinderGeometry(0.1, 0.8, 12, 16);
-        const beamMat = new THREE.MeshBasicMaterial({
-          color: 0x38bdf8,
-          transparent: true,
-          opacity: 0.25
-        });
-        const beam = new THREE.Mesh(beamGeo, beamMat);
-        beam.position.y = 6;
-        gpsMarkerGroup.add(beam);
-
-        // Label
-        const labelDiv = document.createElement('div');
-        labelDiv.className = 'pin-label-start';
-        labelDiv.style.background = 'linear-gradient(135deg, #0284c7, #2563eb)';
-        labelDiv.style.borderColor = '#60a5fa';
-        labelDiv.style.boxShadow = '0 6px 20px rgba(2, 132, 199, 0.7)';
-        labelDiv.textContent = '🔵 You (Live Location)';
-        gpsLabelObj = new CSS2DObject(labelDiv);
-        gpsLabelObj.position.set(0, 4.5, 0);
-        gpsMarkerGroup.add(gpsLabelObj);
-
-        scene.add(gpsMarkerGroup);
-      }
-
-      gpsMarkerGroup.position.set(x, 0, z);
-
-      const currentY = floorY(currentRouteFloor || 0) + 0.35;
-      currentLiveUserPos = new THREE.Vector3(x, currentY, z);
-
-      // Dynamic path vanishing: If navigation route is active, continuously recalculate the green corridor path
-      // starting at current live user position, vanishing covered path segments behind the user in real time.
-      if (isPathVisible && currentTargetBlock) {
-        render3DGreenPath(
-          currentTargetBlock,
-          currentRouteFloor,
-          currentTargetName,
-          currentCabinCode,
-          currentStartLocation,
-          currentSourceBlock,
-          null,
-          currentLiveUserPos
-        );
-      }
-    }
 
     // Check URL params for theme
     const urlParams = new URLSearchParams(window.location.search);
@@ -2544,7 +2871,6 @@
 
     // Initial display — show complete campus with ALL blocks visible, no route
     showFloor("0");
-    // No default route — user must manually select From and Where
 
     // ─── Render Loop ─────────────────────────────────────────────
     (function tick() {
@@ -2580,11 +2906,11 @@
         targetAuraBox.rotation.y += 0.02;
         targetAuraBox.rotation.x += 0.015;
       }
-      if (gpsPulseRing) {
-        gpsPulseRing.rotation.z += 0.02;
-        const pulse = (Date.now() % 2000) / 2000;
-        gpsPulseRing.scale.set(1 + pulse * 0.8, 1 + pulse * 0.8, 1);
-        gpsPulseRing.material.opacity = 0.7 * (1 - pulse);
+      if (cursorPulseRing) {
+        cursorPulseRing.rotation.z += 0.02;
+        const pulse = (Date.now() % 1800) / 1800;
+        cursorPulseRing.scale.set(1 + pulse * 0.7, 1 + pulse * 0.7, 1);
+        cursorPulseRing.material.opacity = 0.5 * (1 - pulse);
       }
 
       renderer.render(scene, camera);
