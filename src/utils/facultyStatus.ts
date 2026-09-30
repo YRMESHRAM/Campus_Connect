@@ -121,10 +121,10 @@ export async function setManualStatus(facultyName: string, status: string): Prom
   }
 }
 
-export function subscribeFacultyStatus(onChange: () => void): () => void {
+export function subscribeFacultyStatus(onChange: (payload?: any) => void): () => void {
   const channel = supabase.channel('faculty-status-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_schedules' }, async () => {
-      onChange();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'faculty_schedules' }, async (payload) => {
+      onChange(payload);
     })
     .subscribe();
 

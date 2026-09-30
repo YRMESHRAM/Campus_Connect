@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { MapPin, BookOpen, Users, Phone, Navigation, MessageSquare, Bell, TrendingUp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
-import { fetchFacultyFromSupabase, getCachedFacultyData, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
+import { fetchFacultyFromSupabase, getCachedFacultyData, startPolling } from '../utils/facultyStore';
+import { subscribeFacultyStatus } from '../utils/facultyStatus';
 import { getAnnouncements, subscribeAnnouncements } from '../utils/announcementStore';
 
 const Dashboard: React.FC = () => {
@@ -34,12 +35,16 @@ const Dashboard: React.FC = () => {
       updateCountFromList(newData);
     }, 10000);
 
-    const unsubscribe = subscribeFacultyStatusChanges((detail) => {
-      updateCountFromList(getCachedFacultyData());
-      if (detail.name && detail.status) {
-        const formattedStatus = detail.status === 'in-lecture' ? 'In Lecture' : detail.status.charAt(0).toUpperCase() + detail.status.slice(1);
+    const unsubscribeRealtime = subscribeFacultyStatus((payload) => {
+      fetchFacultyFromSupabase().then(updateCountFromList);
+      
+      const name = payload?.new?.['Faculty Name'] || payload?.new?.name;
+      const status = payload?.new?.availability;
+      
+      if (name && status) {
+        const formattedStatus = status === 'in-lecture' ? 'In Lecture' : status.charAt(0).toUpperCase() + status.slice(1);
         setRecentActivities((prev) => [
-          { text: `${detail.name} changed status to ${formattedStatus}`, time: 'Just now', dot: 'bg-green-500' },
+          { text: `${name} changed status to ${formattedStatus}`, time: 'Just now', dot: 'bg-green-500' },
           ...prev.slice(0, 4),
         ]);
       }
@@ -52,7 +57,7 @@ const Dashboard: React.FC = () => {
 
     return () => {
       stopPolling();
-      unsubscribe();
+      unsubscribeRealtime();
       unsubscribeAnn();
     };
   }, []);
