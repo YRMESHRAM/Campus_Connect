@@ -12,19 +12,8 @@ const Dashboard: React.FC = () => {
 
   const [availableFacultyCount, setAvailableFacultyCount] = useState<number>(0);
 
-  // Static fallback activities shown when no faculty announcements exist
-  const defaultActivities = [
-    { text: 'Computer Lab 1 is now available', time: '5 min ago', dot: 'bg-green-500' },
-    { text: 'Faculty Portal synchronized with real-time status', time: '12 min ago', dot: 'bg-blue-500' },
-    { text: 'Fire drill scheduled for tomorrow 11 AM', time: '1 hr ago', dot: 'bg-red-500' },
-    { text: 'TechVista 2025 registrations now open', time: '3 hrs ago', dot: 'bg-purple-500' },
-  ];
-
   const buildActivityList = () => {
-    const stored = getAnnouncements().map((a) => ({ text: a.text, time: a.time, dot: a.dot }));
-    // Faculty announcements go first, then static defaults fill up to 5 items
-    const combined = [...stored, ...defaultActivities];
-    return combined.slice(0, 5);
+    return getAnnouncements().map((a) => ({ text: a.text, time: a.time, dot: a.dot })).slice(0, 5);
   };
 
   const [recentActivities, setRecentActivities] = useState<Array<{ text: string; time: string; dot: string }>>(
@@ -245,15 +234,21 @@ const Dashboard: React.FC = () => {
               <h3 className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Recent Activity</h3>
             </div>
             <div className="space-y-3">
-              {recentActivities.map((item, i) => (
-                <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
-                  <div className={`w-2 h-2 ${item.dot} rounded-full mt-1.5 flex-shrink-0`} />
-                  <div className="flex-1">
-                    <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.text}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{item.time}</p>
+              {recentActivities.length > 0 ? (
+                recentActivities.map((item, i) => (
+                  <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${isDark ? 'bg-gray-900/50' : 'bg-gray-50'}`}>
+                    <div className={`w-2 h-2 ${item.dot} rounded-full mt-1.5 flex-shrink-0`} />
+                    <div className="flex-1">
+                      <p className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{item.text}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.time}</p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className={`p-4 text-center text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  No recent activity found.
                 </div>
-              ))}
+              )}
             </div>
           </motion.div>
 
