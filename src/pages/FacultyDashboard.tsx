@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { supabase } from '../supabaseClient';
 import { getFacultyAvailability, updateFacultyAvailability, subscribeFacultyStatusChanges } from '../utils/facultyStore';
+import { setManualStatus } from '../utils/facultyStatus';
 import {
   getAnnouncements,
   addAnnouncement,
@@ -136,25 +137,12 @@ const FacultyDashboard: React.FC = () => {
   };
 
   const handleAvailabilityChange = async (newStatus: AvailabilityStatus) => {
-    // 1. Update local state & store
+    // Update local state first for instant UI response
     setAvailability(newStatus);
-    updateFacultyAvailability(facultyName, newStatus);
-
-    // 2. Persist to Supabase database
     try {
-      const { error } = await supabase
-        .from('faculty_schedules')
-        .update({ availability: newStatus })
-        .eq('Faculty Name', facultyName);
-
-      if (error) {
-        await supabase
-          .from('faculty_schedules')
-          .update({ availability: newStatus })
-          .eq('name', facultyName);
-      }
+      await setManualStatus(facultyName, newStatus);
     } catch (err) {
-      // Graceful fallback if database update fails
+      console.error('Error setting manual status:', err);
     }
   };
 
@@ -223,7 +211,7 @@ const FacultyDashboard: React.FC = () => {
             ))}
           </div>
           <p className={`text-xs mt-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-            Status set to: <strong className={currentStatus.color}>{currentStatus.label}</strong> — students can see this in Faculty Directory
+            Status set to: <strong className={currentStatus.color}>{currentStatus.label}</strong>. Forced until 5:30 PM. Students see this in Faculty Directory.
           </p>
         </motion.div>
 

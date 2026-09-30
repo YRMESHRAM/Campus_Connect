@@ -4,8 +4,9 @@ import { Search, Filter, MapPin, Navigation, Star } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { supabase } from '../supabaseClient';
-import { fetchFacultyFromSupabase, getCachedFacultyData, getFacultyAvailability, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
+
+import { fetchFacultyFromSupabase, getCachedFacultyData, subscribeFacultyStatusChanges, startPolling } from '../utils/facultyStore';
+import { resolveStatus, subscribeFacultyStatus } from '../utils/facultyStatus';
 
 const availabilityConfig: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   available: { label: 'Available', color: 'text-green-700', bg: 'bg-green-100', dot: 'bg-green-500' },
@@ -73,24 +74,14 @@ const FacultyDirectory: React.FC = () => {
       setFacultyData([...getCachedFacultyData()]);
     });
 
-    let channel: any;
-    try {
-      channel = supabase
-        .channel('faculty-status-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'faculty_schedules' },
-          () => {
-            fetchFacultyFromSupabase().then((data) => setFacultyData(data));
-          }
-        )
-        .subscribe();
-    } catch (_) { /* ignore */ }
+    const unsubscribeRealtime = subscribeFacultyStatus(() => {
+      fetchFacultyFromSupabase().then((data) => setFacultyData(data));
+    });
 
     return () => {
       stopPolling();
       unsubscribeLocal();
-      if (channel) supabase.removeChannel(channel);
+      unsubscribeRealtime();
     };
   }, []);
 
@@ -102,11 +93,8 @@ const FacultyDirectory: React.FC = () => {
     const name = f["Faculty Name"] || f.name || '';
     const dept = f["Department"] || f.department || '';
 
-    // Default to 'auto' instead of 'available' so schedule/time check runs properly
-    const currentAvailability = getFacultyAvailability(name, f.availability || 'auto');
-    const dynamicStatus = (currentAvailability && currentAvailability !== 'auto') 
-      ? currentAvailability 
-      : getCurrentTeacherStatus(f);
+    // Use resolveStatus from the new facultyStatus helper
+    const dynamicStatus = resolveStatus(f);
 
     const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || dept.toLowerCase().includes(search.toLowerCase());
     const matchDept = deptFilter === 'All' || dept === deptFilter;
@@ -199,10 +187,7 @@ const FacultyDirectory: React.FC = () => {
               const department = faculty["Department"] || faculty.department || 'N/A';
               const cabin = faculty["Cabin No."] || faculty.cabin || 'N/A';
               
-              const currentAvail = getFacultyAvailability(teacherName, faculty.availability || 'auto');
-              const rawStatus = (currentAvail && currentAvail !== 'auto')
-                ? currentAvail
-                : getCurrentTeacherStatus(faculty);
+              const rawStatus = resolveStatus(faculty);
                 
               const status = availabilityConfig[rawStatus] || { 
                 label: 'Unavailable', 

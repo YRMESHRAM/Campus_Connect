@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import { skipAutoWrite, autoStatus } from './facultyStatus';
 
 export type AvailabilityStatus = 'auto' | 'available' | 'busy' | 'in-lecture' | 'meeting' | 'offline';
 
@@ -137,16 +138,12 @@ export async function fetchFacultyFromSupabase(): Promise<any[]> {
     if (!error && data && data.length > 0) {
       _cachedFacultyData = data;
 
-      // Merge local availability overrides into cached Supabase data
-      const localMap = getStoredAvailabilities();
       _cachedFacultyData = data.map((f) => {
-        const fName = f['Faculty Name'] || f.name || '';
-        const norm = normalizeFacultyName(fName);
-        if (localMap[fName]) {
-          return { ...f, availability: localMap[fName] };
-        } else if (norm && localMap[norm]) {
-          return { ...f, availability: localMap[norm] };
+        // If not manual, we can set availability from autoStatus in memory
+        if (!skipAutoWrite(f)) {
+          return { ...f, availability: autoStatus(f) };
         }
+        // If manual, keep row.availability as-is
         return f;
       });
 
