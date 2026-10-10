@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
+import Fuse from 'fuse.js';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
 import { fetchFacultyFromSupabase, getCachedFacultyData } from '../utils/facultyStore';
@@ -240,8 +241,8 @@ const CampusMap: React.FC = () => {
   const [toQuery, setToQuery] = useState('');
   const [isFromDropdownOpen, setIsFromDropdownOpen] = useState(false);
   const [isToDropdownOpen, setIsToDropdownOpen] = useState(false);
-  const [fromCategoryFilter, setFromCategoryFilter] = useState<'all' | 'entrance' | 'classroom' | 'faculty' | 'amenity'>('all');
-  const [toCategoryFilter, setToCategoryFilter] = useState<'all' | 'entrance' | 'classroom' | 'faculty' | 'amenity'>('all');
+  const [fromCategoryFilter, setFromCategoryFilter] = useState<'all' | 'academic' | 'faculty' | 'amenities' | 'gates'>('all');
+  const [toCategoryFilter, setToCategoryFilter] = useState<'all' | 'academic' | 'faculty' | 'amenities' | 'gates'>('all');
 
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
@@ -463,20 +464,20 @@ const CampusMap: React.FC = () => {
   // ─── Filtered lists for dropdowns (both identical — user can pick any place for From or Where) ─
   function filterPlaces(query: string, categoryFilter: string) {
     let list = allPlaces;
-    if (categoryFilter === 'entrance') list = list.filter(p => p.type === 'entrance' || p.type === 'gate');
-    else if (categoryFilter === 'classroom') list = list.filter(p => p.type === 'classroom');
+    if (categoryFilter === 'academic') list = list.filter(p => ['classroom', 'lab', 'block'].includes(p.type));
     else if (categoryFilter === 'faculty') list = list.filter(p => p.type === 'faculty');
-    else if (categoryFilter === 'amenity') list = list.filter(p => p.type === 'amenity' || p.type === 'lab');
+    else if (categoryFilter === 'amenities') list = list.filter(p => p.type === 'amenity');
+    else if (categoryFilter === 'gates') list = list.filter(p => p.type === 'entrance' || p.type === 'gate');
 
     if (!query.trim()) return list.slice(0, 12);
-    const q = query.toLowerCase();
-    const results = list.filter(p =>
-      p.name.toLowerCase().includes(q) ||
-      (p.subtitle && p.subtitle.toLowerCase().includes(q)) ||
-      p.block.toLowerCase().includes(q) ||
-      (p.cabin && p.cabin.toLowerCase().includes(q)) ||
-      p.id.toLowerCase().includes(q)
-    ).slice(0, 12);
+    
+    const fuse = new Fuse(list, {
+      keys: ['name', 'subtitle', 'block', 'cabin', 'id'],
+      threshold: 0.4,
+      ignoreLocation: true,
+    });
+    
+    const results = fuse.search(query).map(result => result.item).slice(0, 12);
 
     // If user typed a room code like m001 that isn't in the list, auto-generate it
     if (results.length === 0) {
@@ -571,8 +572,21 @@ const CampusMap: React.FC = () => {
     if (!iframeLoaded) return;
     if (fromPlace && toPlace) {
       sendRouteToIframe(fromPlace, toPlace);
+    } else if (toPlace && !fromPlace) {
+      try {
+        iframeRef.current?.contentWindow?.postMessage({
+          type: 'FOCUS_PLACE',
+          place: {
+            id: toPlace.id,
+            name: toPlace.name,
+            cabin: toPlace.cabin || toPlace.id,
+            block: toPlace.block,
+            floor: toPlace.floor
+          }
+        }, '*');
+      } catch (_) { }
     } else {
-      // One or both are null → show the full campus
+      // One or both are null (or only fromPlace) → show the full campus
       sendResetToIframe();
     }
   }, [fromPlace, toPlace, iframeLoaded, sendRouteToIframe, sendResetToIframe]);
@@ -703,7 +717,7 @@ const CampusMap: React.FC = () => {
       >
         {/* Category filter pills */}
         <div className={`p-2 border-b flex items-center gap-1.5 overflow-x-auto scrollbar-thin ${isDarkTheme ? 'bg-gray-800/80 border-gray-800' : 'bg-gray-50 border-gray-100'}`}>
-          {(['all', 'entrance', 'classroom', 'faculty', 'amenity'] as const).map((cat) => (
+          {(['all', 'academic', 'faculty', 'amenities', 'gates'] as const).map((cat) => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
@@ -712,7 +726,7 @@ const CampusMap: React.FC = () => {
                   : isDarkTheme ? 'text-gray-400 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-200/70'
                 }`}
             >
-              {cat === 'all' ? '✨ All' : cat === 'entrance' ? '🚪 Entrances' : cat === 'classroom' ? '🎓 Rooms' : cat === 'faculty' ? '👤 Faculty' : '🍽️ Amenities'}
+              {cat === 'all' ? '✨ All' : cat === 'academic' ? '🎓 Academic' : cat === 'faculty' ? '👤 Faculty' : cat === 'amenities' ? '🍽️ Amenities' : '🚪 Gates/Parking'}
             </button>
           ))}
           <button onClick={onClose} className={`ml-auto px-2 py-1 rounded-lg text-[10px] font-bold ${isDarkTheme ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-700'}`}>✕ Close</button>

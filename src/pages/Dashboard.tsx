@@ -37,10 +37,10 @@ const Dashboard: React.FC = () => {
 
     const unsubscribeRealtime = subscribeFacultyStatus((payload) => {
       fetchFacultyFromSupabase().then(updateCountFromList);
-      
+
       const name = payload?.new?.['Faculty Name'] || payload?.new?.name;
       const status = payload?.new?.availability;
-      
+
       if (name && status) {
         const formattedStatus = status === 'in-lecture' ? 'In Lecture' : status.charAt(0).toUpperCase() + status.slice(1);
         setRecentActivities((prev) => [

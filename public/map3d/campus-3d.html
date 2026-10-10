@@ -2798,6 +2798,57 @@
           if (b.dataset.floor === String(f)) b.classList.add('active');
         });
         showFloor(String(f));
+      } else if (e.data.type === 'FOCUS_PLACE') {
+        var place = e.data.place;
+        if (!place) return;
+        var b = place.block || 'M';
+        var f = place.floor !== undefined ? Number(place.floor) : 0;
+        var cabin = place.cabin || '';
+
+        // Clear route
+        while (routePathSubGroup.children.length > 0) {
+          const child = routePathSubGroup.children[0];
+          if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+          routePathSubGroup.remove(child);
+        }
+        while (targetMarkerGroup.children.length > 0) {
+          const child = targetMarkerGroup.children[0];
+          if (child.isCSS2DObject && child.element && child.element.parentNode) child.element.remove();
+          targetMarkerGroup.remove(child);
+        }
+        if (googleMapsCursorGroup) googleMapsCursorGroup.visible = false;
+        currentRouteFullPoints = [];
+        pulseOrbs = [];
+        activeCurve = null;
+        targetBeacon = null;
+        startBeacon = null;
+        targetAuraBox = null;
+        targetDestinationObject = null;
+        highlightedMeshes.forEach(m => { if (m.userData.origMaterial) m.material = m.userData.origMaterial; });
+        highlightedMeshes = [];
+        isPathVisible = false;
+
+        document.querySelectorAll('.floors button').forEach(function (btn) {
+          btn.classList.remove('active');
+          if (btn.dataset.floor === String(f)) btn.classList.add('active');
+        });
+        showFloor(String(f));
+
+        // Highlight block
+        setSelectiveBlockVisibility(b, f, cabin, true);
+
+        // Calculate target coordinate based on block
+        var tgt = new THREE.Vector3(0, 0, 0);
+        if (b === 'M') tgt.set(-20, 0, -20);
+        else if (b === 'F') tgt.set(20, 0, -20);
+        else if (b === 'E') tgt.set(20, 0, 15);
+        else if (b === 'B') tgt.set(-25, 0, 20);
+        else if (b === 'ADM') tgt.set(-15, 0, -10);
+        else if (b === 'CANTEEN') tgt.set(-30, 0, -45);
+        tgt.y = f * 8; // Adjust height for floor
+        
+        var camPos = new THREE.Vector3(tgt.x + 25, tgt.y + 25, tgt.z + 25);
+        smoothFlyCamera(camPos, tgt);
       } else if (e.data.type === 'RESET_VIEW') {
         while (routePathSubGroup.children.length > 0) {
           const child = routePathSubGroup.children[0];
