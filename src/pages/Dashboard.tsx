@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { MapPin, BookOpen, Users, Phone, Navigation, MessageSquare, Bell, TrendingUp } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Layout from '../components/Layout';
-import { fetchFacultyFromSupabase, getCachedFacultyData, startPolling } from '../utils/facultyStore';
+import { fetchFacultyFromSupabase, startPolling } from '../utils/facultyStore';
 import { subscribeFacultyStatus } from '../utils/facultyStatus';
 import { getAnnouncements, subscribeAnnouncements } from '../utils/announcementStore';
 

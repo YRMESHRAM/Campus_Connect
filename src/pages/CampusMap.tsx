@@ -34,6 +34,9 @@ import {
   GPSPosition,
 } from '../utils/gpsUtils';
 
+import { PlaceItem, standardPlaces } from '../data/campusPlaces';
+export type { PlaceItem };
+
 // ─── Types ──────────────────────────────────────────────
 interface FacultyMember {
   id: string;
@@ -42,19 +45,6 @@ interface FacultyMember {
   cabin: string;
   block: string;
   floor: number;
-}
-
-export interface PlaceItem {
-  id: string;
-  name: string;
-  type: 'gate' | 'entrance' | 'block' | 'classroom' | 'faculty' | 'amenity' | 'lab';
-  block: string;
-  floor: number;
-  floorLabel: string;
-  cabin?: string;
-  icon?: string;
-  subtitle?: string;
-  key?: string;
 }
 
 // ─── Utility functions ──────────────────────────────────
@@ -119,13 +109,15 @@ function toFacultyMember(raw: any, index: number): FacultyMember | null {
 }
 
 /**
- * Parse an arbitrary room code like "m001", "M213", "f105", "e202" into a PlaceItem.
- * Returns null if the string doesn't look like a valid room code.
+ * Parse an arbitrary room code like "m001", "M213", "f105", "e202", "Room F005" into a PlaceItem.
  */
 function parseRoomCode(input: string): PlaceItem | null {
-  const trimmed = input.trim().toUpperCase().replace(/\s+/g, '');
-  // Match patterns like M001, F105, E202, B101, ADM, etc.
-  const match = trimmed.match(/^([A-Z]+)(\d{2,4})$/);
+  let trimmed = input.trim().toUpperCase().replace(/\s+/g, '');
+  trimmed = trimmed.replace(/^(ROOM|CABIN|RM|NO|BLOCK)-?/i, '');
+  if (trimmed.includes('-')) {
+    trimmed = trimmed.split('-')[0];
+  }
+  const match = trimmed.match(/^([A-Z]+)(\d{2,4}[A-Z0-9]*)$/);
   if (!match) return null;
   const blockLetter = match[1];
   const roomNum = match[2];
@@ -143,7 +135,7 @@ function parseRoomCode(input: string): PlaceItem | null {
     floor: isNaN(floor) ? 0 : floor,
     floorLabel,
     cabin: roomId,
-    icon: '🏫',
+    icon: '🎓',
     subtitle: `${blockData.shortLabel} · ${floorLabel}`,
   };
 }
@@ -173,57 +165,6 @@ const QR_FROM_MAP: Record<string, string> = {
   "auditorium": "auditorium",
 };
 
-
-// Standard Known Places — all blocks, rooms, labs, amenities
-const standardPlaces: PlaceItem[] = [
-  // Entrances / Gates
-  { id: 'ENTRANCE_F', key: 'ENTRANCE_F', name: 'Entrance (F004-F005)', type: 'entrance', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🚪', subtitle: 'Main First Year Wing Entrance' },
-  { id: 'MAIN_GATE', key: 'MAIN_GATE', name: 'S.B. Jain Main Gate', type: 'gate', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Campus Entry & Guard Post' },
-  { id: 'PARKING', key: 'PARKING', name: 'Parking Area A', type: 'gate', block: 'GROUND', floor: 0, floorLabel: 'Ground Floor', icon: '🅿️', subtitle: 'Two & Four Wheeler Parking' },
-  { id: 'ADM', key: 'ADM', name: 'Admin Block Entrance', type: 'entrance', block: 'ADM', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Principal Office & Accounts' },
-  { id: 'BLOCK_E', key: 'BLOCK_E', name: 'Block E Entrance', type: 'entrance', block: 'E', floor: 0, floorLabel: 'Ground Floor', icon: '📡', subtitle: 'ETC / MCA Wing Entrance' },
-  { id: 'BLOCK_B', key: 'BLOCK_B', name: 'Block B Entrance', type: 'entrance', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '⚙️', subtitle: 'Mechanical Wing & Stage' },
-  { id: 'BLOCK_M', key: 'BLOCK_M', name: 'Block M Entrance', type: 'entrance', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '💻', subtitle: 'CSE / AIML Dept Entrance' },
-  { id: 'CANTEEN', key: 'CANTEEN', name: 'Campus Canteen', type: 'amenity', block: 'CANTEEN', floor: 0, floorLabel: 'Ground Floor', icon: '🍽️', subtitle: 'Food Court & Refreshments' },
-  { id: 'cse-notice', key: 'BLOCK_M', name: 'CSE Notice Board', type: 'entrance', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '📌', subtitle: 'Block M corridor / CSE notice board' },
-  
-  // Key Academic Destinations
-  { id: 'library', name: 'Central Library (F203)', type: 'amenity', block: 'F', floor: 2, floorLabel: '2nd Floor', icon: '📖', subtitle: 'Main Books, Reading Hall & Digital Library', cabin: 'F203' },
-  { id: 'auditorium', name: 'Auditorium M008', type: 'amenity', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '🏛️', subtitle: 'Main Academic Auditorium (Ground)', cabin: 'M008' },
-  { id: 'exam-center', name: 'Exam Center (E202)', type: 'amenity', block: 'E', floor: 2, floorLabel: '2nd Floor', icon: '📝', subtitle: 'University Exam Control Cell', cabin: 'E202' },
-  { id: 'seminar-hall', name: 'Central Seminar Hall', type: 'amenity', block: 'M', floor: 3, floorLabel: '3rd Floor', icon: '🎙️', subtitle: 'Conferences & Major Events' },
-  { id: 'seminar-hall-etc', name: 'Seminar Hall (ETC)', type: 'amenity', block: 'E', floor: 3, floorLabel: '3rd Floor', icon: '🎙️', subtitle: 'Electronics Dept Seminar Hall' },
-  { id: 'dept-library', name: 'Dept Library (CSE)', type: 'amenity', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '📚', subtitle: 'Computer Science Reference Section' },
-  { id: 'stage', name: 'Main Stage & Amphitheatre', type: 'amenity', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '🎭', subtitle: 'Cultural Events & Open Ground Stage' },
-  { id: 'computer-lab', name: 'Central Computer Lab', type: 'lab', block: 'E', floor: 0, floorLabel: 'Ground Floor', icon: '💻', subtitle: 'Ground Floor High-Speed Lab' },
-  { id: 'mca-lab', name: 'MCA Computer Lab', type: 'lab', block: 'E', floor: 1, floorLabel: '1st Floor', icon: '🖥️', subtitle: 'Post-Graduation Lab' },
-  { id: 'cad-2', name: 'CAD Lab 2', type: 'lab', block: 'M', floor: 1, floorLabel: '1st Floor', icon: '🖥️', subtitle: 'Design & Graphics Simulation Lab' },
-  { id: 'project-lab', name: 'Mechanical Project Lab', type: 'lab', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '⚙️', subtitle: 'Fabrication & Prototyping Workshop' },
-  { id: 'room-E005', name: 'Robotics & IoT Lab (E005)', type: 'lab', block: 'E', floor: 0, floorLabel: 'Ground Floor', icon: '🤖', subtitle: 'Advanced Robotics Lab', cabin: 'E005' },
-  { id: 'room-M303', name: 'Emerging Tech Lab (M303)', type: 'lab', block: 'M', floor: 3, floorLabel: '3rd Floor', icon: '⚡', subtitle: 'AI & Cloud Computing Lab', cabin: 'M303' },
-  { id: 'room-F001', name: 'Physics Lab (F001)', type: 'lab', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🔬', subtitle: '1st Year Applied Physics Lab', cabin: 'F001' },
-  { id: 'room-F002', name: 'Chemistry Lab (F002)', type: 'lab', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🧪', subtitle: '1st Year Applied Chemistry Lab', cabin: 'F002' },
-
-  // HOD Offices
-  { id: 'room-M108', name: 'HOD CSE Office (M108)', type: 'classroom', block: 'M', floor: 1, floorLabel: '1st Floor', icon: '👨‍💼', subtitle: 'Computer Science Head Office', cabin: 'M108' },
-  { id: 'room-M208', name: 'HOD AIML Office (M208)', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '👨‍💼', subtitle: 'AI & Machine Learning Head Office', cabin: 'M208' },
-  { id: 'room-E010', name: 'HOD ETC Office (E010)', type: 'classroom', block: 'E', floor: 0, floorLabel: 'Ground Floor', icon: '👨‍💼', subtitle: 'Electronics Dept Head Office', cabin: 'E010' },
-  { id: 'room-E103', name: 'HOD MBA Office (E103)', type: 'classroom', block: 'E', floor: 1, floorLabel: '1st Floor', icon: '👨‍💼', subtitle: 'Management Studies Head Office', cabin: 'E103' },
-  { id: 'room-B002', name: 'HOD Mech Office (B002)', type: 'classroom', block: 'B', floor: 0, floorLabel: 'Ground Floor', icon: '👨‍💼', subtitle: 'Mechanical Engineering Head Office', cabin: 'B002' },
-  { id: 'room-B103', name: 'HOD Electrical Office (B103)', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '👨‍💼', subtitle: 'Electrical Engineering Head Office', cabin: 'B103' },
-
-  // Popular Classrooms
-  { id: 'room-M001', name: 'Classroom M001', type: 'classroom', block: 'M', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'CSE Ground Floor Lab', cabin: 'M001' },
-  { id: 'room-M213', name: 'Classroom M213', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML Lecture Hall', cabin: 'M213' },
-  { id: 'room-F004', name: 'Classroom F004', type: 'classroom', block: 'F', floor: 0, floorLabel: 'Ground Floor', icon: '🎓', subtitle: 'First Year Section A', cabin: 'F004' },
-  { id: 'room-F105', name: 'Classroom F105', type: 'classroom', block: 'F', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'First Year Section B', cabin: 'F105' },
-  { id: 'room-F201', name: 'Classroom F201', type: 'classroom', block: 'F', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'First Year Section C', cabin: 'F201' },
-  { id: 'room-M101', name: 'Classroom M101', type: 'classroom', block: 'M', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'CSE 2nd Year Lecture Hall', cabin: 'M101' },
-  { id: 'room-M201', name: 'Classroom M201', type: 'classroom', block: 'M', floor: 2, floorLabel: '2nd Floor', icon: '🎓', subtitle: 'AIML 3rd Year Lecture Hall', cabin: 'M201' },
-  { id: 'room-M301', name: 'Classroom M301', type: 'classroom', block: 'M', floor: 3, floorLabel: '3rd Floor', icon: '🎓', subtitle: 'Final Year CSE Lecture Hall', cabin: 'M301' },
-  { id: 'room-E101', name: 'Classroom E101', type: 'classroom', block: 'E', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'ETC Dept Lecture Hall', cabin: 'E101' },
-  { id: 'room-B101', name: 'Classroom B101', type: 'classroom', block: 'B', floor: 1, floorLabel: '1st Floor', icon: '🎓', subtitle: 'Mechanical Dept Lecture Hall', cabin: 'B101' },
-];
 
 // ─── Main Component ─────────────────────────────────────
 const CampusMap: React.FC = () => {
@@ -469,22 +410,85 @@ const CampusMap: React.FC = () => {
     else if (categoryFilter === 'amenities') list = list.filter(p => p.type === 'amenity');
     else if (categoryFilter === 'gates') list = list.filter(p => p.type === 'entrance' || p.type === 'gate');
 
-    if (!query.trim()) return list.slice(0, 12);
-    
+    const cleanQuery = query.trim();
+    if (!cleanQuery) {
+      // In "All" and all category tabs, show the entire list so every room is visible and scrollable
+      return list;
+    }
+
+    const normQuery = cleanQuery.toUpperCase().replace(/\s+/g, '');
+    const cleanRoomCode = normQuery.replace(/^(ROOM|CABIN|RM|NO|BLOCK)-?/i, '');
+
+    // 1. Exact matches on room/cabin code or exact place name (Highest Priority)
+    const exactMatches: PlaceItem[] = [];
+    const seenIds = new Set<string>();
+
+    list.forEach(p => {
+      const pCabin = (p.cabin || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const pId = (p.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const pName = (p.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+      if (
+        (cleanRoomCode && pCabin === cleanRoomCode) ||
+        (cleanRoomCode && pId === `ROOM${cleanRoomCode}`) ||
+        pCabin === normQuery ||
+        pId === normQuery ||
+        pName === normQuery
+      ) {
+        exactMatches.push(p);
+        seenIds.add(p.id);
+      }
+    });
+
+    // 2. Prefix or substring matches on room code or name (e.g. typing "F00", "M10", "101", "Lab")
+    const prefixMatches: PlaceItem[] = [];
+    list.forEach(p => {
+      if (seenIds.has(p.id)) return;
+      const pCabin = (p.cabin || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const pId = (p.id || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const pName = (p.name || '').toUpperCase();
+      const pSub = (p.subtitle || '').toUpperCase();
+
+      if (
+        (cleanRoomCode && pCabin.startsWith(cleanRoomCode)) ||
+        (cleanRoomCode && pCabin.includes(cleanRoomCode)) ||
+        (cleanRoomCode && pId.includes(cleanRoomCode)) ||
+        pName.includes(cleanQuery.toUpperCase()) ||
+        pSub.includes(cleanQuery.toUpperCase())
+      ) {
+        prefixMatches.push(p);
+        seenIds.add(p.id);
+      }
+    });
+
+    // 3. Fuzzy search with Fuse.js for broader queries & typos
     const fuse = new Fuse(list, {
-      keys: ['name', 'subtitle', 'block', 'cabin', 'id'],
+      keys: [
+        { name: 'name', weight: 0.4 },
+        { name: 'cabin', weight: 0.3 },
+        { name: 'subtitle', weight: 0.15 },
+        { name: 'block', weight: 0.1 },
+        { name: 'id', weight: 0.05 },
+      ],
       threshold: 0.4,
       ignoreLocation: true,
     });
-    
-    const results = fuse.search(query).map(result => result.item).slice(0, 12);
 
-    // If user typed a room code like m001 that isn't in the list, auto-generate it
-    if (results.length === 0) {
-      const parsed = parseRoomCode(query);
-      if (parsed) return [parsed];
+    const fuseMatches = fuse.search(cleanQuery)
+      .map(result => result.item)
+      .filter(item => !seenIds.has(item.id));
+
+    const combined = [...exactMatches, ...prefixMatches, ...fuseMatches];
+
+    // 4. If user typed an arbitrary room code not already matched, auto-generate it
+    if (combined.length === 0 || !exactMatches.length) {
+      const parsed = parseRoomCode(cleanQuery);
+      if (parsed && !combined.some(p => (p.cabin || '').toUpperCase() === (parsed.cabin || '').toUpperCase())) {
+        combined.unshift(parsed);
+      }
     }
-    return results;
+
+    return combined.slice(0, 60);
   }
 
   const filteredFromOptions = useMemo(() => filterPlaces(fromQuery, fromCategoryFilter), [fromQuery, fromCategoryFilter, allPlaces]);
@@ -650,7 +654,10 @@ const CampusMap: React.FC = () => {
   // ─── Handle "Enter" on From/Where input to auto-parse room code ─
   const handleFromInputSubmit = () => {
     if (!fromQuery.trim()) return;
-    const found = allPlaces.find(p => p.name.toLowerCase() === fromQuery.toLowerCase() || (p.cabin && p.cabin.toLowerCase() === fromQuery.toLowerCase()));
+    const q = fromQuery.trim().toLowerCase();
+    const found =
+      allPlaces.find(p => p.name.toLowerCase() === q || (p.cabin && p.cabin.toLowerCase() === q)) ||
+      filteredFromOptions[0];
     if (found) {
       setFromPlace(found);
     } else {
@@ -663,7 +670,10 @@ const CampusMap: React.FC = () => {
 
   const handleToInputSubmit = () => {
     if (!toQuery.trim()) return;
-    const found = allPlaces.find(p => p.name.toLowerCase() === toQuery.toLowerCase() || (p.cabin && p.cabin.toLowerCase() === toQuery.toLowerCase()));
+    const q = toQuery.trim().toLowerCase();
+    const found =
+      allPlaces.find(p => p.name.toLowerCase() === q || (p.cabin && p.cabin.toLowerCase() === q)) ||
+      filteredToOptions[0];
     if (found) {
       setToPlace(found);
     } else {
@@ -823,7 +833,7 @@ const CampusMap: React.FC = () => {
                     type="text"
                     placeholder="From: Starting room/block (e.g. M001, Block F...)"
                     value={fromQuery || (fromPlace ? fromPlace.name : '')}
-                    onFocus={() => { setFromQuery(''); setIsFromDropdownOpen(true); setIsToDropdownOpen(false); }}
+                    onFocus={(e) => { e.currentTarget.select(); setIsFromDropdownOpen(true); setIsToDropdownOpen(false); }}
                     onChange={(e) => { setFromQuery(e.target.value); setIsFromDropdownOpen(true); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleFromInputSubmit(); } }}
                     className={`w-full pl-11 pr-32 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${isDark
@@ -876,7 +886,7 @@ const CampusMap: React.FC = () => {
                     type="text"
                     placeholder="Where: Destination room (e.g. M213, Library...)"
                     value={toQuery || (toPlace ? toPlace.name : '')}
-                    onFocus={() => { setToQuery(''); setIsToDropdownOpen(true); setIsFromDropdownOpen(false); }}
+                    onFocus={(e) => { e.currentTarget.select(); setIsToDropdownOpen(true); setIsFromDropdownOpen(false); }}
                     onChange={(e) => { setToQuery(e.target.value); setIsToDropdownOpen(true); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleToInputSubmit(); } }}
                     className={`w-full pl-11 pr-10 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold border outline-none transition-all ${isDark
